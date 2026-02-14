@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hollow Knight — Web Clone</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="game-wrapper">
+    <canvas id="game-canvas"></canvas>
+    <!-- UI overlay rendered by Phaser on top canvas -->
+  </div>
+
+  <!-- Phaser 3 -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+
+  <!-- Game source files — order matters -->
+  <script src="js/data/constants.js"></script>
+  <script src="js/data/animationDefs.js"></script>
+  <script src="js/data/mapData.js"></script>
+  <script src="js/data/dialogueData.js"></script>
+
+  <script src="js/systems/AnimationManager.js"></script>
+  <script src="js/systems/InputHandler.js"></script>
+  <script src="js/systems/CameraSystem.js"></script>
+  <script src="js/systems/ParticleSystem.js"></script>
+  <script src="js/systems/AudioSystem.js"></script>
+  <script src="js/systems/SaveSystem.js"></script>
+
+  <script src="js/entities/Entity.js"></script>
+  <script src="js/entities/Knight.js"></script>
+  <script src="js/entities/enemies/Crawler.js"></script>
+  <script src="js/entities/enemies/Spitter.js"></script>
+  <script src="js/entities/enemies/FlyingScout.js"></script>
+  <script src="js/entities/NPC.js"></script>
+  <script src="js/entities/Projectile.js"></script>
+  <script src="js/entities/Shard.js"></script>
+
+  <script src="js/ui/HUD.js"></script>
+  <script src="js/ui/DialogueBox.js"></script>
+  <script src="js/ui/PauseMenu.js"></script>
+  <script src="js/ui/MapScreen.js"></script>
+  <script src="js/ui/InventoryScreen.js"></script>
+
+  <script src="js/scenes/BootScene.js"></script>
+  <script src="js/scenes/PreloadScene.js"></script>
+  <script src="js/scenes/MainMenuScene.js"></script>
+  <script src="js/scenes/GameScene.js"></script>
+  <script src="js/scenes/UIScene.js"></script>
+  <script src="js/scenes/TransitionScene.js"></script>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
