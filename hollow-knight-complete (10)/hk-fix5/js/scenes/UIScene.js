@@ -1,0 +1,1 @@
+/* UIScene stub — future use */
