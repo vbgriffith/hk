@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hollow Knight — Web Clone (Complete Edition)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="game-wrapper">
+    <canvas id="game-canvas"></canvas>
+  </div>
+
+  <!-- Phaser 3 -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+
+  <!-- ═══════════════════════ DATA ══════════════════════════════════════════ -->
+  <script src="js/data/constants.js"></script>       <!-- C object (Phase I/II) -->
+  <script src="js/data/constants_p3.js"></script>    <!-- C extended (Phase III-V) -->
+  <script src="js/data/animationDefs.js"></script>   <!-- Phase I/II anims -->
+  <script src="js/data/animationDefs_p3.js"></script><!-- Phase III-V anims -->
+  <script src="js/data/mapData.js"></script>         <!-- Phase I/II rooms -->
+  <script src="js/data/mapData_p3.js"></script>      <!-- Phase III-V rooms -->
+  <script src="js/data/mapData_expansion.js"></script><!-- Session 7: World completion -->
+  <script src="js/data/dialogueData.js"></script>    <!-- Phase I/II dialogue -->
+  <script src="js/data/dialogueData_p3.js"></script> <!-- Phase III-V dialogue -->
+
+  <!-- ═══════════════════════ SYSTEMS ══════════════════════════════════════ -->
+  <script src="js/systems/AnimationManager.js"></script>
+  <script src="js/systems/InputHandler.js"></script>
+  <!-- AudioSystem.js also defines: SaveSystem, CameraSystem, ParticleSystem -->
+  <script src="js/systems/AudioSystem.js"></script>
+  <script src="js/systems/AudioEngine.js"></script>  <!-- Web Audio procedural music/SFX -->
+  <script src="js/systems/CharmSystem.js"></script>
+  <script src="js/systems/DreamerSystem.js"></script>
+  <script src="js/systems/RainSystem.js"></script>
+  <script src="js/systems/ShopSystem.js"></script>
+
+  <!-- ═══════════════════════ ENTITIES ═════════════════════════════════════ -->
+  <!-- Base -->
+  <script src="js/entities/Entity.js"></script>
+  <script src="js/entities/Knight.js"></script>
+  <script src="js/entities/DreamNail.js"></script>
+  <!-- NPC.js also defines: Projectile, Shard, Shade -->
+  <script src="js/entities/NPC.js"></script>
+
+  <!-- Phase I Enemies -->
+  <script src="js/entities/enemies/Crawler.js"></script>
+  <!-- Spitter.js also defines: FlyingScout -->
+  <script src="js/entities/enemies/Spitter.js"></script>
+
+  <!-- Phase II Enemies: Mosscreep, Vengefly, Aspid -->
+  <script src="js/entities/enemies/Mosscreep.js"></script>
+
+  <!-- Phase III-V Enemies: GreatHopper, WingedFool, SoulTwister,
+       Fungoon, ShrumalOgre, MantisWarrior, PaleLurker,
+       Uumuu, DungDefender, LurienWatcher                           -->
+  <script src="js/entities/enemies/PhaseIIIEnemies.js"></script>
+
+  <!-- Phase I-II Bosses -->
+  <script src="js/entities/bosses/FalseKnight.js"></script>
+  <!-- GruzMother.js also defines: GruzBaby, VengeflyKing -->
+  <script src="js/entities/bosses/GruzMother.js"></script>
+
+  <!-- Phase III-V Bosses -->
+  <script src="js/entities/bosses/SoulMaster.js"></script>
+  <script src="js/entities/bosses/MantisLords.js"></script>
+  <!-- HollowKnightBoss.js also defines: Radiance -->
+  <script src="js/entities/bosses/HollowKnightBoss.js"></script>
+
+  <!-- ═══════════════════════ UI ═══════════════════════════════════════════ -->
+  <script src="js/ui/HUD.js"></script>
+  <!-- DialogueBox.js also defines: PauseMenu, MapScreen -->
+  <script src="js/ui/DialogueBox.js"></script>
+  <script src="js/ui/InventoryScreen.js"></script>
+
+  <!-- ═══════════════════════ SCENES ═══════════════════════════════════════ -->
+  <script src="js/scenes/BootScene.js"></script>
+  <!-- PreloadScene.js — Phase I/II textures -->
+  <script src="js/scenes/PreloadScene.js"></script>
+  <!-- PreloadScene_p3.js — Phase III-V textures (patches PreloadScene) -->
+  <script src="js/scenes/PreloadScene_p3.js"></script>
+  <script src="js/scenes/MainMenuScene.js"></script>
+  <!-- GameScene.js — Core game loop -->
+  <script src="js/scenes/GameScene.js"></script>
+  <!-- GameScene extensions: Phase II (charm/dream nail/bosses) -->
+  <!-- Already patched into GameScene.js via appended code -->
+  <!-- GameScene_p3.js — Phase III-V extensions -->
+  <script src="js/scenes/GameScene_p3.js"></script>
+  <script src="js/scenes/TransitionScene.js"></script>
+  <script src="js/scenes/EndingScene.js"></script>
+
+  <!-- Bootstrap -->
+  <script src="js/main.js"></script>
+</body>
+</html>
