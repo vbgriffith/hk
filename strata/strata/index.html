@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>STRATA</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+    #game-container { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/4.0.1/simplex-noise.min.js"></script>
+  <script src="src/core/EventBus.js"></script>
+  <script src="src/core/StateManager.js"></script>
+  <script src="src/core/SaveSystem.js"></script>
+  <script src="src/core/TransitionEngine.js"></script>
+  <script src="src/procedural/Palette.js"></script>
+  <script src="src/procedural/Geometry.js"></script>
+  <script src="src/procedural/Typography.js"></script>
+  <script src="src/procedural/Noise.js"></script>
+  <script src="src/ui/Terminal.js"></script>
+  <script src="src/ui/CadenceOS.js"></script>
+  <script src="src/ui/HUD.js"></script>
+  <script src="src/websites/LumenCollective.js"></script>
+  <script src="src/websites/Veldenmoor.js"></script>
+  <script src="src/websites/IdaCrane.js"></script>
+  <script src="src/websites/websites_extra.js"></script>
+  <script src="src/systems/BrowserEngine.js"></script>
+  <script src="src/systems/DialogueEngine.js"></script>
+  <script src="src/systems/PuzzleManager.js"></script>
+  <script src="src/systems/CorruptionTracker.js"></script>
+  <script src="src/entities/Maren.js"></script>
+  <script src="src/entities/Oswin.js"></script>
+  <script src="src/entities/Cartographer.js"></script>
+  <script src="src/entities/Cartographer.js"></script>
+  <script src="src/scenes/BootScene.js"></script>
+  <script src="src/scenes/Layer0Scene.js"></script>
+  <script src="src/scenes/Layer1Scene.js"></script>
+  <script src="src/scenes/Layer2Scene.js"></script>
+  <script src="src/scenes/Layer3Scene.js"></script>
+  <script src="src/scenes/Layer4Scene.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>
