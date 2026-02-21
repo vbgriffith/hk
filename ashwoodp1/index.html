@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Ashwood Inheritance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Special+Elite&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+  <!-- Game canvas container -->
+  <div id="game-container">
+    <canvas id="game-canvas"></canvas>
+  </div>
+
+  <!-- UI Overlay Layer (HTML/CSS elements rendered above canvas) -->
+  <div id="ui-overlay">
+    <!-- Dialogue Box -->
+    <div id="dialogue-box" class="ui-panel hidden">
+      <div id="dialogue-portrait-wrap">
+        <img id="dialogue-portrait" src="" alt="">
+      </div>
+      <div id="dialogue-content">
+        <div id="dialogue-speaker"></div>
+        <div id="dialogue-text"></div>
+        <div id="dialogue-responses"></div>
+      </div>
+    </div>
+
+    <!-- Evidence / Clue Notification -->
+    <div id="clue-notification" class="hidden">
+      <div id="clue-icon">📋</div>
+      <div id="clue-text"></div>
+    </div>
+
+    <!-- Journal Panel -->
+    <div id="journal-panel" class="ui-panel hidden">
+      <div id="journal-header">
+        <span>Maren's Case Notes</span>
+        <button id="journal-close">×</button>
+      </div>
+      <div id="journal-tabs">
+        <button class="journal-tab active" data-tab="clues">Evidence</button>
+        <button class="journal-tab" data-tab="characters">Persons</button>
+        <button class="journal-tab" data-tab="notes">Notes</button>
+      </div>
+      <div id="journal-body"></div>
+    </div>
+
+    <!-- HUD -->
+    <div id="hud">
+      <div id="hud-act">
+        <span id="hud-act-label">ACT I</span>
+        <span id="hud-act-subtitle">The Call</span>
+      </div>
+      <div id="hud-controls">
+        <button id="btn-journal" title="Case Notes">📋</button>
+        <button id="btn-map" title="Map">🗺</button>
+        <button id="btn-menu" title="Menu">≡</button>
+      </div>
+    </div>
+
+    <!-- Title Screen -->
+    <div id="title-screen">
+      <div id="title-card">
+        <div id="title-eyebrow">A Mystery in Five Acts</div>
+        <h1 id="title-main">The Ashwood<br>Inheritance</h1>
+        <div id="title-rule"></div>
+        <p id="title-tagline">He did not die by his heart.<br>Come to Ashwood.</p>
+        <div id="title-actions">
+          <button id="btn-new-game" class="title-btn primary">Begin Investigation</button>
+          <button id="btn-continue" class="title-btn secondary">Continue</button>
+          <button id="btn-about" class="title-btn tertiary">About</button>
+        </div>
+        <div id="title-footer">Estimated 3–4 hours · 6 Endings</div>
+      </div>
+    </div>
+
+    <!-- Location Banner -->
+    <div id="location-banner" class="hidden">
+      <div id="location-name"></div>
+      <div id="location-desc"></div>
+    </div>
+  </div>
+
+  <!-- CDN Libraries -->
+  <!-- Phaser 3 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
+  <!-- Howler.js for audio -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+  <!-- Anime.js for UI animations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+
+  <!-- Game Data -->
+  <script src="assets/data/story.js"></script>
+  <script src="assets/data/dialogue.js"></script>
+
+  <!-- Game Systems (Phase 1 stubs) -->
+  <script src="js/gameState.js"></script>
+  <script src="js/dialogueEngine.js"></script>
+  <script src="js/uiManager.js"></script>
+  <script src="js/sceneManager.js"></script>
+  <script src="js/main.js"></script>
+
+</body>
+</html>
