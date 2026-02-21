@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Ashwood Inheritance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Special+Elite&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/ui.css">
+  <link rel="stylesheet" href="css/evidenceboard.css">
+</head>
+<body>
+
+  <!-- Game canvas container -->
+  <div id="game-container">
+    <canvas id="game-canvas"></canvas>
+  </div>
+
+  <!-- Grain overlay for film texture -->
+  <div id="grain-overlay"></div>
+
+  <!-- Vignette -->
+  <div id="vignette"></div>
+
+  <!-- UI Overlay Layer -->
+  <div id="ui-overlay">
+
+    <!-- ═══ HUD ═══ -->
+    <div id="hud">
+      <div id="hud-left">
+        <div id="hud-act-label"></div>
+        <div id="hud-act-subtitle"></div>
+      </div>
+      <div id="hud-center">
+        <div id="hud-time">
+          <span id="hud-clock">22:41</span>
+          <span id="hud-date">October 15th</span>
+        </div>
+      </div>
+      <div id="hud-right">
+        <button id="btn-inventory" class="hud-btn" title="Inventory">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+          <span id="inventory-badge" class="badge hidden">0</span>
+        </button>
+        <button id="btn-evidence" class="hud-btn" title="Evidence Board">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+          <span id="evidence-badge" class="badge hidden">0</span>
+        </button>
+        <button id="btn-map" class="hud-btn" title="Location Map">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
+        </button>
+        <button id="btn-menu" class="hud-btn" title="Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ DIALOGUE BOX ═══ -->
+    <div id="dialogue-box" class="hidden">
+      <div id="dialogue-portrait-area">
+        <canvas id="dialogue-portrait-canvas" width="140" height="180"></canvas>
+        <div id="dialogue-phone-indicator" class="hidden">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg>
+          <span>via telephone</span>
+        </div>
+      </div>
+      <div id="dialogue-content">
+        <div id="dialogue-speaker-name"></div>
+        <div id="dialogue-speaker-title"></div>
+        <div id="dialogue-text-area">
+          <div id="dialogue-text"></div>
+          <div id="dialogue-skip-hint">click to skip</div>
+        </div>
+        <div id="dialogue-responses"></div>
+      </div>
+    </div>
+
+    <!-- ═══ INTERACTION PROMPT ═══ -->
+    <div id="interaction-prompt" class="hidden">
+      <span id="interaction-key">E</span>
+      <span id="interaction-label">Examine</span>
+    </div>
+
+    <!-- ═══ CLUE NOTIFICATION ═══ -->
+    <div id="clue-notification" class="hidden">
+      <div id="clue-notif-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <div id="clue-notif-body">
+        <div id="clue-notif-label">Evidence Collected</div>
+        <div id="clue-notif-name"></div>
+      </div>
+    </div>
+
+    <!-- ═══ LOCATION BANNER ═══ -->
+    <div id="location-banner" class="hidden">
+      <div id="location-banner-inner">
+        <div id="location-banner-name"></div>
+        <div id="location-banner-sub"></div>
+      </div>
+    </div>
+
+    <!-- ═══ INVENTORY PANEL ═══ -->
+    <div id="inventory-panel" class="side-panel hidden">
+      <div class="panel-header">
+        <div class="panel-title">Inventory</div>
+        <button class="panel-close" data-closes="inventory-panel">×</button>
+      </div>
+      <div id="inventory-grid"></div>
+      <div id="inventory-detail" class="hidden">
+        <div id="inv-detail-name"></div>
+        <div id="inv-detail-desc"></div>
+        <button id="inv-detail-close">Close</button>
+      </div>
+    </div>
+
+    <!-- ═══ EVIDENCE BOARD ═══ -->
+    <div id="evidence-board" class="hidden">
+      <div id="evidence-board-header">
+        <div id="evidence-board-title">Evidence Board</div>
+        <div id="evidence-board-subtitle">Connect the threads</div>
+        <button id="evidence-board-close">×</button>
+      </div>
+      <div id="evidence-board-canvas-wrap">
+        <canvas id="evidence-canvas"></canvas>
+      </div>
+      <div id="evidence-board-sidebar">
+        <div id="evidence-sidebar-title">Case Files</div>
+        <div id="evidence-clue-list"></div>
+        <div id="evidence-strength-wrap">
+          <div id="evidence-strength-label">Case Strength</div>
+          <div id="evidence-strength-bar-wrap">
+            <div id="evidence-strength-bar"></div>
+          </div>
+          <div id="evidence-strength-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ MAP OVERLAY ═══ -->
+    <div id="map-overlay" class="hidden">
+      <div id="map-header">
+        <div id="map-title">Ashwood Estate & Surroundings</div>
+        <button id="map-close">×</button>
+      </div>
+      <div id="map-container">
+        <canvas id="map-canvas" width="800" height="500"></canvas>
+        <div id="map-rooms"></div>
+      </div>
+    </div>
+
+    <!-- ═══ MENU ═══ -->
+    <div id="game-menu" class="hidden">
+      <div id="game-menu-card">
+        <div id="game-menu-title">Menu</div>
+        <button class="menu-btn" id="menu-save">Save Game</button>
+        <button class="menu-btn" id="menu-load">Load Game</button>
+        <button class="menu-btn" id="menu-settings">Settings</button>
+        <button class="menu-btn" id="menu-resume">Resume</button>
+      </div>
+    </div>
+
+    <!-- ═══ TITLE SCREEN ═══ -->
+    <div id="title-screen">
+      <div id="title-bg-canvas-wrap">
+        <canvas id="title-bg-canvas"></canvas>
+      </div>
+      <div id="title-card">
+        <div id="title-ornament-top">✦</div>
+        <div id="title-eyebrow">A Mystery in Five Acts</div>
+        <h1 id="title-main">The Ashwood<br>Inheritance</h1>
+        <div id="title-divider">
+          <span class="title-divider-line"></span>
+          <span class="title-divider-ornament">◆</span>
+          <span class="title-divider-line"></span>
+        </div>
+        <p id="title-tagline">"He did not die by his heart.<br>Come to Ashwood."</p>
+        <div id="title-actions">
+          <button id="btn-new-game" class="title-btn primary">Begin Investigation</button>
+          <button id="btn-continue" class="title-btn secondary">Continue</button>
+        </div>
+        <div id="title-meta">
+          <span>Est. 3–4 hours</span>
+          <span class="meta-sep">·</span>
+          <span>6 Endings</span>
+          <span class="meta-sep">·</span>
+          <span>5 Acts</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SCENE FADE ═══ -->
+    <div id="scene-fade"></div>
+
+    <!-- ═══ TOAST ═══ -->
+    <div id="toast-container"></div>
+
+  </div><!-- /ui-overlay -->
+
+  <!-- ─────────────────────────────────────── -->
+  <!-- CDN LIBRARIES                           -->
+  <!-- ─────────────────────────────────────── -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+
+  <!-- ─────────────────────────────────────── -->
+  <!-- GAME DATA (load first)                  -->
+  <!-- ─────────────────────────────────────── -->
+  <script src="assets/data/story.js"></script>
+  <script src="assets/data/dialogue.js"></script>
+
+  <!-- ─────────────────────────────────────── -->
+  <!-- GAME SYSTEMS                            -->
+  <!-- ─────────────────────────────────────── -->
+  <script src="js/systems/gameState.js"></script>
+  <script src="js/systems/audioManager.js"></script>
+  <script src="js/systems/portraitRenderer.js"></script>
+
+  <!-- ─────────────────────────────────────── -->
+  <!-- UI SYSTEMS                              -->
+  <!-- ─────────────────────────────────────── -->
+  <script src="js/ui/dialogueEngine.js"></script>
+  <script src="js/ui/uiManager.js"></script>
+  <script src="js/ui/inventoryUI.js"></script>
+  <script src="js/ui/evidenceBoardUI.js"></script>
+  <script src="js/ui/mapUI.js"></script>
+
+  <!-- ─────────────────────────────────────── -->
+  <!-- PHASER SCENES                           -->
+  <!-- ─────────────────────────────────────── -->
+  <script src="js/scenes/BaseScene.js"></script>
+  <script src="js/scenes/BootScene.js"></script>
+  
+  
+  <script src="js/scenes/ManorExteriorScene.js"></script>
+  <script src="js/scenes/InteriorScenes.js"></script>
+  
+  
+  
+  
+
+  <!-- ─────────────────────────────────────── -->
+  <!-- MAIN                                    -->
+  <!-- ─────────────────────────────────────── -->
+  <script src="js/main.js"></script>
+
+</body>
+</html>
