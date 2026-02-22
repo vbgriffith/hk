@@ -1,0 +1,93 @@
+/* ============================================================
+   AXIOM BREAK — style-phase2.css  [PHASE 2 ADDITIONS]
+   Add to bottom of existing css/style.css
+   ============================================================ */
+
+/* ── Boss Bar (DOM layer) ─────────────────────────────────── */
+#boss-bar-wrap {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 55%;
+  pointer-events: none;
+  text-align: center;
+}
+
+#boss-bar-wrap.hidden { display: none; }
+
+#boss-bar-label {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: #ff0066;
+  margin-bottom: 4px;
+  text-shadow: 0 0 10px rgba(255, 0, 102, 0.7);
+}
+
+#boss-bar-track {
+  height: 8px;
+  background: rgba(20, 0, 0, 0.8);
+  border: 1px solid rgba(255, 0, 102, 0.4);
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+}
+
+#boss-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #ff0066, #ff4488);
+  transition: width 0.25s ease;
+  box-shadow: 0 0 8px rgba(255, 0, 102, 0.5);
+}
+
+/* Phase threshold ticks */
+#boss-bar-track::before,
+#boss-bar-track::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 1px;
+  background: rgba(255,255,255,0.35);
+  z-index: 2;
+}
+#boss-bar-track::before { left: 65%; }
+#boss-bar-track::after  { left: 30%; }
+
+/* ── Mute indicator ──────────────────────────────────────── */
+#mute-icon {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  font-family: var(--font-tx);
+  font-size: 8px;
+  letter-spacing: 3px;
+  color: var(--amber);
+  border: 1px solid var(--amber);
+  padding: 2px 6px;
+  background: rgba(0,0,0,0.6);
+  pointer-events: none;
+}
+
+#mute-icon.hidden { display: none; }
+
+/* ── Powerup notification (brief flash banner) ───────────── */
+#powerup-banner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  letter-spacing: 4px;
+  color: #fff;
+  background: rgba(0,0,0,0.7);
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 6px 18px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+#powerup-banner.show { opacity: 1; }
