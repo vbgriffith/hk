@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monaco Editor</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
+  <style>
+    :root {
+      --bg:        #1e1e1e;
+      --surface:   #252526;
+      --surface2:  #2d2d2d;
+      --border:    #3c3c3c;
+      --text:      #cccccc;
+      --text-dim:  #858585;
+      --accent:    #007acc;
+      --accent2:   #0098ff;
+      --green:     #4ec9b0;
+      --red:       #f44747;
+      --yellow:    #cca700;
+      --tab-h:     35px;
+      --status-h:  22px;
+      --titlebar-h:30px;
+      --panel-w:   320px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      display: flex; flex-direction: column;
+      height: 100vh; overflow: hidden;
+    }
+
+    /* ── Title Bar ── */
+    #titlebar {
+      height: var(--titlebar-h); background: #3c3c3c;
+      display: flex; align-items: center; padding: 0 12px; gap: 8px;
+      flex-shrink: 0; user-select: none;
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+    #titlebar .title { flex: 1; text-align: center; font-size: 12px; color: #ccc; margin-left: -60px; pointer-events: none; }
+
+    /* ── Menu Bar ── */
+    #menubar {
+      height: 28px; background: var(--surface);
+      display: flex; align-items: center; padding: 0 4px; gap: 2px;
+      flex-shrink: 0; border-bottom: 1px solid var(--border);
+    }
+    .menu-item {
+      padding: 0 10px; height: 28px; display: flex; align-items: center;
+      font-size: 13px; color: var(--text); cursor: pointer; border-radius: 3px; position: relative;
+    }
+    .menu-item:hover, .menu-item.open { background: var(--border); }
+    .dropdown {
+      display: none; position: absolute; top: 100%; left: 0;
+      background: #2d2d2d; border: 1px solid #555; border-radius: 4px;
+      min-width: 210px; z-index: 200; box-shadow: 0 4px 16px rgba(0,0,0,.4); padding: 4px 0;
+    }
+    .dropdown.visible { display: block; }
+    .dd-item {
+      padding: 5px 16px; font-size: 13px; color: var(--text); cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center; gap: 24px;
+    }
+    .dd-item:hover { background: var(--accent); color: #fff; }
+    .dd-item .shortcut { color: var(--text-dim); font-size: 11px; }
+    .dd-item:hover .shortcut { color: rgba(255,255,255,.6); }
+    .dd-sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+    /* ── Tab Bar ── */
+    #tabbar {
+      height: var(--tab-h); background: #2d2d2d;
+      display: flex; align-items: flex-end; flex-shrink: 0;
+      border-bottom: 1px solid var(--bg); overflow-x: auto; overflow-y: hidden;
+      scrollbar-width: thin;
+    }
+    #tabbar::-webkit-scrollbar { height: 3px; }
+    #tabbar::-webkit-scrollbar-thumb { background: var(--border); }
+    .tab {
+      height: var(--tab-h); padding: 0 12px;
+      display: flex; align-items: center; gap: 7px;
+      font-size: 13px; color: #969696; background: #2d2d2d;
+      border-right: 1px solid var(--bg); cursor: pointer;
+      white-space: nowrap; flex-shrink: 0; border-top: 1px solid transparent;
+    }
+    .tab:hover { background: var(--surface); color: #ccc; }
+    .tab.active { background: var(--bg); color: #fff; border-top-color: var(--accent); }
+    .tab .tab-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .tab .tab-close { opacity: 0; font-size: 15px; padding: 1px 3px; border-radius: 3px; }
+    .tab:hover .tab-close { opacity: 1; }
+    .tab .tab-close:hover { background: #555; }
+    #add-tab {
+      height: var(--tab-h); padding: 0 12px;
+      display: flex; align-items: center; color: var(--text-dim);
+      cursor: pointer; font-size: 18px; flex-shrink: 0;
+    }
+    #add-tab:hover { color: #fff; background: var(--surface); }
+
+    /* ── Body ── */
+    #body { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Activity Bar ── */
+    #actbar {
+      width: 48px; background: #333;
+      display: flex; flex-direction: column; align-items: center;
+      padding-top: 4px; gap: 2px; flex-shrink: 0;
+    }
+    .act-icon {
+      width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; border-radius: 4px; color: #858585; font-size: 18px;
+      position: relative; flex-shrink: 0; transition: color .15s;
+    }
+    .act-icon:hover { color: #fff; }
+    .act-icon.on { color: #fff; }
+    .act-icon.on::before {
+      content: ''; position: absolute; left: 0; top: 8px; bottom: 8px;
+      width: 2px; background: var(--accent); border-radius: 0 2px 2px 0;
+    }
+    .act-icon svg { width: 22px; height: 22px; fill: currentColor; }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 220px; background: var(--surface);
+      display: flex; flex-direction: column; flex-shrink: 0;
+      border-right: 1px solid var(--bg); overflow: hidden;
+      transition: width .15s;
+    }
+    #sidebar.closed { width: 0; }
+    #sidebar-header {
+      padding: 11px 12px 7px; font-size: 11px; font-weight: 700;
+      letter-spacing: .1em; color: #bbb; text-transform: uppercase;
+      flex-shrink: 0; display: flex; justify-content: space-between; align-items: center;
+    }
+    .sb-actions { display: flex; gap: 4px; }
+    .sb-btn {
+      background: none; border: none; color: var(--text-dim);
+      cursor: pointer; font-size: 14px; padding: 2px 5px; border-radius: 3px; line-height: 1;
+    }
+    .sb-btn:hover { color: #fff; background: var(--border); }
+    #file-list { flex: 1; overflow-y: auto; font-size: 13px; }
+    #file-list::-webkit-scrollbar { width: 6px; }
+    #file-list::-webkit-scrollbar-thumb { background: var(--border); }
+    .file-row {
+      padding: 3px 8px 3px 16px; cursor: pointer;
+      display: flex; align-items: center; gap: 7px;
+      color: var(--text); white-space: nowrap; overflow: hidden; user-select: none;
+    }
+    .file-row:hover { background: #2a2d2e; }
+    .file-row.active { background: #094771; color: #fff; }
+    .file-row .fi { font-size: 14px; flex-shrink: 0; }
+    .file-row .fn { overflow: hidden; text-overflow: ellipsis; flex: 1; }
+    .file-row .fdirty { color: var(--yellow); font-size: 10px; flex-shrink: 0; }
+
+    /* ── Right Panel (Local / GitHub) ── */
+    #rpanel {
+      width: var(--panel-w); background: var(--surface);
+      display: flex; flex-direction: column; flex-shrink: 0;
+      border-left: 1px solid var(--bg); overflow: hidden;
+      transition: width .15s;
+    }
+    #rpanel.closed { width: 0; }
+    #rpanel-tabs {
+      display: flex; flex-shrink: 0; background: #2d2d2d;
+      border-bottom: 1px solid var(--border);
+    }
+    .rptab {
+      flex: 1; padding: 8px 4px; text-align: center; font-size: 12px;
+      font-weight: 600; color: var(--text-dim); cursor: pointer;
+      letter-spacing: .04em; text-transform: uppercase; border-bottom: 2px solid transparent;
+    }
+    .rptab:hover { color: #fff; }
+    .rptab.on { color: #fff; border-bottom-color: var(--accent); }
+    .rpane { flex: 1; overflow-y: auto; padding: 12px; display: none; flex-direction: column; gap: 10px; }
+    .rpane.on { display: flex; }
+    .rpane::-webkit-scrollbar { width: 6px; }
+    .rpane::-webkit-scrollbar-thumb { background: var(--border); }
+
+    /* panel elements */
+    .rp-label { font-size: 11px; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+    .rp-input {
+      background: var(--border); border: 1px solid #555; color: #fff;
+      padding: 6px 9px; font-size: 12px; border-radius: 3px; outline: none; width: 100%;
+    }
+    .rp-input:focus { border-color: var(--accent); }
+    .rp-btn {
+      background: var(--accent); color: #fff; border: none;
+      padding: 7px 12px; font-size: 12px; border-radius: 3px;
+      cursor: pointer; font-weight: 600; width: 100%;
+    }
+    .rp-btn:hover { background: var(--accent2); }
+    .rp-btn.secondary { background: var(--border); color: var(--text); }
+    .rp-btn.secondary:hover { background: #505050; }
+    .rp-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+    .rp-info { font-size: 11px; color: var(--text-dim); line-height: 1.5; }
+    .rp-info a { color: var(--accent2); text-decoration: none; }
+    .rp-info a:hover { text-decoration: underline; }
+    .rp-divider { height: 1px; background: var(--border); }
+    .rp-status {
+      font-size: 11px; color: var(--green); background: rgba(78,201,176,.08);
+      border: 1px solid rgba(78,201,176,.2); border-radius: 3px; padding: 6px 8px;
+    }
+    .rp-status.err { color: var(--red); background: rgba(244,71,71,.08); border-color: rgba(244,71,71,.2); }
+    .rp-status.warn { color: var(--yellow); background: rgba(204,167,0,.08); border-color: rgba(204,167,0,.2); }
+
+    /* file tree in right panel */
+    #gh-tree { font-size: 12px; }
+    .tree-item {
+      padding: 3px 4px 3px 8px; cursor: pointer; display: flex; align-items: center;
+      gap: 6px; border-radius: 3px; color: var(--text);
+    }
+    .tree-item:hover { background: #2a2d2e; }
+    .tree-item .ti-icon { flex-shrink: 0; }
+    .tree-item .ti-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .tree-folder { color: #e8c07d; }
+    .tree-indent { display: contents; }
+
+    /* local folder tree */
+    #local-tree { font-size: 12px; }
+    .lt-item {
+      padding: 3px 4px 3px 8px; cursor: pointer; display: flex; align-items: center;
+      gap: 6px; border-radius: 3px; color: var(--text); user-select: none;
+    }
+    .lt-item:hover { background: #2a2d2e; }
+    .lt-item.dirty .lt-name { color: var(--yellow); }
+
+    /* ── Editor ── */
+    #editor-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    #editor { flex: 1; }
+
+    /* ── Status Bar ── */
+    #statusbar {
+      height: var(--status-h); background: var(--accent);
+      display: flex; align-items: center; padding: 0 10px;
+      font-size: 12px; color: #fff; gap: 14px;
+      flex-shrink: 0; user-select: none;
+    }
+    .sb-item { cursor: pointer; opacity: .9; white-space: nowrap; }
+    .sb-item:hover { opacity: 1; }
+    #sb-right { margin-left: auto; display: flex; gap: 14px; }
+
+    /* ── Modals ── */
+    .modal-bg {
+      position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      display: flex; align-items: center; justify-content: center; z-index: 999;
+    }
+    .modal-bg.hidden { display: none; }
+    .modal {
+      background: var(--surface2); border: 1px solid #555; border-radius: 6px;
+      padding: 22px; width: 340px; display: flex; flex-direction: column; gap: 14px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    }
+    .modal h3 { font-size: 14px; color: #eee; font-weight: 600; }
+    .modal input, .modal select {
+      background: var(--border); border: 1px solid #555; color: #fff;
+      padding: 7px 10px; font-size: 13px; border-radius: 3px; outline: none; width: 100%;
+    }
+    .modal input:focus, .modal select:focus { border-color: var(--accent); }
+    .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+    .btn-ok { background: var(--accent); color: #fff; border: none; padding: 6px 16px; border-radius: 3px; cursor: pointer; font-size: 13px; }
+    .btn-ok:hover { background: var(--accent2); }
+    .btn-cancel { background: var(--border); color: #ccc; border: none; padding: 6px 16px; border-radius: 3px; cursor: pointer; font-size: 13px; }
+    .btn-cancel:hover { background: #505050; }
+
+    /* ── Command Palette ── */
+    #palette-bg {
+      position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      display: flex; align-items: flex-start; justify-content: center;
+      padding-top: 80px; z-index: 1000;
+    }
+    #palette-bg.hidden { display: none; }
+    #palette {
+      background: var(--surface2); border: 1px solid #555; border-radius: 6px;
+      width: 520px; max-width: 90vw; box-shadow: 0 8px 32px rgba(0,0,0,.6); overflow: hidden;
+    }
+    #palette input {
+      width: 100%; background: var(--surface2); border: none;
+      border-bottom: 1px solid var(--border); color: #fff;
+      padding: 12px 16px; font-size: 14px; outline: none;
+    }
+    .pal-item {
+      padding: 8px 16px; font-size: 13px; color: var(--text);
+      cursor: pointer; display: flex; justify-content: space-between;
+    }
+    .pal-item:hover, .pal-item.focused { background: var(--accent); color: #fff; }
+    .pal-item .pal-key { color: rgba(255,255,255,.6); font-size: 11px; }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,.2); border-top-color: #fff;
+      border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #555; }
+  </style>
+</head>
+<body>
+
+<!-- Modals -->
+<div class="modal-bg hidden" id="new-modal">
+  <div class="modal">
+    <h3>New File</h3>
+    <input id="new-name" type="text" placeholder="e.g. app.js, style.css" autocomplete="off">
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('new-modal')">Cancel</button>
+      <button class="btn-ok" onclick="confirmNew()">Create</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg hidden" id="rename-modal">
+  <div class="modal">
+    <h3>Rename File</h3>
+    <input id="rename-input" type="text" autocomplete="off">
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('rename-modal')">Cancel</button>
+      <button class="btn-ok" onclick="confirmRename()">Rename</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg hidden" id="lang-modal">
+  <div class="modal">
+    <h3>Select Language</h3>
+    <select id="lang-select"></select>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('lang-modal')">Cancel</button>
+      <button class="btn-ok" onclick="confirmLang()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- Command Palette -->
+<div id="palette-bg" class="hidden">
+  <div id="palette">
+    <input id="palette-input" type="text" placeholder="Type a command…" autocomplete="off">
+    <div id="palette-list"></div>
+  </div>
+</div>
+
+<!-- Title Bar -->
+<div id="titlebar">
+  <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+  <div class="title" id="title-text">Monaco Editor</div>
+</div>
+
+<!-- Menu Bar -->
+<div id="menubar">
+  <div class="menu-item" data-menu="file">File
+    <div class="dropdown" id="menu-file">
+      <div class="dd-item" onclick="openModal('new-modal')">New File <span class="shortcut">Ctrl+N</span></div>
+      <div class="dd-sep"></div>
+      <div class="dd-item" onclick="saveFile()">Save <span class="shortcut">Ctrl+S</span></div>
+      <div class="dd-item" onclick="downloadFile()">Download Current File</div>
+      <div class="dd-item" onclick="downloadAll()">Download All as ZIP</div>
+      <div class="dd-sep"></div>
+      <div class="dd-item" onclick="openLocalFolder()">Open Local Folder… <span class="shortcut">Ctrl+O</span></div>
+      <div class="dd-item" onclick="openLocalFile()">Open Local File…</div>
+      <div class="dd-sep"></div>
+      <div class="dd-item" onclick="saveActiveToLocal()">Save to Local File</div>
+      <div class="dd-item" onclick="saveAllToLocal()">Save All to Local Files</div>
+    </div>
+  </div>
+  <div class="menu-item" data-menu="edit">Edit
+    <div class="dropdown" id="menu-edit">
+      <div class="dd-item" onclick="editorCmd('undo')">Undo <span class="shortcut">Ctrl+Z</span></div>
+      <div class="dd-item" onclick="editorCmd('redo')">Redo <span class="shortcut">Ctrl+Y</span></div>
+      <div class="dd-sep"></div>
+      <div class="dd-item" onclick="editorCmd('editor.action.formatDocument')">Format Document <span class="shortcut">Alt+Shift+F</span></div>
+      <div class="dd-item" onclick="editorCmd('editor.action.commentLine')">Toggle Comment <span class="shortcut">Ctrl+/</span></div>
+      <div class="dd-sep"></div>
+      <div class="dd-item" onclick="editorCmd('actions.find')">Find <span class="shortcut">Ctrl+F</span></div>
+      <div class="dd-item" onclick="editorCmd('editor.action.startFindReplaceAction')">Replace <span class="shortcut">Ctrl+H</span></div>
+    </div>
+  </div>
+  <div class="menu-item" data-menu="view">View
+    <div class="dropdown" id="menu-view">
+      <div class="dd-item" onclick="toggleSidebar()">Toggle Explorer <span class="shortcut">Ctrl+B</span></div>
+      <div class="dd-item" onclick="toggleRightPanel('local')">Toggle Local Folder Panel</div>
+      <div class="dd-item" onclick="toggleRightPanel('github')">Toggle GitHub Panel</div>
+      <div class="dd-sep"></div>
+      <div class="dd-item" onclick="toggleMinimap()">Toggle Minimap</div>
+      <div class="dd-item" onclick="toggleWordWrap()">Toggle Word Wrap <span class="shortcut">Alt+Z</span></div>
+      <div class="dd-item" onclick="cycleTheme()">Toggle Theme</div>
+      <div class="dd-sep"></div>
+      <div class="dd-item" onclick="zoomIn()">Zoom In <span class="shortcut">Ctrl+=</span></div>
+      <div class="dd-item" onclick="zoomOut()">Zoom Out <span class="shortcut">Ctrl+-</span></div>
+    </div>
+  </div>
+  <div class="menu-item" data-menu="lang">Language
+    <div class="dropdown" id="menu-lang">
+      <div class="dd-item" onclick="openLangModal()">Change Language Mode…</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab Bar -->
+<div id="tabbar">
+  <div id="add-tab" onclick="openModal('new-modal')" title="New file (Ctrl+N)">+</div>
+</div>
+
+<!-- Body -->
+<div id="body">
+  <!-- Activity Bar -->
+  <div id="actbar">
+    <div class="act-icon on" id="act-explorer" onclick="toggleSidebar()" title="Explorer (Ctrl+B)">
+      <svg viewBox="0 0 24 24"><path d="M20 6h-2.18c.07-.23.18-.46.18-.71A2.3 2.3 0 0 0 15.71 3a2.3 2.3 0 0 0-1.62.67L12 5.76 9.91 3.67A2.3 2.3 0 0 0 8.29 3 2.3 2.3 0 0 0 6 5.29c0 .25.11.48.18.71H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm-8.29-1.38c.19-.19.45-.29.7-.29a.79.79 0 0 1 .79.79.79.79 0 0 1-.23.56L12 7.35l-.97-.97.68-.76zM7.5 5.29a.79.79 0 0 1 .79-.79c.25 0 .51.1.7.29l.68.76-.97.97-.97-.97a.79.79 0 0 1-.23-.26zM20 19H4V8h16v11z"/></svg>
+    </div>
+    <div class="act-icon" id="act-local" onclick="toggleRightPanel('local')" title="Open Local Folder">
+      <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+    </div>
+    <div class="act-icon" id="act-github" onclick="toggleRightPanel('github')" title="Load from GitHub">
+      <svg viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/></svg>
+    </div>
+    <div class="act-icon" onclick="saveFile()" title="Save (Ctrl+S)">
+      <svg viewBox="0 0 24 24"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/></svg>
+    </div>
+    <div class="act-icon" onclick="openPalette()" title="Command Palette (Ctrl+Shift+P)">
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    </div>
+    <div class="act-icon" onclick="cycleTheme()" title="Toggle Theme">
+      <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
+    </div>
+  </div>
+
+  <!-- Left Sidebar: Explorer -->
+  <div id="sidebar">
+    <div id="sidebar-header">
+      Explorer
+      <div class="sb-actions">
+        <button class="sb-btn" onclick="openModal('new-modal')" title="New file">+</button>
+        <button class="sb-btn" onclick="deleteActive()" title="Delete file">✕</button>
+        <button class="sb-btn" onclick="openRenameModal()" title="Rename file">✎</button>
+      </div>
+    </div>
+    <div id="file-list"></div>
+  </div>
+
+  <!-- Editor -->
+  <div id="editor-wrap">
+    <div id="editor"></div>
+  </div>
+
+  <!-- Right Panel: Local + GitHub -->
+  <div id="rpanel" class="closed">
+    <div id="rpanel-tabs">
+      <div class="rptab on" id="rptab-local" onclick="switchRpTab('local')">📁 Local</div>
+      <div class="rptab" id="rptab-github" onclick="switchRpTab('github')">🐙 GitHub</div>
+    </div>
+
+    <!-- LOCAL FOLDER PANE -->
+    <div class="rpane on" id="rpane-local">
+      <div class="rp-label">Local Folder</div>
+      <div class="rp-info">
+        Uses the browser's <strong>File System Access API</strong>.<br>
+        Open a folder to read, edit, and save files directly on disk.
+      </div>
+      <button class="rp-btn" onclick="openLocalFolder()">📂 Open Folder…</button>
+      <button class="rp-btn secondary" onclick="openLocalFile()">📄 Open File…</button>
+      <div class="rp-divider"></div>
+      <div id="local-folder-name" class="rp-info" style="display:none"></div>
+      <div id="local-save-row" style="display:none; display:flex; flex-direction:column; gap:6px;">
+        <button class="rp-btn" onclick="saveActiveToLocal()" id="btn-save-local">💾 Save Active File to Disk</button>
+        <button class="rp-btn secondary" onclick="saveAllToLocal()">💾 Save All to Disk</button>
+      </div>
+      <div id="local-status" style="display:none" class="rp-status"></div>
+      <div class="rp-divider"></div>
+      <div id="local-tree"></div>
+      <div class="rp-info" style="margin-top:4px">
+        ⚠ Chrome &amp; Edge fully supported.<br>Firefox: read-only, no folder picker.
+      </div>
+    </div>
+
+    <!-- GITHUB PANE -->
+    <div class="rpane" id="rpane-github">
+      <div class="rp-label">Load from GitHub via jsDelivr</div>
+      <div class="rp-info">
+        Loads files from any <strong>public</strong> GitHub repo.<br>
+        URL format: <code style="color:#9cdcfe">user/repo@branch</code>
+      </div>
+      <div>
+        <div class="rp-label" style="margin-bottom:4px">Repository</div>
+        <input class="rp-input" id="gh-repo" placeholder="e.g. twbs/bootstrap@main" value="twbs/bootstrap@main">
+      </div>
+      <div>
+        <div class="rp-label" style="margin-bottom:4px">Path (optional)</div>
+        <input class="rp-input" id="gh-path" placeholder="e.g. scss/_variables.scss">
+      </div>
+      <button class="rp-btn" id="gh-browse-btn" onclick="ghBrowse()">🔍 Browse Repo</button>
+      <div id="gh-status" style="display:none" class="rp-status"></div>
+      <div class="rp-divider"></div>
+      <div id="gh-tree"></div>
+      <div class="rp-info" style="margin-top:4px">
+        💡 Tip: Use a commit SHA instead of a branch name for a stable URL that never changes.<br><br>
+        🔒 Only <strong>public</strong> repos are supported via jsDelivr.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Status Bar -->
+<div id="statusbar">
+  <span class="sb-item" id="sb-branch">⎇ main</span>
+  <span class="sb-item" id="sb-errors">✓ No problems</span>
+  <div id="sb-right">
+    <span class="sb-item" id="sb-cursor">Ln 1, Col 1</span>
+    <span class="sb-item" id="sb-lang" onclick="openLangModal()">JavaScript</span>
+    <span class="sb-item">UTF-8</span>
+    <span class="sb-item">LF</span>
+  </div>
+</div>
+
+<!-- Scripts from jsDelivr -->
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+<script>
+'use strict';
+
+// ─── Config ─────────────────────────────────────────────────────────────────
+const VS_PATH = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs';
+const JSDELIVR_GH = 'https://cdn.jsdelivr.net/gh';
+const JSDELIVR_API = 'https://data.jsdelivr.com/v1/packages/gh';
+
+const EXT_LANG = {
+  js:'javascript', jsx:'javascript', ts:'typescript', tsx:'typescript',
+  html:'html', htm:'html', css:'css', scss:'scss', less:'less',
+  json:'json', md:'markdown', markdown:'markdown', py:'python',
+  rs:'rust', go:'go', c:'c', cpp:'cpp', h:'cpp', java:'java',
+  sh:'shell', bash:'shell', rb:'ruby', php:'php', sql:'sql',
+  xml:'xml', yaml:'yaml', yml:'yaml', toml:'ini', txt:'plaintext',
+  env:'ini', gitignore:'plaintext', svelte:'html', vue:'html',
+};
+const LANG_COLOR = {
+  javascript:'#f0db4f', typescript:'#3178c6', html:'#e34c26', css:'#264de4',
+  scss:'#c6538c', json:'#aaa', markdown:'#9e9e9e', python:'#3572a5',
+  rust:'#dea584', go:'#00add8', cpp:'#f34b7d', java:'#b07219',
+  shell:'#89e051', ruby:'#701516', php:'#4f5d95', sql:'#e38c00',
+  yaml:'#cb171e', xml:'#f60', plaintext:'#666', default:'#666',
+};
+const LANG_ICON = {
+  javascript:'🟨', typescript:'🔷', html:'🟧', css:'🟦', scss:'🟣',
+  json:'📋', markdown:'📝', python:'🐍', rust:'🦀', go:'🐹',
+  cpp:'⚙️', java:'☕', shell:'💲', ruby:'💎', php:'🐘',
+  sql:'🗄️', xml:'📰', yaml:'📄', plaintext:'📄', default:'📄',
+};
+const THEMES = ['vs-dark', 'vs', 'hc-black'];
+const DEFAULT_FILES = {
+  'index.js': `// Monaco Editor\n// Use the Local Folder panel (📁) to open files from disk\n// Use the GitHub panel (🐙) to load from any public GitHub repo via jsDelivr\n\nconsole.log('Hello, World!');\n`,
+  'style.css': `body {\n  margin: 0;\n  font-family: system-ui, sans-serif;\n}\n`,
+  'index.html': `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <title>My App</title>\n  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n  <h1>Hello World</h1>\n  <script src="index.js"><\/script>\n</body>\n</html>\n`,
+};
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let editor = null;
+let files  = {};   // name -> { model, viewState, lang, fileHandle, dirty }
+let active = null;
+let themeIdx = 0;
+let minimapOn = true;
+let wordWrap = false;
+let fontSize = 14;
+let sidebarOpen = true;
+let rpanelOpen = false;
+let rpanelTab = 'local';
+
+// Local folder state
+let localDirHandle = null;
+let localFileHandles = {}; // name -> FileSystemFileHandle
+
+// GitHub state
+let ghCurrentRepo = '';
+let ghCurrentBranch = '';
+
+// ─── Persistence ─────────────────────────────────────────────────────────────
+function persist() {
+  const data = {};
+  for (const [n, f] of Object.entries(files)) {
+    if (!f.fileHandle) data[n] = f.model.getValue(); // only persist non-local files
+  }
+  try { localStorage.setItem('monaco-files', JSON.stringify(data)); } catch {}
+}
+
+function loadStored() {
+  try { const r = localStorage.getItem('monaco-files'); return r ? JSON.parse(r) : null; }
+  catch { return null; }
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function langFor(name) { return EXT_LANG[(name.split('.').pop()||'').toLowerCase()] || 'plaintext'; }
+function colorFor(l)   { return LANG_COLOR[l] || LANG_COLOR.default; }
+function iconFor(l)    { return LANG_ICON[l]  || LANG_ICON.default; }
+
+function setStatus(el, msg, type = 'ok') {
+  el.textContent = msg;
+  el.className = 'rp-status' + (type === 'err' ? ' err' : type === 'warn' ? ' warn' : '');
+  el.style.display = 'block';
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  // Tabs
+  document.querySelectorAll('.tab').forEach(t => t.remove());
+  const addBtn = document.getElementById('add-tab');
+  for (const name of Object.keys(files)) {
+    const f = files[name];
+    const tab = document.createElement('div');
+    tab.className = 'tab' + (name === active ? ' active' : '');
+    tab.dataset.name = name;
+    tab.innerHTML =
+      `<span class="tab-dot" style="background:${colorFor(f.lang)}"></span>` +
+      `<span>${name}${f.dirty ? ' ●' : ''}</span>` +
+      `<span class="tab-close" data-close="${name}">×</span>`;
+    tab.addEventListener('click', e => {
+      if (e.target.dataset.close) { closeFile(e.target.dataset.close); return; }
+      switchTo(name);
+    });
+    document.getElementById('tabbar').insertBefore(tab, addBtn);
+  }
+
+  // File list
+  const list = document.getElementById('file-list');
+  list.innerHTML = '';
+  for (const name of Object.keys(files)) {
+    const f = files[name];
+    const row = document.createElement('div');
+    row.className = 'file-row' + (name === active ? ' active' : '') + (f.dirty ? ' dirty' : '');
+    const badge = f.fileHandle ? ' 💾' : f.fromGH ? ' 🐙' : '';
+    row.innerHTML = `<span class="fi">${iconFor(f.lang)}</span><span class="fn">${name}${f.dirty ? ' ●' : ''}</span><span style="font-size:10px;opacity:.5">${badge}</span>`;
+    row.addEventListener('click', () => switchTo(name));
+    list.appendChild(row);
+  }
+
+  document.getElementById('title-text').textContent = active ? `${active} — Monaco Editor` : 'Monaco Editor';
+}
+
+// ─── Switch / Create / Close ──────────────────────────────────────────────────
+function switchTo(name) {
+  if (!files[name]) return;
+  if (active && files[active]) files[active].viewState = editor.saveViewState();
+  active = name;
+  editor.setModel(files[name].model);
+  if (files[name].viewState) editor.restoreViewState(files[name].viewState);
+  editor.focus();
+  document.getElementById('sb-lang').textContent =
+    files[name].lang.charAt(0).toUpperCase() + files[name].lang.slice(1);
+  render();
+}
+
+function addFile(name, content = '', opts = {}) {
+  // If already open, just switch (unless forced)
+  if (files[name] && !opts.force) { switchTo(name); return; }
+  const lang  = langFor(name);
+  const model = monaco.editor.createModel(content, lang);
+  model.onDidChangeContent(() => {
+    if (files[name]) files[name].dirty = true;
+    persist();
+    render();
+  });
+  files[name] = { model, viewState: null, lang, dirty: false,
+    fileHandle: opts.fileHandle || null, fromGH: opts.fromGH || false };
+  switchTo(name);
+  persist();
+}
+
+function closeFile(name) {
+  if (!files[name]) return;
+  files[name].model.dispose();
+  delete files[name];
+  if (localFileHandles[name]) delete localFileHandles[name];
+  persist();
+  const keys = Object.keys(files);
+  if (!keys.length) addFile('untitled.js', '');
+  else if (active === name) switchTo(keys[keys.length - 1]);
+  else render();
+}
+
+function deleteActive() {
+  if (!active) return;
+  if (Object.keys(files).length === 1) { alert("Can't delete the last file."); return; }
+  if (confirm(`Delete "${active}" from editor? (Does not delete from disk.)`)) closeFile(active);
+}
+
+// ─── LOCAL FOLDER ─────────────────────────────────────────────────────────────
+async function openLocalFolder() {
+  closeAllMenus();
+  if (!window.showDirectoryPicker) {
+    alert('File System Access API not supported in this browser.\nUse Chrome or Edge.');
+    return;
+  }
+  try {
+    localDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    await loadLocalDir(localDirHandle);
+    showRightPanel('local');
+  } catch (e) {
+    if (e.name !== 'AbortError') console.error(e);
+  }
+}
+
+async function loadLocalDir(dirHandle, prefix = '') {
+  const nameEl = document.getElementById('local-folder-name');
+  nameEl.textContent = `📂 ${dirHandle.name}`;
+  nameEl.style.display = 'block';
+  document.getElementById('local-save-row').style.display = 'flex';
+
+  const tree = document.getElementById('local-tree');
+  tree.innerHTML = '<div style="color:#888;font-size:11px;padding:4px">Loading…</div>';
+
+  const entries = [];
+  for await (const [name, handle] of dirHandle.entries()) {
+    entries.push({ name, handle });
+  }
+  entries.sort((a, b) => {
+    if (a.handle.kind !== b.handle.kind) return a.handle.kind === 'directory' ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  tree.innerHTML = '';
+  document.getElementById('sb-branch').textContent = `📂 ${dirHandle.name}`;
+
+  for (const { name, handle } of entries) {
+    if (name.startsWith('.')) continue;
+    const row = document.createElement('div');
+    row.className = 'lt-item';
+
+    if (handle.kind === 'file') {
+      const lang = langFor(name);
+      localFileHandles[name] = handle;
+      row.innerHTML = `<span>${iconFor(lang)}</span><span class="lt-name">${name}</span>`;
+      row.addEventListener('click', async () => {
+        try {
+          const file = await handle.getFile();
+          const text = await file.text();
+          addFile(name, text, { fileHandle: handle, force: true });
+          files[name].dirty = false;
+          render();
+        } catch (err) { alert('Could not read file: ' + err.message); }
+      });
+    } else {
+      row.innerHTML = `<span>📁</span><span class="lt-name tree-folder">${name}/</span>`;
+      row.style.opacity = '.6';
+    }
+    tree.appendChild(row);
+  }
+}
+
+async function openLocalFile() {
+  closeAllMenus();
+  if (!window.showOpenFilePicker) {
+    // Fallback: input[type=file]
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = '*';
+    inp.onchange = async () => {
+      const file = inp.files[0];
+      if (!file) return;
+      const text = await file.text();
+      addFile(file.name, text);
+    };
+    inp.click(); return;
+  }
+  try {
+    const [handle] = await window.showOpenFilePicker({ multiple: false });
+    const file = await handle.getFile();
+    const text = await file.text();
+    localFileHandles[file.name] = handle;
+    addFile(file.name, text, { fileHandle: handle, force: true });
+    files[file.name].dirty = false;
+    render();
+  } catch (e) { if (e.name !== 'AbortError') console.error(e); }
+}
+
+async function saveActiveToLocal() {
+  closeAllMenus();
+  if (!active) return;
+  const f = files[active];
+  const content = editor.getValue();
+
+  if (f.fileHandle) {
+    // Write back to original file
+    try {
+      const writable = await f.fileHandle.createWritable();
+      await writable.write(content);
+      await writable.close();
+      f.dirty = false;
+      render();
+      setStatus(document.getElementById('local-status'), `✓ Saved: ${active}`, 'ok');
+    } catch (err) {
+      setStatus(document.getElementById('local-status'), `✗ Save failed: ${err.message}`, 'err');
+    }
+  } else if (window.showSaveFilePicker) {
+    // Pick a save location
+    try {
+      const handle = await window.showSaveFilePicker({ suggestedName: active });
+      const writable = await handle.createWritable();
+      await writable.write(content);
+      await writable.close();
+      f.fileHandle = handle;
+      localFileHandles[active] = handle;
+      f.dirty = false;
+      render();
+      setStatus(document.getElementById('local-status'), `✓ Saved: ${active}`, 'ok');
+    } catch (e) { if (e.name !== 'AbortError') console.error(e); }
+  } else {
+    // Fallback: download
+    downloadFile();
+  }
+}
+
+async function saveAllToLocal() {
+  closeAllMenus();
+  let saved = 0, failed = 0;
+  for (const [name, f] of Object.entries(files)) {
+    if (!f.fileHandle) continue;
+    try {
+      const writable = await f.fileHandle.createWritable();
+      await writable.write(f.model.getValue());
+      await writable.close();
+      f.dirty = false;
+      saved++;
+    } catch { failed++; }
+  }
+  render();
+  const st = document.getElementById('local-status');
+  if (saved === 0 && failed === 0) {
+    setStatus(st, 'No local files to save. Open a folder first.', 'warn');
+  } else {
+    setStatus(st, `✓ Saved ${saved} file(s)${failed ? `, ${failed} failed` : ''}`, failed ? 'warn' : 'ok');
+  }
+  st.style.display = 'block';
+}
+
+// ─── GITHUB via jsDelivr ──────────────────────────────────────────────────────
+async function ghBrowse() {
+  const raw = document.getElementById('gh-repo').value.trim();
+  const path = document.getElementById('gh-path').value.trim();
+  const st   = document.getElementById('gh-status');
+  const btn  = document.getElementById('gh-browse-btn');
+
+  if (!raw) { setStatus(st, 'Enter a repo (e.g. twbs/bootstrap@main)', 'warn'); return; }
+
+  // Parse user/repo@branch
+  let [repoPart, branch] = raw.split('@');
+  branch = branch || 'main';
+  const [user, repo] = repoPart.split('/');
+  if (!user || !repo) { setStatus(st, 'Format: user/repo@branch', 'warn'); return; }
+
+  ghCurrentRepo   = `${user}/${repo}`;
+  ghCurrentBranch = branch;
+
+  // If a specific file path is given, load it directly
+  if (path) {
+    await ghLoadFile(`${user}/${repo}@${branch}/${path}`);
+    return;
+  }
+
+  // Otherwise browse the repo tree
+  btn.innerHTML = '<span class="spinner"></span> Loading…';
+  btn.disabled = true;
+  st.style.display = 'none';
+
+  try {
+    // Use jsDelivr's data API to list files
+    const apiUrl = `${JSDELIVR_API}/${user}/${repo}@${branch}/flat`;
+    const res = await fetch(apiUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status} — is this a public repo?`);
+    const data = await res.json();
+
+    renderGhTree(data.files || [], user, repo, branch);
+    setStatus(st, `✓ Loaded ${(data.files||[]).length} files from ${user}/${repo}@${branch}`, 'ok');
+  } catch (err) {
+    setStatus(st, `✗ ${err.message}`, 'err');
+    document.getElementById('gh-tree').innerHTML = '';
+  } finally {
+    btn.textContent = '🔍 Browse Repo';
+    btn.disabled = false;
+  }
+}
+
+function renderGhTree(files, user, repo, branch) {
+  const tree = document.getElementById('gh-tree');
+  tree.innerHTML = '';
+
+  // Sort: dirs first, then files
+  const sorted = [...files].sort((a, b) => {
+    const da = a.name.split('/').length;
+    const db = b.name.split('/').length;
+    if (da !== db) return da - db;
+    return a.name.localeCompare(b.name);
+  });
+
+  // Only show top-level + one level deep to keep it manageable
+  const shown = sorted.filter(f => f.name.split('/').length <= 3).slice(0, 150);
+
+  for (const f of shown) {
+    const parts = f.name.split('/');
+    const depth = parts.length - 1;
+    const name  = parts[parts.length - 1];
+    const lang  = langFor(name);
+
+    const row = document.createElement('div');
+    row.className = 'tree-item';
+    row.style.paddingLeft = (8 + depth * 12) + 'px';
+    row.innerHTML = `<span class="ti-icon">${iconFor(lang)}</span><span class="ti-name" title="${f.name}">${name}</span>`;
+
+    row.addEventListener('click', async () => {
+      await ghLoadFile(`${user}/${repo}@${branch}${f.name}`);
+    });
+    tree.appendChild(row);
+  }
+
+  if (sorted.length > 150) {
+    const note = document.createElement('div');
+    note.style.cssText = 'font-size:11px;color:#777;padding:6px 8px';
+    note.textContent = `…and ${sorted.length - 150} more files. Use the Path field to navigate deeper.`;
+    tree.appendChild(note);
+  }
+}
+
+async function ghLoadFile(fullPath) {
+  // fullPath: user/repo@branch/path/to/file
+  const url = `${JSDELIVR_GH}/${fullPath}`;
+  const st  = document.getElementById('gh-status');
+  st.textContent = '⏳ Fetching…'; st.className = 'rp-status'; st.style.display = 'block';
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+
+    // Extract just the filename for the tab
+    const fileName = fullPath.split('/').pop();
+    addFile(fileName, text, { fromGH: true, force: true });
+    files[fileName].dirty = false;
+    render();
+    setStatus(st, `✓ Loaded: ${fullPath}`, 'ok');
+  } catch (err) {
+    setStatus(st, `✗ ${err.message}`, 'err');
+  }
+}
+
+// ─── Panel management ─────────────────────────────────────────────────────────
+function showRightPanel(tab) {
+  rpanelOpen = true;
+  document.getElementById('rpanel').classList.remove('closed');
+  switchRpTab(tab);
+  document.getElementById('act-local').classList.toggle('on', tab === 'local');
+  document.getElementById('act-github').classList.toggle('on', tab === 'github');
+}
+
+function toggleRightPanel(tab) {
+  closeAllMenus();
+  if (rpanelOpen && rpanelTab === tab) {
+    rpanelOpen = false;
+    document.getElementById('rpanel').classList.add('closed');
+    document.getElementById('act-local').classList.remove('on');
+    document.getElementById('act-github').classList.remove('on');
+  } else {
+    showRightPanel(tab);
+  }
+}
+
+function switchRpTab(tab) {
+  rpanelTab = tab;
+  document.getElementById('rpane-local').classList.toggle('on', tab === 'local');
+  document.getElementById('rpane-github').classList.toggle('on', tab === 'github');
+  document.getElementById('rptab-local').classList.toggle('on', tab === 'local');
+  document.getElementById('rptab-github').classList.toggle('on', tab === 'github');
+  document.getElementById('act-local').classList.toggle('on', tab === 'local');
+  document.getElementById('act-github').classList.toggle('on', tab === 'github');
+}
+
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
+function toggleSidebar() {
+  closeAllMenus();
+  sidebarOpen = !sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('closed', !sidebarOpen);
+  document.getElementById('act-explorer').classList.toggle('on', sidebarOpen);
+}
+
+// ─── Modals ───────────────────────────────────────────────────────────────────
+function openModal(id) {
+  closeAllMenus();
+  document.getElementById(id).classList.remove('hidden');
+  const inp = document.querySelector(`#${id} input`);
+  if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 40); }
+}
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function confirmNew() {
+  const name = document.getElementById('new-name').value.trim();
+  closeModal('new-modal');
+  if (name) addFile(name, '');
+}
+
+let renamingFrom = null;
+function openRenameModal() {
+  if (!active) return;
+  renamingFrom = active;
+  openModal('rename-modal');
+  document.getElementById('rename-input').value = active;
+  document.getElementById('rename-input').select();
+}
+function confirmRename() {
+  const nn = document.getElementById('rename-input').value.trim();
+  closeModal('rename-modal');
+  if (!nn || !renamingFrom || nn === renamingFrom) return;
+  const content = files[renamingFrom].model.getValue();
+  const opts = { force: true, fileHandle: files[renamingFrom].fileHandle, fromGH: files[renamingFrom].fromGH };
+  closeFile(renamingFrom);
+  addFile(nn, content, opts);
+}
+
+const ALL_LANGS = ['plaintext','abap','apex','azcli','bat','c','cameligo','clojure',
+  'coffeescript','cpp','csharp','css','dart','dockerfile','fsharp','go','graphql',
+  'handlebars','html','ini','java','javascript','json','julia','kotlin','less',
+  'lua','markdown','mips','mysql','objective-c','pascal','perl','php','pgsql',
+  'postiats','powershell','python','r','redis','ruby','rust','scala','scheme',
+  'scss','shell','sql','swift','systemverilog','tcl','twig','typescript','vb','xml','yaml'];
+
+function openLangModal() {
+  closeAllMenus();
+  const sel = document.getElementById('lang-select');
+  sel.innerHTML = ALL_LANGS.map(l =>
+    `<option value="${l}"${l === files[active]?.lang ? ' selected':''}>${l}</option>`
+  ).join('');
+  openModal('lang-modal');
+}
+function confirmLang() {
+  const lang = document.getElementById('lang-select').value;
+  closeModal('lang-modal');
+  if (!active || !files[active]) return;
+  files[active].lang = lang;
+  monaco.editor.setModelLanguage(files[active].model, lang);
+  document.getElementById('sb-lang').textContent = lang.charAt(0).toUpperCase() + lang.slice(1);
+  render();
+}
+
+// ─── Save / Download ──────────────────────────────────────────────────────────
+function saveFile() {
+  persist();
+  const el = document.getElementById('sb-errors');
+  const prev = el.textContent;
+  el.textContent = '✓ Saved';
+  setTimeout(() => el.textContent = prev, 1200);
+}
+
+function downloadFile() {
+  if (!active) return;
+  const blob = new Blob([editor.getValue()], { type: 'text/plain' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: active });
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+async function downloadAll() {
+  const zip = new JSZip();
+  for (const [name, f] of Object.entries(files)) zip.file(name, f.model.getValue());
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'monaco-files.zip' });
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ─── View ─────────────────────────────────────────────────────────────────────
+function toggleMinimap() { minimapOn = !minimapOn; editor.updateOptions({ minimap: { enabled: minimapOn } }); }
+function toggleWordWrap() { wordWrap = !wordWrap; editor.updateOptions({ wordWrap: wordWrap ? 'on' : 'off' }); }
+function cycleTheme()    { themeIdx = (themeIdx + 1) % THEMES.length; monaco.editor.setTheme(THEMES[themeIdx]); }
+function zoomIn()        { fontSize = Math.min(fontSize + 1, 28); editor.updateOptions({ fontSize }); }
+function zoomOut()       { fontSize = Math.max(fontSize - 1, 10); editor.updateOptions({ fontSize }); }
+function editorCmd(cmd)  {
+  closeAllMenus();
+  if (cmd === 'undo') { editor.trigger('', 'undo', null); return; }
+  if (cmd === 'redo') { editor.trigger('', 'redo', null); return; }
+  editor.getAction(cmd)?.run();
+}
+
+// ─── Menu ─────────────────────────────────────────────────────────────────────
+function closeAllMenus() {
+  document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('visible'));
+  document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('open'));
+}
+document.getElementById('menubar').addEventListener('click', e => {
+  const item = e.target.closest('.menu-item');
+  if (!item) return;
+  const key = item.dataset.menu;
+  const drop = document.getElementById('menu-' + key);
+  if (!drop) return;
+  const was = drop.classList.contains('visible');
+  closeAllMenus();
+  if (!was) { drop.classList.add('visible'); item.classList.add('open'); }
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('#menubar')) closeAllMenus();
+});
+
+// ─── Command Palette ──────────────────────────────────────────────────────────
+const COMMANDS = [
+  { label:'New File',              key:'Ctrl+N',         run:()=>openModal('new-modal') },
+  { label:'Open Local Folder…',   key:'Ctrl+O',         run:openLocalFolder },
+  { label:'Open Local File…',     key:'',               run:openLocalFile },
+  { label:'Save to Local File',   key:'',               run:saveActiveToLocal },
+  { label:'Save All to Local',    key:'',               run:saveAllToLocal },
+  { label:'Browse GitHub Repo',   key:'',               run:()=>{ showRightPanel('github'); } },
+  { label:'Save (localStorage)',  key:'Ctrl+S',         run:saveFile },
+  { label:'Download Current',     key:'',               run:downloadFile },
+  { label:'Download All as ZIP',  key:'',               run:downloadAll },
+  { label:'Format Document',      key:'Alt+Shift+F',    run:()=>editorCmd('editor.action.formatDocument') },
+  { label:'Toggle Comment',       key:'Ctrl+/',         run:()=>editorCmd('editor.action.commentLine') },
+  { label:'Find',                 key:'Ctrl+F',         run:()=>editorCmd('actions.find') },
+  { label:'Replace',              key:'Ctrl+H',         run:()=>editorCmd('editor.action.startFindReplaceAction') },
+  { label:'Toggle Explorer',      key:'Ctrl+B',         run:toggleSidebar },
+  { label:'Toggle Local Panel',   key:'',               run:()=>toggleRightPanel('local') },
+  { label:'Toggle GitHub Panel',  key:'',               run:()=>toggleRightPanel('github') },
+  { label:'Toggle Minimap',       key:'',               run:toggleMinimap },
+  { label:'Toggle Word Wrap',     key:'Alt+Z',          run:toggleWordWrap },
+  { label:'Toggle Theme',         key:'',               run:cycleTheme },
+  { label:'Change Language Mode', key:'',               run:openLangModal },
+  { label:'Rename File',          key:'',               run:openRenameModal },
+  { label:'Delete File',          key:'',               run:deleteActive },
+  { label:'Zoom In',              key:'Ctrl+=',         run:zoomIn },
+  { label:'Zoom Out',             key:'Ctrl+-',         run:zoomOut },
+];
+
+let palFocus = 0;
+function openPalette() {
+  closeAllMenus();
+  document.getElementById('palette-bg').classList.remove('hidden');
+  const inp = document.getElementById('palette-input');
+  inp.value = ''; inp.focus();
+  palFocus = 0; renderPalette('');
+}
+function closePalette() { document.getElementById('palette-bg').classList.add('hidden'); }
+function renderPalette(q) {
+  const matches = COMMANDS.filter(c => c.label.toLowerCase().includes(q.toLowerCase()));
+  document.getElementById('palette-list').innerHTML = matches.map((c, i) =>
+    `<div class="pal-item${i===palFocus?' focused':''}" data-i="${i}">
+      <span>${c.label}</span><span class="pal-key">${c.key}</span>
+    </div>`
+  ).join('');
+  document.querySelectorAll('.pal-item').forEach((el, i) => {
+    el.addEventListener('click', () => { closePalette(); matches[i].run(); });
+  });
+}
+document.getElementById('palette-input').addEventListener('input', e => { palFocus = 0; renderPalette(e.target.value); });
+document.getElementById('palette-input').addEventListener('keydown', e => {
+  const q = document.getElementById('palette-input').value;
+  const matches = COMMANDS.filter(c => c.label.toLowerCase().includes(q.toLowerCase()));
+  if (e.key === 'ArrowDown') palFocus = Math.min(palFocus+1, matches.length-1);
+  else if (e.key === 'ArrowUp') palFocus = Math.max(palFocus-1, 0);
+  else if (e.key === 'Enter') { if (matches[palFocus]) { closePalette(); matches[palFocus].run(); } return; }
+  else if (e.key === 'Escape') { closePalette(); return; }
+  else return;
+  e.preventDefault(); renderPalette(q);
+});
+
+// ─── Global Shortcuts ─────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key==='n')            { e.preventDefault(); openModal('new-modal'); }
+  if (mod && e.key==='o')            { e.preventDefault(); openLocalFolder(); }
+  if (mod && e.key==='s'&&!e.shiftKey) { e.preventDefault(); saveFile(); }
+  if (mod && e.key==='b')            { e.preventDefault(); toggleSidebar(); }
+  if (mod && e.shiftKey&&e.key==='P'){ e.preventDefault(); openPalette(); }
+  if (mod && e.key==='=')            { e.preventDefault(); zoomIn(); }
+  if (mod && e.key==='-')            { e.preventDefault(); zoomOut(); }
+  if (e.key==='Escape') {
+    closePalette(); closeAllMenus();
+    ['new-modal','rename-modal','lang-modal'].forEach(closeModal);
+  }
+  if (e.key==='Enter') {
+    if (!document.getElementById('new-modal').classList.contains('hidden'))    { confirmNew(); }
+    if (!document.getElementById('rename-modal').classList.contains('hidden')) { confirmRename(); }
+    if (!document.getElementById('lang-modal').classList.contains('hidden'))   { confirmLang(); }
+  }
+});
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+require.config({ paths: { vs: VS_PATH } });
+require(['vs/editor/editor.main'], () => {
+  editor = monaco.editor.create(document.getElementById('editor'), {
+    theme: 'vs-dark', fontSize: 14,
+    fontFamily: "'Cascadia Code','JetBrains Mono','Fira Code','Consolas',monospace",
+    fontLigatures: true, lineNumbers: 'on', minimap: { enabled: true },
+    scrollBeyondLastLine: false, automaticLayout: true, tabSize: 2,
+    wordWrap: 'off', padding: { top: 10 }, bracketPairColorization: { enabled: true },
+    guides: { bracketPairs: true }, smoothScrolling: true, cursorBlinking: 'smooth',
+    cursorSmoothCaretAnimation: 'on', renderWhitespace: 'selection',
+  });
+
+  editor.onDidChangeCursorPosition(e => {
+    document.getElementById('sb-cursor').textContent =
+      `Ln ${e.position.lineNumber}, Col ${e.position.column}`;
+  });
+  editor.onDidChangeModelContent(() => {
+    const model = editor.getModel();
+    if (!model) return;
+    const markers = monaco.editor.getModelMarkers({ resource: model.uri });
+    const errs  = markers.filter(m => m.severity === monaco.MarkerSeverity.Error).length;
+    const warns = markers.filter(m => m.severity === monaco.MarkerSeverity.Warning).length;
+    document.getElementById('sb-errors').textContent =
+      errs  ? `✗ ${errs} error${errs>1?'s':''}` :
+      warns ? `⚠ ${warns} warning${warns>1?'s':''}` : '✓ No problems';
+  });
+
+  const stored = loadStored();
+  const seed = stored && Object.keys(stored).length ? stored : DEFAULT_FILES;
+  for (const [name, content] of Object.entries(seed)) addFile(name, content);
+  switchTo(Object.keys(files)[0]);
+});
+</script>
+</body>
+</html>
