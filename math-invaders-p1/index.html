@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Math Invaders — Learn Math, Defend Earth</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Phaser 3 via jsDelivr -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+  <!-- Google Fonts via jsDelivr proxy isn't available; use fonts.googleapis.com -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="game-wrapper">
+    <div id="game-container"></div>
+    <div id="ui-overlay">
+      <div id="hud-top">
+        <div id="hud-score">
+          <span class="hud-label">SCORE</span>
+          <span id="score-value">0</span>
+        </div>
+        <div id="hud-level">
+          <span class="hud-label">LEVEL</span>
+          <span id="level-value">1</span>
+        </div>
+        <div id="hud-lives">
+          <span class="hud-label">LIVES</span>
+          <span id="lives-value">♥ ♥ ♥</span>
+        </div>
+        <div id="hud-streak">
+          <span class="hud-label">STREAK</span>
+          <span id="streak-value">0</span>
+        </div>
+      </div>
+      <div id="question-panel">
+        <div id="question-text">READY?</div>
+        <div id="answer-hint">Target the correct answer!</div>
+      </div>
+      <div id="input-row">
+        <span id="input-label">YOUR ANSWER:</span>
+        <span id="input-display">_</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Modules (load order matters) -->
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/scoreTracker.js"></script>
+  <script src="js/scenes/BootScene.js"></script>
+  <script src="js/scenes/MenuScene.js"></script>
+  <script src="js/scenes/GameScene.js"></script>
+  <script src="js/scenes/GameOverScene.js"></script>
+  <script src="js/scenes/StatsScene.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
