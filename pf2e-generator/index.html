@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pathfinder 2e Campaign Forge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-emblem">
+    <div class="emblem-ring outer"></div>
+    <div class="emblem-ring inner"></div>
+    <span class="emblem-icon">⚔</span>
+  </div>
+  <div class="header-text">
+    <h1 class="site-title">Campaign Forge</h1>
+    <p class="site-subtitle">Pathfinder Second Edition · Complete Adventure Generator · PF2e Remaster Compatible</p>
+  </div>
+  <div class="header-emblem right">
+    <div class="emblem-ring outer"></div>
+    <div class="emblem-ring inner"></div>
+    <span class="emblem-icon">🛡</span>
+  </div>
+</header>
+
+<main class="main-container">
+
+  <!-- CONFIG PANEL -->
+  <section class="config-panel glass-panel" id="configPanel">
+    <h2 class="panel-title">
+      <span class="title-ornament">✦</span>
+      Forge Your Campaign
+      <span class="title-ornament">✦</span>
+    </h2>
+
+    <div class="config-grid">
+
+      <div class="config-group">
+        <label class="config-label">Number of Players</label>
+        <div class="stepper">
+          <button class="step-btn" onclick="UI.step('players',-1)">−</button>
+          <span class="step-val" id="playerCount">4</span>
+          <button class="step-btn" onclick="UI.step('players',1)">+</button>
+        </div>
+        <span class="config-hint">2 – 6 adventurers</span>
+      </div>
+
+      <div class="config-group">
+        <label class="config-label">Starting Level</label>
+        <div class="stepper">
+          <button class="step-btn" onclick="UI.step('startLevel',-1)">−</button>
+          <span class="step-val" id="startLevel">1</span>
+          <button class="step-btn" onclick="UI.step('startLevel',1)">+</button>
+        </div>
+        <span class="config-hint">1 – 20</span>
+      </div>
+
+      <div class="config-group">
+        <label class="config-label">Ending Level</label>
+        <div class="stepper">
+          <button class="step-btn" onclick="UI.step('endLevel',-1)">−</button>
+          <span class="step-val" id="endLevel">10</span>
+          <button class="step-btn" onclick="UI.step('endLevel',1)">+</button>
+        </div>
+        <span class="config-hint">Must exceed start</span>
+      </div>
+
+      <div class="config-group">
+        <label class="config-label">Campaign Tone</label>
+        <select class="config-select" id="toneSelect">
+          <option value="any">Any Tone</option>
+          <option value="heroic">Heroic Adventure</option>
+          <option value="dark">Dark &amp; Gritty</option>
+          <option value="political">Political Intrigue</option>
+          <option value="exploration">Exploration &amp; Discovery</option>
+          <option value="horror">Cosmic Horror</option>
+          <option value="swashbuckling">Swashbuckling</option>
+        </select>
+      </div>
+
+      <div class="config-group">
+        <label class="config-label">Primary Theme</label>
+        <select class="config-select" id="themeSelect">
+          <option value="any">Any Theme</option>
+          <option value="undead">Undead &amp; Necromancy</option>
+          <option value="arcane">Arcane Mysteries</option>
+          <option value="divine">Divine Conflict</option>
+          <option value="nature">Nature &amp; Primal</option>
+          <option value="urban">Urban Intrigue</option>
+          <option value="planar">Planar Travel</option>
+          <option value="ancient">Ancient Ruins</option>
+          <option value="political">Political Machinations</option>
+        </select>
+      </div>
+
+      <div class="config-group">
+        <label class="config-label">Source Inspiration</label>
+        <select class="config-select" id="sourceSelect">
+          <option value="any">Surprise Me</option>
+          <option value="AoA">Age of Ashes</option>
+          <option value="EC">Extinction Curse</option>
+          <option value="AoE">Agents of Edgewatch</option>
+          <option value="SoT">Strength of Thousands</option>
+          <option value="OoA">Outlaws of Alkenstar</option>
+          <option value="BB2">Blood Lords</option>
+          <option value="GG">Gatewalkers</option>
+          <option value="SR">Sky King's Tomb</option>
+          <option value="WoW">War of Immortals</option>
+          <option value="GoG">Curtain Call</option>
+          <option value="SiW">Season of Ghosts</option>
+          <option value="VP">Vaults of Pandemonium</option>
+          <option value="RotR">Rise of the Runelords (PF2e)</option>
+          <option value="CotCT">Crimson Throne (PF2e)</option>
+          <option value="Kingmaker">Kingmaker (PF2e)</option>
+          <option value="SD">Seven Dooms for Sandpoint</option>
+          <option value="SW">The Slithering</option>
+          <option value="BB">Beginner Box</option>
+          <option value="FoF">Fists of the Ruby Phoenix</option>
+          <option value="custom">Custom Mix</option>
+        </select>
+      </div>
+
+      <div class="config-group">
+        <label class="config-label">Number of Acts</label>
+        <div class="stepper">
+          <button class="step-btn" onclick="UI.step('acts',-1)">−</button>
+          <span class="step-val" id="actCount">3</span>
+          <button class="step-btn" onclick="UI.step('acts',1)">+</button>
+        </div>
+        <span class="config-hint">1 – 6 acts</span>
+      </div>
+
+      <div class="config-group">
+        <label class="config-label">Side Quests / Act</label>
+        <div class="stepper">
+          <button class="step-btn" onclick="UI.step('sideQuests',-1)">−</button>
+          <span class="step-val" id="sideQuestCount">3</span>
+          <button class="step-btn" onclick="UI.step('sideQuests',1)">+</button>
+        </div>
+        <span class="config-hint">1 – 5 per act</span>
+      </div>
+
+    </div>
+
+    <!-- Mix & Match -->
+    <div class="mix-toggles">
+      <h3 class="toggle-heading">Generation Options</h3>
+      <div class="toggle-grid">
+        <label class="toggle-item">
+          <input type="checkbox" id="mixVillains" checked/>
+          <span class="toggle-label">Unique Villain</span>
+        </label>
+        <label class="toggle-item">
+          <input type="checkbox" id="mixLocations" checked/>
+          <span class="toggle-label">Rich Locations</span>
+        </label>
+        <label class="toggle-item">
+          <input type="checkbox" id="mixFactions" checked/>
+          <span class="toggle-label">Factions &amp; Politics</span>
+        </label>
+        <label class="toggle-item">
+          <input type="checkbox" id="mixTwists" checked/>
+          <span class="toggle-label">Plot Twists</span>
+        </label>
+        <label class="toggle-item">
+          <input type="checkbox" id="mixNPCs" checked/>
+          <span class="toggle-label">Key NPCs</span>
+        </label>
+        <label class="toggle-item">
+          <input type="checkbox" id="mixRewards" checked/>
+          <span class="toggle-label">Treasure &amp; Rewards</span>
+        </label>
+        <label class="toggle-item">
+          <input type="checkbox" id="mixHooks" checked/>
+          <span class="toggle-label">Adventure Hooks</span>
+        </label>
+        <label class="toggle-item">
+          <input type="checkbox" id="mixBosses" checked/>
+          <span class="toggle-label">Boss Encounters</span>
+        </label>
+      </div>
+    </div>
+
+    <button class="forge-btn" id="forgeBtn" onclick="Generator.forge()">
+      <span class="forge-flame">🔥</span>
+      <span class="forge-text">FORGE CAMPAIGN</span>
+      <span class="forge-flame">🔥</span>
+    </button>
+  </section>
+
+  <!-- LOADING -->
+  <div class="loading-overlay" id="loadingOverlay" style="display:none;">
+    <div class="loading-content">
+      <div class="loading-sigil">⚔</div>
+      <p class="loading-text">Weaving the threads of fate…</p>
+      <div class="loading-bar"><div class="loading-fill" id="loadingFill"></div></div>
+      <p class="loading-step" id="loadingStep">Generating plot…</p>
+    </div>
+  </div>
+
+  <!-- OUTPUT PANEL -->
+  <section class="output-panel" id="outputPanel" style="display:none;">
+
+    <div class="output-toolbar">
+      <button class="tool-btn primary" onclick="Generator.reforge()">⚒ Reforge</button>
+      <button class="tool-btn" onclick="UI.openMixModal()">🔀 Mix &amp; Match</button>
+      <button class="tool-btn" onclick="UI.exportJSON()">💾 Save JSON</button>
+      <button class="tool-btn" onclick="UI.loadJSON()">📂 Load JSON</button>
+      <button class="tool-btn" onclick="UI.printCampaign()">🖨 Print</button>
+      <button class="tool-btn" onclick="UI.copyMarkdown()">📋 Copy</button>
+      <button class="tool-btn danger" onclick="UI.reset()">✕ New Campaign</button>
+    </div>
+
+    <div class="campaign-output" id="campaignOutput"></div>
+
+  </section>
+
+  <!-- MIX & MATCH MODAL -->
+  <div class="modal-backdrop" id="mixModal" style="display:none;" onclick="UI.closeMixModal(event)">
+    <div class="modal-panel">
+      <button class="modal-close" onclick="UI.closeMixModal()">✕</button>
+      <h2 class="modal-title">⚗ Mix &amp; Match</h2>
+      <p class="modal-desc">Swap any component to reshape your campaign. Changes apply immediately.</p>
+      <div id="mixModalContent" class="mix-content"></div>
+      <div class="modal-actions">
+        <button class="forge-btn small" onclick="UI.applyMix()">✓ Apply Changes</button>
+        <button class="tool-btn" onclick="UI.closeMixModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden file input for JSON load -->
+  <input type="file" id="jsonFileInput" accept=".json" style="display:none" onchange="UI.handleJSONLoad(event)"/>
+
+</main>
+
+<footer class="site-footer">
+  <p>Campaign Forge · Pathfinder 2e Remaster Compatible · Inspired by Paizo Publishing · Not affiliated with or endorsed by Paizo · For personal use at the gaming table</p>
+</footer>
+
+<script src="data/campaigns.js"></script>
+<script src="data/components.js"></script>
+<script src="js/generator.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
