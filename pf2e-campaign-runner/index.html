@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PF2e Campaign Runner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/runner.css">
+</head>
+<body>
+<div id="loadScreen" class="screen active">
+  <div class="load-inner">
+    <div class="load-sigil">
+      <svg width="110" height="110" viewBox="0 0 110 110">
+        <circle cx="55" cy="55" r="50" fill="none" stroke="var(--gold)" stroke-width="1" opacity="0.35"/>
+        <circle cx="55" cy="55" r="40" fill="none" stroke="var(--gold)" stroke-width="0.6" opacity="0.25" stroke-dasharray="3 4"/>
+        <polygon points="55,10 67,38 97,38 74,56 83,84 55,68 27,84 36,56 13,38 43,38" fill="none" stroke="var(--gold)" stroke-width="1.1" opacity="0.6"/>
+        <circle cx="55" cy="55" r="5" fill="var(--gold)" opacity="0.7"/>
+        <circle cx="55" cy="55" r="2.5" fill="var(--cream)"/>
+      </svg>
+    </div>
+    <h1 class="load-title">Campaign Runner</h1>
+    <p class="load-sub">Pathfinder 2e &middot; Table-Side GM Companion</p>
+    <div class="load-options">
+      <div class="load-option-card" id="btnLoadFile">
+        <div class="loc-icon">&#x1F4DC;</div>
+        <div class="loc-text"><strong>Load Campaign File</strong><span>Import .json exported from Campaign Forge</span></div>
+      </div>
+      <input type="file" id="fileInput" accept=".json" style="display:none">
+      <div class="load-option-card" id="btnLoadClipboard">
+        <div class="loc-icon">&#x1F4CB;</div>
+        <div class="loc-text"><strong>Paste Campaign JSON</strong><span>Paste directly from clipboard</span></div>
+      </div>
+      <div class="load-option-card" id="btnLoadDemo">
+        <div class="loc-icon">&#x2694;</div>
+        <div class="loc-text"><strong>Load Demo Campaign</strong><span>Explore all features with The Ashen Crown</span></div>
+      </div>
+    </div>
+    <div id="pasteZone" class="paste-zone hidden">
+      <textarea id="pasteArea" placeholder="Paste campaign JSON here..."></textarea>
+      <div class="paste-btns">
+        <button class="btn-gold" id="btnPasteConfirm">Load</button>
+        <button class="btn-ghost" id="btnPasteCancel">Cancel</button>
+      </div>
+    </div>
+    <div id="loadError" class="load-error hidden"></div>
+    <p class="load-hint">Generate campaigns in <strong>Campaign Forge</strong>, then use Export JSON</p>
+  </div>
+</div>
+
+<div id="appScreen" class="screen">
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-sigil">&#x2694;</div>
+      <div class="sidebar-header-text">
+        <div class="sidebar-title" id="sidebarTitle">Campaign</div>
+        <div class="sidebar-sub" id="sidebarSub">&mdash;</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Overview</div>
+      <button class="nav-item active" data-panel="dashboard"><span class="nav-icon">&#x1F5FA;</span>Dashboard</button>
+      <button class="nav-item" data-panel="villain"><span class="nav-icon">&#x1F480;</span>Villain</button>
+      <button class="nav-item" data-panel="factions"><span class="nav-icon">&#x2696;</span>Factions</button>
+      <button class="nav-item" data-panel="npcs"><span class="nav-icon">&#x1F465;</span>NPCs</button>
+      <div class="nav-section-label">Session Tools</div>
+      <button class="nav-item" data-panel="session"><span class="nav-icon">&#x1F4D6;</span>Session Log</button>
+      <button class="nav-item" data-panel="initiative"><span class="nav-icon">&#x26A1;</span>Initiative</button>
+      <button class="nav-item" data-panel="loot"><span class="nav-icon">&#x1FA99;</span>Loot &amp; Rewards</button>
+      <div class="nav-section-label">Acts</div>
+      <div id="actsNav"></div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-ghost-sm" id="btnExportNotes">Export Notes</button>
+      <button class="btn-ghost-sm" id="btnLoadNew">New Campaign</button>
+    </div>
+  </aside>
+  <main id="mainContent">
+    <div class="panel active" id="panel-dashboard">
+      <div class="panel-header"><h2 id="dashTitle">Dashboard</h2><div class="panel-meta" id="dashMeta"></div></div>
+      <div class="dashboard-grid">
+        <div class="dash-card dash-hook"><div class="dash-card-label">Campaign Hook</div><div class="dash-card-body" id="dashHook"></div></div>
+        <div class="dash-card dash-villain-mini"><div class="dash-card-label">Primary Villain</div><div class="dash-card-body" id="dashVillainMini"></div></div>
+        <div class="dash-card dash-progress"><div class="dash-card-label">Campaign Progress</div><div id="actProgressList"></div></div>
+        <div class="dash-card dash-factions-mini"><div class="dash-card-label">Factions</div><div id="dashFactionsMini"></div></div>
+        <div class="dash-card dash-session-mini"><div class="dash-card-label">Last Session</div><div id="dashSessionMini"><span class="text-dim italic">No sessions logged yet.</span></div><button class="btn-gold-sm" id="btnGoSession" style="margin-top:.75rem">Open Session Log</button></div>
+        <div class="dash-card dash-notes-mini"><div class="dash-card-label">GM Notes</div><textarea class="notes-area" id="globalNotes" placeholder="Quick notes visible from every screen..."></textarea></div>
+      </div>
+    </div>
+    <div class="panel" id="panel-villain">
+      <div class="panel-header"><h2>Villain</h2></div>
+      <div id="villainContent"></div>
+    </div>
+    <div class="panel" id="panel-factions">
+      <div class="panel-header"><h2>Factions</h2><div class="panel-meta">Click pips to adjust reputation &bull; Notes auto-save</div></div>
+      <div id="factionsContent"></div>
+    </div>
+    <div class="panel" id="panel-npcs">
+      <div class="panel-header"><h2>NPCs</h2><div class="panel-meta">Click cards to expand &bull; Status auto-saves</div></div>
+      <div class="npc-search-bar"><input type="text" id="npcSearch" placeholder="Search NPCs by name or role..."></div>
+      <div id="npcsContent"></div>
+    </div>
+    <div class="panel" id="panel-session">
+      <div class="panel-header">
+        <h2>Session Log</h2>
+        <div class="session-header-right">
+          <button class="btn-gold-sm" id="btnNewSession">+ New Session</button>
+          <span class="session-badge" id="sessionBadge">Session 0</span>
+        </div>
+      </div>
+      <div class="session-layout">
+        <div class="session-left">
+          <div class="session-card">
+            <div class="sc-header"><span class="sc-label">Current</span><input type="text" class="sc-title-input" id="sessionTitleInput" placeholder="Session title..."></div>
+            <div class="sc-row"><label class="sc-field-label">Act</label><select id="sessionActSelect"></select><label class="sc-field-label">Date</label><input type="date" id="sessionDate"></div>
+            <div class="sc-section-label">What Happened</div>
+            <textarea class="sc-textarea" id="sessionRecap" placeholder="Recap what the party did..."></textarea>
+            <div class="sc-section-label">NPCs Encountered</div>
+            <div id="sessionNPCTags" class="tag-cloud"></div>
+            <input type="text" class="sc-tag-input" id="sessionNPCInput" placeholder="Type NPC name + Enter...">
+            <div class="sc-section-label">Threads Opened</div>
+            <textarea class="sc-textarea sc-sm" id="sessionThreadsOpened" placeholder="New mysteries, hooks..."></textarea>
+            <div class="sc-section-label">Threads Closed</div>
+            <textarea class="sc-textarea sc-sm" id="sessionThreadsClosed" placeholder="Resolved quests..."></textarea>
+            <div class="sc-section-label">Party Surprised Me Because...</div>
+            <textarea class="sc-textarea sc-sm" id="sessionSurprise" placeholder="What you didn't expect..."></textarea>
+            <div class="sc-footer">
+              <button class="btn-gold" id="btnSaveSession">Save Session</button>
+              <span class="sc-save-status" id="scSaveStatus"></span>
+            </div>
+          </div>
+        </div>
+        <div class="session-right">
+          <div class="session-history-label">Session History</div>
+          <div id="sessionHistory"></div>
+          <div class="milestone-tracker"><div class="mt-label">Act Milestones</div><div id="milestoneTracker"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" id="panel-initiative">
+      <div class="panel-header">
+        <h2>Initiative &amp; Combat</h2>
+        <div class="initiative-toolbar">
+          <button class="btn-gold-sm" id="btnAddCombatant">+ Add</button>
+          <button class="btn-ghost-sm" id="btnNextTurn">Next Turn</button>
+          <button class="btn-ghost-sm" id="btnNextRound">Next Round</button>
+          <button class="btn-ghost-sm" id="btnClearCombat">Clear</button>
+          <span class="round-badge">Round <span id="roundNum">1</span></span>
+        </div>
+      </div>
+      <div class="initiative-layout">
+        <div class="initiative-list-wrap">
+          <div class="initiative-list" id="initiativeList"><div class="init-empty">No combatants yet. Add manually or load an encounter.</div></div>
+        </div>
+        <div class="init-sidebar">
+          <div class="init-add-panel">
+            <div class="iap-label">Add Combatant</div>
+            <input type="text" id="initName" placeholder="Name / Creature" class="init-input">
+            <div class="init-row">
+              <input type="number" id="initRoll" placeholder="Init" class="init-input-sm">
+              <input type="number" id="initHP" placeholder="HP" class="init-input-sm">
+              <input type="number" id="initAC" placeholder="AC" class="init-input-sm">
+            </div>
+            <div class="init-row">
+              <select id="initType" class="init-select"><option value="pc">PC</option><option value="enemy">Enemy</option><option value="ally">Ally</option></select>
+              <button class="btn-gold-sm" id="btnConfirmAdd">Add</button>
+            </div>
+          </div>
+          <div class="iap-label" style="margin-top:1.1rem">Load Encounter from Act</div>
+          <select id="initActSelect" class="init-select"></select>
+          <select id="initEncSelect" class="init-select" style="margin-top:.4rem"></select>
+          <button class="btn-ghost-sm" id="btnLoadEncounter" style="margin-top:.4rem;width:100%">Load Encounter Creatures</button>
+          <div class="iap-label" style="margin-top:1.4rem">Conditions Quick-Ref</div>
+          <div class="conditions-ref" id="conditionsRef"></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" id="panel-loot">
+      <div class="panel-header"><h2>Loot &amp; Rewards</h2><div class="panel-meta">Check items to mark as distributed</div></div>
+      <div class="loot-layout">
+        <div class="loot-acts" id="lootActsList"></div>
+        <div class="loot-detail" id="lootDetail"><div class="loot-empty">Select an act to view its treasure hoard.</div></div>
+      </div>
+    </div>
+    <div id="dynamicPanels"></div>
+  </main>
+</div>
+<div id="modal" class="modal-overlay hidden">
+  <div class="modal-box"><button class="modal-close" id="modalClose">&#x2715;</button><div id="modalContent"></div></div>
+</div>
+<div id="toastContainer"></div>
+<script src="js/demo.js"></script>
+<script src="js/state.js"></script>
+<script src="js/panels/dashboard.js"></script>
+<script src="js/panels/villain.js"></script>
+<script src="js/panels/factions.js"></script>
+<script src="js/panels/npcs.js"></script>
+<script src="js/panels/session.js"></script>
+<script src="js/panels/initiative.js"></script>
+<script src="js/panels/loot.js"></script>
+<script src="js/panels/acts.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
