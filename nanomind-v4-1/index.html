@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NanoMind · Your AI Best Friend</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#09090f;--s1:#111118;--s2:#18181f;--s3:#202030;
+  --bdr:#2a2a3a;--bdr2:#353548;
+  --purple:#a78bfa;--purple2:#c4b5fd;--purpled:#6d5fc7;
+  --blue:#818cf8;--teal:#34d399;--red:#f87171;--amber:#fbbf24;
+  --txt:#e4e4f0;--txt2:#9898b8;--txt3:#606080;
+  --user-bg:#1c1a38;--ai-bg:#111118;
+  --r:16px;--font:'Segoe UI',system-ui,-apple-system,sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--font);overflow:hidden}
+
+/* ════════ BOOT ════════ */
+#boot{
+  position:fixed;inset:0;background:var(--bg);z-index:999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  transition:opacity .7s ease;
+}
+#boot.out{opacity:0;pointer-events:none}
+.b-orb{
+  width:96px;height:96px;border-radius:30px;font-size:44px;
+  background:linear-gradient(135deg,var(--purple) 0%,#6366f1 100%);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 50px rgba(167,139,250,.35);
+  animation:borb 2.2s ease-in-out infinite;
+}
+@keyframes borb{0%,100%{transform:scale(1);box-shadow:0 0 30px rgba(167,139,250,.25)}
+               50%{transform:scale(1.05);box-shadow:0 0 60px rgba(167,139,250,.55)}}
+.b-name{font-size:28px;font-weight:800;letter-spacing:-.5px}
+.b-tag{font-size:13px;color:var(--txt2)}
+.b-bar-wrap{width:240px;height:3px;background:var(--s3);border-radius:3px;overflow:hidden}
+.b-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--purple),#6366f1);border-radius:3px;transition:width .4s ease}
+.b-msg{font-size:12.5px;color:var(--txt3);height:18px;text-align:center}
+
+/* ════════ LAYOUT ════════ */
+.wrap{display:grid;grid-template-rows:60px 1fr auto;height:100vh;max-width:820px;margin:0 auto}
+
+/* ════════ HEADER ════════ */
+header{
+  display:flex;align-items:center;gap:12px;padding:0 20px;
+  border-bottom:1px solid var(--bdr);background:var(--bg);z-index:20;position:relative;
+}
+.h-orb{
+  width:38px;height:38px;border-radius:12px;flex-shrink:0;font-size:18px;
+  background:linear-gradient(135deg,var(--purple),#6366f1);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 12px rgba(167,139,250,.3);
+}
+.h-name{font-size:15px;font-weight:700}
+.h-status{font-size:11px;color:var(--txt3);transition:color .4s}
+.h-status.on{color:var(--teal)}
+.h-gap{flex:1}
+
+/* learned counter chip */
+.h-chip{
+  display:flex;align-items:center;gap:5px;padding:5px 12px;
+  background:var(--s2);border:1px solid var(--bdr);border-radius:20px;
+  font-size:11.5px;color:var(--txt2);cursor:pointer;transition:all .2s;user-select:none;
+}
+.h-chip:hover{border-color:var(--purple);color:var(--purple2)}
+.h-chip .hi{color:var(--purple2);font-weight:700}
+
+/* online dot */
+.dot{width:9px;height:9px;border-radius:50%;background:var(--bdr);flex-shrink:0;transition:all .5s}
+.dot.on{background:var(--teal);box-shadow:0 0 8px var(--teal)}
+.dot.spin{background:var(--purple);animation:dpulse .9s ease infinite}
+@keyframes dpulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* ════════ CHAT ════════ */
+#chat{
+  overflow-y:auto;padding:24px 18px 10px;
+  display:flex;flex-direction:column;gap:16px;scroll-behavior:smooth;
+  scrollbar-width:thin;scrollbar-color:var(--bdr) transparent;
+}
+#chat::-webkit-scrollbar{width:5px}
+#chat::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:5px}
+
+/* ════════ MESSAGES ════════ */
+.m{display:flex;gap:11px;animation:min .24s ease;max-width:90%}
+@keyframes min{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.m.u{align-self:flex-end;flex-direction:row-reverse}
+.m.a{align-self:flex-start}
+.av{
+  width:36px;height:36px;border-radius:12px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:16px;align-self:flex-end;
+}
+.m.u .av{background:linear-gradient(135deg,#4338ca,#7c3aed)}
+.m.a .av{background:linear-gradient(135deg,var(--purple),#6366f1)}
+.bub{
+  padding:12px 16px;border-radius:var(--r);font-size:14.5px;
+  line-height:1.7;word-break:break-word;max-width:100%;
+}
+.m.u .bub{
+  background:var(--user-bg);border:1px solid #2d2950;
+  border-bottom-right-radius:4px;color:var(--purple2);
+}
+.m.a .bub{
+  background:var(--ai-bg);border:1px solid var(--bdr);
+  border-bottom-left-radius:4px;color:var(--txt);
+}
+/* typing */
+.dots{display:flex;gap:5px;padding:4px 0}
+.dots span{
+  width:7px;height:7px;border-radius:50%;background:var(--txt3);
+  animation:dt 1.4s ease-in-out infinite;
+}
+.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+@keyframes dt{0%,80%,100%{transform:scale(.6);opacity:.3}40%{transform:scale(1);opacity:1}}
+
+/* ════════ WELCOME ════════ */
+#wlc{
+  display:flex;flex-direction:column;align-items:center;
+  text-align:center;gap:18px;padding:32px 20px;min-height:65%;justify-content:center;
+}
+.w-orb{
+  width:84px;height:84px;border-radius:28px;font-size:38px;
+  background:linear-gradient(135deg,var(--purple),#6366f1);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 10px 40px rgba(167,139,250,.3);
+}
+#wlc h2{font-size:24px;font-weight:800}
+#wlc p{font-size:14px;color:var(--txt2);max-width:440px;line-height:1.7}
+.chips{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin-top:6px}
+.chip{
+  background:var(--s2);border:1px solid var(--bdr);color:var(--txt2);
+  padding:8px 16px;border-radius:22px;font-size:13px;
+  cursor:pointer;transition:all .18s;user-select:none;
+}
+.chip:hover{border-color:var(--purple);color:var(--purple2);background:var(--s3)}
+.chip:active{transform:scale(.97)}
+
+/* ════════ SIDE PANEL (memory/stats) ════════ */
+#panel{
+  position:fixed;top:64px;right:14px;
+  background:var(--s1);border:1px solid var(--bdr);border-radius:16px;
+  width:220px;padding:16px;display:none;flex-direction:column;gap:8px;
+  box-shadow:0 12px 40px rgba(0,0,0,.5);z-index:100;
+  animation:pop .2s ease;
+}
+@keyframes pop{from{opacity:0;transform:scale(.94) translateY(-6px)}to{opacity:1;transform:none}}
+#panel.on{display:flex}
+.p-hd{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--txt3);margin-top:4px}
+.p-hd:first-child{margin-top:0}
+.p-row{display:flex;justify-content:space-between;align-items:center;font-size:12px}
+.p-lbl{color:var(--purple2);font-weight:600}.p-val{color:var(--txt);font-size:12px}
+.p-div{border:none;border-top:1px solid var(--bdr);margin:4px 0}
+.p-topics{font-size:11.5px;color:var(--txt2);line-height:1.6}
+.p-clr{color:var(--red);font-size:11.5px;cursor:pointer;text-align:center;margin-top:4px;padding:4px}
+.p-clr:hover{text-decoration:underline}
+
+/* mood badge inside panel */
+.p-mood{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 8px;border-radius:10px;font-size:11px;font-weight:600;
+}
+.p-mood.positive{background:rgba(52,211,153,.15);color:var(--teal)}
+.p-mood.negative{background:rgba(248,113,113,.15);color:var(--red)}
+.p-mood.neutral{background:rgba(167,139,250,.15);color:var(--purple2)}
+
+/* ════════ TEACH MODAL ════════ */
+#tm{
+  position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(8px);
+  display:none;align-items:center;justify-content:center;z-index:300;
+}
+#tm.on{display:flex}
+.t-box{
+  background:var(--s1);border:1px solid var(--bdr2);border-radius:20px;
+  padding:28px;width:92%;max-width:480px;
+  display:flex;flex-direction:column;gap:16px;
+  animation:pop .22s ease;
+}
+.t-box h3{font-size:18px;font-weight:800}
+.t-box p{font-size:13.5px;color:var(--txt2);line-height:1.6}
+.t-in{
+  background:var(--bg);border:1.5px solid var(--bdr);border-radius:12px;
+  padding:11px 15px;color:var(--txt);font-size:14px;
+  font-family:var(--font);width:100%;outline:none;transition:border-color .2s;
+}
+.t-in:focus{border-color:var(--purple)}
+.t-in::placeholder{color:var(--txt3)}
+.t-row{display:flex;gap:10px}
+.t-no{
+  flex:1;background:var(--s2);border:1px solid var(--bdr);color:var(--txt2);
+  padding:11px;border-radius:12px;cursor:pointer;font-size:14px;
+  font-family:var(--font);transition:all .18s;
+}
+.t-no:hover{border-color:var(--purple);color:var(--purple2)}
+.t-yes{
+  flex:1.2;background:linear-gradient(135deg,var(--purple),#6366f1);border:none;
+  color:#fff;padding:11px;border-radius:12px;cursor:pointer;font-size:14px;
+  font-family:var(--font);font-weight:600;transition:opacity .18s;
+}
+.t-yes:hover{opacity:.88}
+
+/* ════════ INPUT BAR ════════ */
+#bar{
+  display:flex;align-items:flex-end;gap:10px;
+  padding:10px 18px 16px;border-top:1px solid var(--bdr);background:var(--bg);
+}
+#inp{
+  flex:1;background:var(--s1);border:1.5px solid var(--bdr);border-radius:16px;
+  padding:12px 16px;color:var(--txt);font-size:14.5px;
+  font-family:var(--font);resize:none;outline:none;
+  max-height:140px;line-height:1.6;transition:border-color .2s;
+}
+#inp:focus{border-color:var(--purpled)}
+#inp::placeholder{color:var(--txt3)}
+.btns{display:flex;gap:8px;align-items:flex-end}
+.btn-icon{
+  width:44px;height:44px;border-radius:13px;flex-shrink:0;border:none;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:18px;transition:all .18s;
+}
+#b-send{background:linear-gradient(135deg,var(--purple),#6366f1);color:#fff}
+#b-send:hover:not(:disabled){transform:scale(1.08);box-shadow:0 4px 18px rgba(167,139,250,.45)}
+#b-send:disabled{opacity:.3;cursor:not-allowed}
+#b-teach{background:var(--s2);border:1px solid var(--bdr)!important;color:var(--txt2)}
+#b-teach:hover{border-color:var(--purple)!important;color:var(--purple2)}
+#b-mic{background:var(--s2);border:1px solid var(--bdr)!important;color:var(--txt2)}
+#b-mic:hover{border-color:var(--teal)!important;color:var(--teal)}
+#b-mic.listening{background:rgba(52,211,153,.1);border-color:var(--teal)!important;color:var(--teal);animation:dpulse .7s ease infinite}
+
+/* mood strip */
+#strip{height:2px;background:var(--purple);width:0%;transition:width 1.2s ease,background 1.2s ease}
+</style>
+</head>
+<body>
+
+<!-- ══ BOOT ══ -->
+<div id="boot">
+  <div class="b-orb">🧠</div>
+  <div class="b-name">NanoMind</div>
+  <div class="b-msg" id="b-msg">Starting up…</div>
+  <div class="b-bar-wrap"><div class="b-bar" id="b-bar"></div></div>
+  <div class="b-tag">100% offline · nothing leaves your device</div>
+</div>
+
+<!-- ══ MEMORY PANEL ══ -->
+<div id="panel">
+  <div class="p-hd">About you</div>
+  <div id="p-about"></div>
+  <hr class="p-div">
+  <div class="p-hd">This session</div>
+  <div id="p-sess"></div>
+  <hr class="p-div">
+  <div class="p-hd">Topics we've covered</div>
+  <div class="p-topics" id="p-topics">none yet</div>
+  <hr class="p-div">
+  <div class="p-clr" onclick="doClear()">🗑 Clear learned memories</div>
+</div>
+
+<!-- ══ TEACH MODAL ══ -->
+<div id="tm">
+  <div class="t-box">
+    <h3>🎓 Teach me something</h3>
+    <p>Tell me exactly what to say in a specific situation. I'll remember it forever — even after you close this tab.</p>
+    <input class="t-in" id="t-when"    placeholder="When you say something like…" type="text" autocomplete="off">
+    <input class="t-in" id="t-say"     placeholder="Respond with…"               type="text" autocomplete="off">
+    <div class="t-row">
+      <button class="t-no"  onclick="closeTM()">Maybe later</button>
+      <button class="t-yes" onclick="doTeach()">Teach me this ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div class="wrap">
+  <header>
+    <div class="h-orb">🧠</div>
+    <div>
+      <div class="h-name">NanoMind</div>
+      <div class="h-status" id="h-status">Loading…</div>
+    </div>
+    <div class="h-gap"></div>
+    <div class="h-chip" id="h-chip" onclick="togglePanel()" title="What I remember about you">
+      💡 Learned <span class="hi" id="lc">0</span>
+    </div>
+    <div class="dot spin" id="dot"></div>
+  </header>
+
+  <div id="chat">
+    <!-- Welcome screen -->
+    <div id="wlc">
+      <div class="w-orb">🧠</div>
+      <h2>Hey, I'm NanoMind 👋</h2>
+      <p>Think of me as your best friend who's always around to talk —
+         no judgment, no topic off limits, no agenda.
+         The more we chat, the better I know you.
+         And yes — I actually learn from our conversations.</p>
+      <div class="chips">
+        <div class="chip" onclick="sc(this)">What's up with you?</div>
+        <div class="chip" onclick="sc(this)">I really need to vent right now</div>
+        <div class="chip" onclick="sc(this)">Something wild happened to me</div>
+        <div class="chip" onclick="sc(this)">I've been thinking about life a lot</div>
+        <div class="chip" onclick="sc(this)">My relationship situation is complicated</div>
+        <div class="chip" onclick="sc(this)">Work has been destroying me lately</div>
+        <div class="chip" onclick="sc(this)">I'm kind of in a weird headspace</div>
+        <div class="chip" onclick="sc(this)">Tell me something — entertain me</div>
+        <div class="chip" onclick="sc(this)">I have a confession to make</div>
+        <div class="chip" onclick="sc(this)">I'm actually feeling really good today</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div id="bar">
+      <textarea id="inp" rows="1"
+        placeholder="Say anything — I'm listening…"
+        onkeydown="onK(event)"
+        oninput="onI(this)"></textarea>
+      <div class="btns">
+        <button class="btn-icon" id="b-mic"   onclick="toggleMic()"   title="Voice input">🎤</button>
+        <button class="btn-icon" id="b-teach" onclick="openTM()"      title="Teach me something">🎓</button>
+        <button class="btn-icon" id="b-send"  onclick="send()"        title="Send" disabled>↑</button>
+      </div>
+    </div>
+    <div id="strip"></div>
+  </div>
+</div>
+
+<script src="lib/nanomind-engine.js"></script>
+<script>
+/* ── globals ──────────────────────────── */
+const E   = new NanoMindEngine();
+const $c  = document.getElementById('chat');
+const $i  = document.getElementById('inp');
+const $s  = document.getElementById('b-send');
+const $w  = document.getElementById('wlc');
+let panelOpen = false;
+let recognition = null;
+
+/* ── BOOT ─────────────────────────────── */
+async function boot() {
+  const set = (p,m) => { document.getElementById('b-bar').style.width=p+'%'; document.getElementById('b-msg').textContent=m; };
+  try {
+    set(8,'Fetching model…');
+    const r = await fetch('model/pretrained.json');
+    set(35,'Parsing weights…');
+    const j = await r.json();
+    set(60,'Building encoder…');
+    await tick();
+    await E.load(j);
+    set(85,'Indexing…');
+    await tick();
+    set(100,'Ready!');
+    await sleep(420);
+    document.getElementById('boot').classList.add('out');
+    document.getElementById('dot').className='dot on';
+    document.getElementById('h-status').className='h-status on';
+    document.getElementById('h-status').textContent='online · fully offline';
+    $s.disabled=false;
+    $i.focus();
+    refreshLC();
+    greet();
+    setupMic();
+  } catch(err) {
+    console.error(err);
+    document.getElementById('b-msg').textContent='Error: '+err.message;
+    document.getElementById('b-bar').style.background='var(--red)';
+  }
+}
+const tick  = () => new Promise(r=>setTimeout(r,0));
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+/* ── GREETING ─────────────────────────── */
+function greet() {
+  const h = new Date().getHours();
+  const byTime = h<12 ? "Morning! Coffee in hand or still finding your feet?"
+    : h<17 ? "Hey! Good to see you — what's going on with you today?"
+    : h<21 ? "Evening! How did your day go? Give me the highlights."
+    : "Hey night owl! What are you still doing up?";
+  const generic = [
+    "Hey!! So glad you dropped by. What's going on?",
+    "Oh hey, you're here! Was literally just thinking about nothing in particular — good timing. What's up?",
+    "Heyyyy! Ready when you are. What's on your mind?",
+    "Well hey there! What's the vibe today?",
+  ];
+  addAI(Math.random()<0.4 ? byTime : generic[Math.floor(Math.random()*generic.length)]);
+}
+
+/* ── SEND ─────────────────────────────── */
+async function send() {
+  const txt = $i.value.trim();
+  if (!txt || !E.isReady()) return;
+  $w && ($w.style.display='none');
+  addUser(txt);
+  $i.value=''; $i.style.height='auto'; $s.disabled=true;
+  const tid = addTyping();
+  // Typing delay scales with message length — feels real
+  const ms = 140 + Math.random()*200 + Math.min(txt.length*2.2,500);
+  await sleep(ms);
+  removeTyping(tid);
+  const reply = E.respond(txt);
+  addAI(reply);
+  $s.disabled=false; $i.focus();
+  refreshLC(); flashMood(); renderPanel();
+}
+
+/* ── DOM UTILS ────────────────────────── */
+function addUser(t) {
+  const d=mkMsg('u'); d.querySelector('.bub').innerHTML=esc(t).replace(/\n/g,'<br>');
+  $c.appendChild(d); scrollBot();
+}
+function addAI(t) {
+  const d=mkMsg('a'); d.querySelector('.bub').innerHTML=esc(t).replace(/\n/g,'<br>');
+  $c.appendChild(d); scrollBot();
+}
+function mkMsg(r) {
+  const d=document.createElement('div'); d.className='m '+r;
+  d.innerHTML=`<div class="av">${r==='u'?'🙂':'🧠'}</div><div class="bub"></div>`;
+  return d;
+}
+function addTyping() {
+  const id='ty'+Date.now(), d=document.createElement('div');
+  d.className='m a'; d.id=id;
+  d.innerHTML=`<div class="av">🧠</div><div class="bub"><div class="dots"><span></span><span></span><span></span></div></div>`;
+  $c.appendChild(d); scrollBot(); return id;
+}
+function removeTyping(id){document.getElementById(id)?.remove()}
+function scrollBot(){$c.scrollTop=$c.scrollHeight}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function onK(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}}
+function onI(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,140)+'px'}
+function sc(el){$i.value=el.textContent;send()}
+
+/* ── MOOD STRIP ───────────────────────── */
+function flashMood() {
+  const s=E.stats(), strip=document.getElementById('strip');
+  const c={positive:'var(--teal)',negative:'var(--red)',neutral:'var(--purple)'}[s.mood]||'var(--purple)';
+  strip.style.background=c; strip.style.width='100%';
+  setTimeout(()=>strip.style.width='0%',2200);
+}
+
+/* ── PANEL ────────────────────────────── */
+function togglePanel(){
+  panelOpen=!panelOpen;
+  document.getElementById('panel').classList.toggle('on',panelOpen);
+  if(panelOpen) renderPanel();
+}
+function renderPanel(){
+  const s=E.stats(), m=E.getMemory();
+  const row=(l,v)=>v?`<div class="p-row"><span class="p-lbl">${l}</span><span class="p-val">${esc(String(v))}</span></div>`:''
+  document.getElementById('p-about').innerHTML=[
+    row('Name',m.name), row('Age',m.age), row('Gender',m.gender),
+    row('Job',m.facts?.job), row('Location',m.facts?.location),
+  ].filter(Boolean).join('')||'<span style="color:var(--txt3);font-size:11.5px">Keep chatting — I\'ll pick things up</span>';
+  const mc=s.mood, mi=mc==='positive'?'😊':mc==='negative'?'😔':'😐';
+  document.getElementById('p-sess').innerHTML=[
+    `<div class="p-row"><span class="p-lbl">Mood</span><span class="p-mood ${mc}">${mi} ${mc}</span></div>`,
+    row('Turns',m.turns), row('Learned',s.learned+' exchanges'),
+  ].join('');
+  document.getElementById('p-topics').textContent=s.topics?.length?s.topics.join(', '):'none yet';
+}
+function refreshLC(){document.getElementById('lc').textContent=E.stats().learned}
+function doClear(){
+  if(!confirm('Clear all learned memories? This cannot be undone.')) return;
+  E.clearLearned(); refreshLC(); panelOpen=false;
+  document.getElementById('panel').classList.remove('on');
+  addAI("Done — cleared my learned memories. We start fresh, but all my original training is still there.");
+}
+// Close panel on outside click
+document.addEventListener('click',e=>{
+  if(panelOpen&&!document.getElementById('panel').contains(e.target)&&!document.getElementById('h-chip').contains(e.target)){
+    panelOpen=false; document.getElementById('panel').classList.remove('on');
+  }
+});
+
+/* ── TEACH MODAL ──────────────────────── */
+function openTM(){document.getElementById('tm').classList.add('on');document.getElementById('t-when').focus()}
+function closeTM(){document.getElementById('tm').classList.remove('on')}
+function doTeach(){
+  const w=document.getElementById('t-when').value.trim();
+  const r=document.getElementById('t-say').value.trim();
+  if(!w||!r){document.getElementById('t-when').style.borderColor='var(--red)';return}
+  addAI(E.teach(w,r)); refreshLC();
+  document.getElementById('t-when').value='';
+  document.getElementById('t-say').value='';
+  closeTM();
+}
+document.getElementById('tm').addEventListener('click',e=>{if(e.target===document.getElementById('tm'))closeTM()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTM()});
+
+/* ── VOICE INPUT ──────────────────────── */
+function setupMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { document.getElementById('b-mic').style.display='none'; return; }
+  recognition = new SR();
+  recognition.continuous=false; recognition.interimResults=false; recognition.lang='en-US';
+  recognition.onresult = e => {
+    const t = e.results[0][0].transcript;
+    $i.value = ($i.value+' '+t).trim(); onI($i);
+  };
+  recognition.onend = () => { document.getElementById('b-mic').classList.remove('listening'); };
+  recognition.onerror = () => { document.getElementById('b-mic').classList.remove('listening'); };
+}
+function toggleMic() {
+  if (!recognition) return;
+  const btn=document.getElementById('b-mic');
+  if (btn.classList.contains('listening')) { recognition.stop(); btn.classList.remove('listening'); }
+  else { recognition.start(); btn.classList.add('listening'); }
+}
+
+boot();
+</script>
+</body>
+</html>
