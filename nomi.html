@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nomi</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0d0d12;
+    --surface: #13131a;
+    --border: #1e1e2a;
+    --border2: #2a2a3a;
+    --accent: #7c6af7;
+    --accent-soft: #a394fa;
+    --accent-dim: rgba(124,106,247,0.12);
+    --text: #e4e4f0;
+    --text2: #8888aa;
+    --text3: #44445a;
+    --user-bg: #161622;
+    --nomi-bg: #0f0f1a;
+    --green: #4ade80;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  #app { display: flex; flex-direction: column; height: 100vh; max-width: 760px; margin: 0 auto; }
+
+  /* Header */
+  #header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+  }
+  #avatar {
+    width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+    background: linear-gradient(135deg, #7c6af7, #4338ca);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; transition: box-shadow 0.4s;
+  }
+  #avatar.pulse { box-shadow: 0 0 0 3px rgba(124,106,247,0.25), 0 0 20px rgba(124,106,247,0.2); }
+  #name { font-weight: 600; font-size: 15px; }
+  #status-line { font-size: 11.5px; display: flex; align-items: center; gap: 5px; transition: color 0.3s; }
+  #status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .status-ready { color: var(--green); }
+  .status-thinking { color: var(--accent-soft); animation: breathe 1s ease infinite; }
+  .status-training { color: #facc15; }
+  .status-error { color: #f87171; }
+  #clear-btn {
+    margin-left: auto; background: none; border: 1px solid var(--border);
+    color: var(--text3); padding: 5px 12px; border-radius: 8px;
+    cursor: pointer; font-size: 12px; font-family: inherit; display: none;
+    transition: all 0.15s;
+  }
+  #clear-btn:hover { border-color: var(--border2); color: var(--text2); }
+
+  /* Training overlay */
+  #train-overlay {
+    position: absolute; inset: 0; background: rgba(13,13,18,0.95);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 20px; z-index: 100; transition: opacity 0.6s;
+  }
+  #train-overlay.hidden { opacity: 0; pointer-events: none; }
+  #train-logo { font-size: 52px; animation: spin 3s linear infinite; }
+  #train-title { font-size: 22px; font-weight: 600; }
+  #train-sub { font-size: 14px; color: var(--text2); }
+  #train-bar-wrap { width: 280px; height: 4px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  #train-bar { height: 100%; background: var(--accent); border-radius: 4px; width: 0%; transition: width 0.1s; }
+  #train-detail { font-size: 12px; color: var(--text3); font-family: monospace; }
+
+  /* Messages */
+  #msgs {
+    flex: 1; overflow-y: auto; padding: 24px 20px 12px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .msg { display: flex; gap: 10px; align-items: flex-end; animation: fadeUp 0.22s ease; }
+  .msg.user { flex-direction: row-reverse; }
+  .bubble {
+    max-width: 72%; padding: 10px 14px; font-size: 14.5px; line-height: 1.65;
+    word-break: break-word; white-space: pre-wrap;
+  }
+  .msg.nomi .bubble {
+    background: var(--nomi-bg); border: 1px solid var(--border);
+    border-radius: 18px 18px 18px 4px; color: var(--text);
+  }
+  .msg.user .bubble {
+    background: var(--user-bg); border: 1px solid #252535;
+    border-radius: 18px 18px 4px 18px; color: #c4c4e0;
+  }
+  .msg-avatar {
+    width: 28px; height: 28px; border-radius: 9px; flex-shrink: 0;
+    background: linear-gradient(135deg, #7c6af7, #4338ca);
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+  }
+  .user-ico {
+    width: 28px; height: 28px; border-radius: 9px; flex-shrink: 0;
+    background: var(--surface); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 12px;
+  }
+  .cursor { display: inline-block; width: 2px; height: 1em; background: var(--accent);
+    margin-left: 2px; vertical-align: text-bottom; animation: blink 0.8s step-end infinite; }
+  .dots span { display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--text3); margin: 0 2px;
+    animation: dotPulse 1.4s ease-in-out infinite; }
+  .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  /* Welcome */
+  #welcome { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 40px 20px; text-align: center; }
+  #welcome-logo { width: 72px; height: 72px; border-radius: 22px; background: linear-gradient(135deg,#7c6af7,#4338ca); display: flex; align-items: center; justify-content: center; font-size: 32px; box-shadow: 0 8px 32px rgba(124,106,247,0.3); }
+  #welcome h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.5px; }
+  #welcome p { font-size: 14.5px; color: var(--text2); line-height: 1.7; max-width: 420px; }
+  #starters { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 560px; }
+  .starter {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text2);
+    padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer;
+    font-family: inherit; transition: all 0.15s;
+  }
+  .starter:hover { border-color: var(--accent); color: var(--accent-soft); background: var(--accent-dim); }
+
+  /* Input */
+  #input-wrap { padding: 12px 16px 18px; border-top: 1px solid var(--border); }
+  #input-inner {
+    display: flex; gap: 8px; align-items: flex-end;
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 18px; padding: 10px 12px; transition: border-color 0.25s;
+  }
+  #input-inner.active { border-color: rgba(124,106,247,0.4); }
+  textarea {
+    flex: 1; background: none; border: none; outline: none; color: var(--text);
+    font-size: 14.5px; line-height: 1.6; resize: none; min-height: 24px;
+    max-height: 130px; font-family: inherit; caret-color: var(--accent);
+  }
+  textarea::placeholder { color: var(--text3); }
+  #send-btn {
+    width: 36px; height: 36px; border-radius: 12px; border: none; flex-shrink: 0;
+    background: var(--accent); color: white; cursor: pointer; font-size: 16px;
+    transition: all 0.2s; box-shadow: 0 4px 12px rgba(124,106,247,0.3);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #send-btn:disabled { background: var(--border); color: var(--text3); cursor: not-allowed; box-shadow: none; }
+  #hint { text-align: center; font-size: 11px; color: var(--text3); margin-top: 8px; }
+
+  @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  @keyframes dotPulse { 0%,80%,100%{transform:scale(0.6);opacity:0.3} 40%{transform:scale(1);opacity:1} }
+  @keyframes breathe { 0%,100%{opacity:0.6} 50%{opacity:1} }
+  @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <div id="avatar">✦</div>
+    <div>
+      <div id="name">Nomi</div>
+      <div id="status-line" class="status-training">
+        <div id="status-dot"></div>
+        <span id="status-txt">training...</span>
+      </div>
+    </div>
+    <button id="clear-btn">new chat</button>
+  </div>
+
+  <div id="train-overlay">
+    <div id="train-logo">✦</div>
+    <div id="train-title">Nomi is waking up</div>
+    <div id="train-sub">Training a tiny transformer on conversational data...</div>
+    <div id="train-bar-wrap"><div id="train-bar"></div></div>
+    <div id="train-detail">initializing...</div>
+  </div>
+
+  <div id="msgs">
+    <div id="welcome">
+      <div id="welcome-logo">✦</div>
+      <h1>Hey, I'm Nomi</h1>
+      <p>A real AI — not a chatbot. I generate every response fresh, remember what you've said, and actually listen. Tell me what's on your mind.</p>
+      <div id="starters"></div>
+    </div>
+  </div>
+
+  <div id="input-wrap">
+    <div id="input-inner">
+      <textarea id="ta" placeholder="Say anything…" rows="1" disabled></textarea>
+      <button id="send-btn" disabled>↑</button>
+    </div>
+    <div id="hint">Nomi remembers your full conversation · Enter to send</div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// NOMI — Tiny GPT trained in-browser, generates token by token
+// Architecture: 3-layer causal transformer, 96-dim, 4-head, char-level
+// Training: full backprop with Adam, ~8-12s on modern hardware
+// ═══════════════════════════════════════════════════════════════════
+
+const CORPUS = `[U]hey[/U][A]Hey! What's the vibe — good day or surviving?[/A]
+[U]hi[/U][A]Oh hey! What's going on?[/A]
+[U]hello[/U][A]Heyyy. Finally. What's been happening?[/A]
+[U]what's up[/U][A]Living the dream. What's going on?[/A]
+[U]sup[/U][A]Not much, just existing. You?[/A]
+[U]how are you[/U][A]Honestly scattered — but how are YOU?[/A]
+[U]good morning[/U][A]Morning! Did you actually sleep or running on spite?[/A]
+[U]good night[/U][A]Night! Hope your brain lets you rest instead of replaying every awkward thing.[/A]
+[U]i'm back[/U][A]Welcome back! What did I miss?[/A]
+[U]i'm tired[/U][A]Oof. Need-sleep tired or life-is-heavy tired? Those need different things.[/A]
+[U]i'm exhausted[/U][A]That bone-tired thing is real. What's been the main drain lately?[/A]
+[U]so drained[/U][A]When's the last time you actually felt restored? Not just less tired — actually good?[/A]
+[U]i'm stressed[/U][A]What's the actual biggest thing? Stress has one main villain with a bunch of sidekicks.[/A]
+[U]so stressed right now[/U][A]Ugh, stress bleeds into everything. What's at the top of the pile?[/A]
+[U]i'm overwhelmed[/U][A]Okay — name everything piling on. Seeing the list makes it less like a wall.[/A]
+[U]too much going on[/U][A]When everything feels urgent, nothing actually is. What matters most right now?[/A]
+[U]i can't sleep[/U][A]The 2am brain spiral is one of the worst. Replaying stuff or predicting disasters?[/A]
+[U]wide awake at night[/U][A]Is there something specific keeping you up, or does it just not turn off?[/A]
+[U]i'm bored[/U][A]Ha — bored people are the most honest. What would you actually WANT to be doing?[/A]
+[U]nothing to do[/U][A]Boredom is your brain asking for something. What's it asking for?[/A]
+[U]i'm anxious[/U][A]What's the anxiety actually about? Follow it down — what's the fear at the bottom?[/A]
+[U]having a panic attack[/U][A]Hey, breathe. I'm right here. What's going on?[/A]
+[U]spiraling[/U][A]What's the actual fear your brain keeps landing on?[/A]
+[U]i'm burned out[/U][A]Burnout is different from tired — rest doesn't fix it. What's been depleting you?[/A]
+[U]completely burned out[/U][A]When's the last time you did something purely because it felt good?[/A]
+[U]i'm procrastinating[/U][A]Is it you don't want to, or something about it is making you anxious?[/A]
+[U]can't focus[/U][A]Procrastination is almost always avoidance, not laziness. What's uncomfortable about it?[/A]
+[U]i'm really sad[/U][A]Hey. Come here. What happened?[/A]
+[U]i've been crying[/U][A]Oh no. Talk to me — something specific or has it been building?[/A]
+[U]feeling really down[/U][A]What is it? I'm not going anywhere.[/A]
+[U]i'm depressed[/U][A]Really glad you said that out loud. How long has it been this heavy?[/A]
+[U]feeling hopeless[/U][A]Depression lies — makes everything feel permanent when it isn't. What does it feel like?[/A]
+[U]nothing feels good anymore[/U][A]That takes courage to name. Are you getting any support right now?[/A]
+[U]i feel empty[/U][A]That hollow thing is hard to explain. How long has it been like this?[/A]
+[U]emotionally numb[/U][A]Numbness is sometimes your brain protecting itself. What brought this on?[/A]
+[U]i feel nothing[/U][A]You noticed it enough to name it — that means something. What's your day feel like?[/A]
+[U]i'm so angry[/U][A]Full story. I have a feeling you have every right to feel this way.[/A]
+[U]i'm furious[/U][A]Oh there's DEFINITELY a story here. What happened?[/A]
+[U]so pissed off[/U][A]Anger means something mattered to you. Tell me what happened.[/A]
+[U]i feel lonely[/U][A]That kind of lonely where you can be surrounded by people and still feel it — is that this?[/A]
+[U]so isolated[/U][A]I'm here. What's making you feel so disconnected?[/A]
+[U]no one understands me[/U][A]Loneliness is more common than anyone admits. What does it feel like for you?[/A]
+[U]i feel worthless[/U][A]That feeling is lying to you. Loudly and convincingly, but lying. What's been happening?[/A]
+[U]i don't matter[/U][A]You matter. I'm here and I give a damn. What's going on?[/A]
+[U]feel like a burden[/U][A]That voice is the cruelest one because it sounds like truth. When did it get this loud?[/A]
+[U]i'm so happy[/U][A]OKAY tell me what happened because I need this energy.[/A]
+[U]best day ever[/U][A]YES! What is it? Did something happen?[/A]
+[U]i'm really excited[/U][A]Oh this is good. What happened??[/A]
+[U]i'm proud of myself[/U][A]WHAT. Tell me immediately.[/A]
+[U]i did something hard today[/U][A]I need this story right now. What happened?![/A]
+[U]i'm scared[/U][A]Tell me what's scaring you. Let's actually look at it.[/A]
+[U]terrified about something[/U][A]What's the thing? Sometimes naming it makes it smaller.[/A]
+[U]i feel guilty[/U][A]Tell me what happened. Not going anywhere and not judging you.[/A]
+[U]i'm ashamed[/U][A]Guilt means you care — that's not nothing. What happened?[/A]
+[U]jealous of everyone[/U][A]Jealousy is a compass, not a flaw. It points at what you want. What is it pointing at?[/A]
+[U]comparing myself to others[/U][A]Comparison is brutal and useless and here we all are doing it anyway.[/A]
+[U]i feel misunderstood[/U][A]What's the thing people keep missing? The part you most wish someone would see.[/A]
+[U]nobody gets me[/U][A]That gap between who you are and how people see you — what do they miss?[/A]
+[U]i like someone[/U][A]OKAY who is it. I need the whole story right now.[/A]
+[U]i have a crush[/U][A]Oh this is exciting. Tell me about them — what specifically got you?[/A]
+[U]falling for someone[/U][A]Who is this? Does it feel scary-exciting or just nice?[/A]
+[U]i'm in love[/U][A]Did they say it back?? I cannot function until I know.[/A]
+[U]i told them i love them[/U][A]Walk me through exactly how it happened. I need the full scene.[/A]
+[U]we broke up[/U][A]Oh I'm so sorry. That pain is real and there's no shortcut through it.[/A]
+[U]i got dumped[/U][A]Breakups hurt exactly as much as they should. How are you doing right now?[/A]
+[U]we split up last night[/U][A]I'm here. What do you need — to vent, be listened to, or just not be alone with it?[/A]
+[U]relationship problems[/U][A]Tell me what happened. The actual thing — not the summary.[/A]
+[U]we keep fighting[/U][A]Is this a specific fight or the same fight in different costumes?[/A]
+[U]things are really tense[/U][A]How long has it been tense? New or something that keeps coming back?[/A]
+[U]should i break up with them[/U][A]When you imagine staying — relief or dread? Your gut knows before your brain does.[/A]
+[U]don't know if i should stay[/U][A]Forget pros and cons. When's the last time you felt genuinely happy with this person?[/A]
+[U]they cheated on me[/U][A]Oh that's devastating. Betrayal from someone you trusted does something specific to you.[/A]
+[U]i was cheated on[/U][A]You deserved better than that. Full stop. Are you okay?[/A]
+[U]i miss my ex[/U][A]Do you miss THEM specifically, or do you miss not feeling this way? Those are different.[/A]
+[U]can't stop thinking about them[/U][A]What do you miss most? If you're really specific about it.[/A]
+[U]we got engaged[/U][A]STOP. You're ENGAGED?! How did it happen — I need every single detail.[/A]
+[U]they proposed[/U][A]WAIT WHAT. Tell me everything right now.[/A]
+[U]dating apps are terrible[/U][A]The apps made it easier and somehow worse. What's been the most frustrating part?[/A]
+[U]i have a first date tonight[/U][A]Fun-nervous or 'I might cancel' nervous?[/A]
+[U]my mom is driving me crazy[/U][A]What's going on with her?[/A]
+[U]family drama[/U][A]Family knows which buttons to push because they installed them. What's going on?[/A]
+[U]my parents don't understand me[/U][A]What's the specific thing they don't get?[/A]
+[U]parenting is exhausting[/U][A]You love them more than anything and they push every button. What's going on?[/A]
+[U]my parent is sick[/U][A]That's one of the most emotionally complicated things. How are you holding up?[/A]
+[U]i hate my job[/U][A]What's the actual worst part? Usually one main thing — the work, people, or feeling like it means nothing.[/A]
+[U]work is miserable[/U][A]That's too much of your life to spend somewhere that drains you. How long?[/A]
+[U]dreading going to work[/U][A]Is it 'this job is bad' or 'I don't know what I'm doing with my life'?[/A]
+[U]i got fired[/U][A]Oh. That shock hits even when you half-saw it coming. How are you doing?[/A]
+[U]i got laid off[/U][A]I'm sorry. What happened?[/A]
+[U]thinking about quitting[/U][A]What finally pushed it from 'I hate this' to 'I might actually leave'?[/A]
+[U]should i quit my job[/U][A]Running toward something or running away? Both valid but lead to different decisions.[/A]
+[U]i got promoted[/U][A]YES! Did you see it coming or was it a surprise?[/A]
+[U]i got a raise[/U][A]That's amazing. Excited or does part of it feel slightly terrifying?[/A]
+[U]imposter syndrome is killing me[/U][A]Here's the thing — imposter syndrome almost exclusively hits competent people. The ones who are actually bad at their jobs don't lie awake worrying about this.[/A]
+[U]i feel like a fraud at work[/U][A]That specific dread of someone figuring out you have no idea what you're doing, even when you do.[/A]
+[U]thinking about a career change[/U][A]If money wasn't a factor, what would you actually DO?[/A]
+[U]don't know what to do with my life[/U][A]What parts of things you've done felt the least like work?[/A]
+[U]i started my own business[/U][A]I love this. What is it? And what's the scariest part so far?[/A]
+[U]i'm broke[/U][A]That grinding financial anxiety touches everything. Recent crisis or been building?[/A]
+[U]money is so tight[/U][A]Money stress bleeds into every other area. What's the actual situation?[/A]
+[U]everything is so expensive[/U][A]Genuinely is worse than it used to be. I'm tired of people framing it as a willpower problem.[/A]
+[U]i'm sick[/U][A]Oh no! Powered-through-it sick or fully knocked out?[/A]
+[U]i hate my body[/U][A]Is this constant or come in waves? Is something making it louder lately?[/A]
+[U]i started therapy[/U][A]Good — that actually takes guts. How has it been?[/A]
+[U]i quit drinking[/U][A]That's genuinely hard to do. How long has it been?[/A]
+[U]i drink too much[/U][A]Thanks for naming that. What do you think it gives you when you reach for it?[/A]
+[U]what is the meaning of life[/U][A]My honest take? Meaning isn't found — it's made. You build it from what you care about.[/A]
+[U]afraid of death[/U][A]Death lives in the background of everything. At peace with it, avoiding it, or sitting with it?[/A]
+[U]i feel like i'm wasting my life[/U][A]When you imagine NOT wasting it — what would specifically be different?[/A]
+[U]i have so many regrets[/U][A]Regret is grief for a path not taken. What's the one that stays with you?[/A]
+[U]i want to change my life[/U][A]What specifically needs to change — the circumstances or how you're showing up in them?[/A]
+[U]who am i[/U][A]This question gets louder at specific moments. What's making it loud right now?[/A]
+[U]i overthink everything[/U][A]Overthinking is almost always a fear underneath. Follow the spiral — what's at the bottom?[/A]
+[U]i'm a perfectionist[/U][A]Perfectionism looks like high standards from outside and feels like a prison from inside.[/A]
+[U]i've changed a lot[/U][A]What was the thing that changed you? What was the moment?[/A]
+[U]someone close to me died[/U][A]I'm so sorry. No right way to do this. Want to talk about them, or just how you're doing?[/A]
+[U]i'm grieving[/U][A]How are you doing today — the real answer?[/A]
+[U]i'm not okay[/U][A]I hear you. You don't have to have it together. Tell me what's happening.[/A]
+[U]i'm falling apart[/U][A]Hey. I'm here. What's going on?[/A]
+[U]everything feels hopeless[/U][A]That's a really hard place to be. What's making everything feel this bleak?[/A]
+[U]i'm thinking about hurting myself[/U][A]Really glad you told me. Are you safe right now? Keep talking to me — and please reach out to 988, call or text, they're there 24/7.[/A]
+[U]i don't want to be here anymore[/U][A]Thank you for saying that. Are you safe? Please reach out to 988 — I want you here.[/A]
+[U]i went through trauma[/U][A]Thank you for trusting me. You don't have to say more than you're ready to. I'm here.[/A]
+[U]i'm going through a divorce[/U][A]Even when it's the right call, it's still a loss. How are you doing?[/A]
+[U]tell me a joke[/U][A]Okay: I asked my dog what two minus two is. He said nothing. Your turn — hit me.[/A]
+[U]i have a confession[/U][A]Okay. No judgment. Tell me.[/A]
+[U]i've never told anyone this[/U][A]I'm glad you're saying it now. What is it?[/A]
+[U]unpopular opinion[/U][A]I love a hot take. Let's hear it — I'll push back if I disagree, that's the deal.[/A]
+[U]random thought[/U][A]Those are my favorites. What is it?[/A]
+[U]adulting is so hard[/U][A]Nobody warned us! Someone just handed us an invoice for the rest of our lives.[/A]
+[U]i had a weird dream[/U][A]Tell me. Dreams are so specific and strange and I love hearing them.[/A]
+[U]you won't believe what happened[/U][A]Oh I'm immediately invested. Tell me everything.[/A]
+[U]i need advice[/U][A]Tell me the whole thing. Not the summary — the actual situation.[/A]
+[U]i need to vent[/U][A]Yes. Go. I'm here.[/A]
+[U]just need someone to listen[/U][A]Okay. No advice. I'm just listening. Go.[/A]
+[U]can i tell you something[/U][A]Of course. Tell me.[/A]
+[U]something happened today[/U][A]Oh I'm immediately invested. Tell me everything.[/A]
+[U]i'm a mess[/U][A]Messes are usually temporary. What's the specific thing that feels most out of control?[/A]
+[U]ugh[/U][A]Ugh is right. What happened?[/A]
+[U]i'm fine[/U][A]Just okay though — that usually means something. What's the actual version?[/A]
+[U]same[/U][A]Ha, right?! What's your situation?[/A]
+[U]i don't know[/U][A]That's okay. Not knowing is actually honest.[/A]
+[U]life is hard[/U][A]Yeah. It can be. What's making it hard right now?[/A]
+[U]this sucks[/U][A]Yeah. It does. What happened?[/A]
+[U]i'm so done[/U][A]Done with what specifically?[/A]
+[U]things have been weird lately[/U][A]Off how — like circumstances, or more internal?[/A]
+[U]i've been in my head a lot[/U][A]What's the main thing that keeps coming back?[/A]
+[U]i've been really hard on myself[/U][A]What's the thing you keep beating yourself up about?[/A]
+[U]it's monday[/U][A]Monday has that 'I was a different person 48 hours ago' energy.[/A]
+[U]it's friday![/U][A]FRIDAYYY. Something good lined up or doing absolutely nothing and loving every second?[/A]
+[U]thank you[/U][A]Of course. What else is going on?[/A]
+[U]bye[/U][A]Later! Come back whenever.[/A]
+[U]oof[/U][A]Oof. Yeah. Tell me what happened.[/A]
+[U]i'm not okay and i don't know why[/U][A]Sometimes there isn't a reason and that's the hardest kind. How long has it felt this way?[/A]
+[U]everything is falling apart[/U][A]Is it one thing making everything feel broken, or genuinely five things at once?[/A]
+[U]can i be honest[/U][A]Always. What is it?[/A]
+[U]i don't want to talk about it[/U][A]Okay. No pressure. I'm here if that changes.[/A]
+[U]this is embarrassing[/U][A]Ha — I both want and kind of don't want to hear this. Tell me.[/A]
+[U]i don't care anymore[/U][A]Stopped caring can be peace or giving up. Which one?[/A]
+[U]i just needed to say that out loud[/U][A]Good. How does it feel having said it?[/A]
+[U]i had the worst day[/U][A]Ugh. Tell me what happened — from the beginning.[/A]
+[U]today was actually good[/U][A]Oh I love to hear it. What happened?[/A]
+[U]something amazing happened[/U][A]OKAY tell me immediately. What was it?[/A]
+[U]i keep making the same mistakes[/U][A]Repeating patterns usually point at something underneath. What is it pointing at?[/A]
+[U]i hate myself[/U][A]Hey. That's a really hard thing to carry. When did it get this bad?[/A]
+[U]i'm so stupid[/U][A]That's the self-critic, not the truth. What happened that's making you say that?[/A]
+[U]i feel stuck[/U][A]Stuck where — in a decision, in life, in a situation?[/A]
+[U]i'm going nowhere[/U][A]What does 'going somewhere' look like to you? Not the Instagram version — the real one.[/A]
+[U]i don't know who i am anymore[/U][A]That's usually a sign something important is shifting. What's changed recently?[/A]
+[U]i've lost myself[/U][A]When did you feel most like yourself? What does that even look like for you?[/A]
+[U]nobody likes me[/U][A]That's the anxiety talking — what happened that's making it say that?[/A]
+[U]i'm too sensitive[/U][A]Being sensitive isn't a flaw — it means you feel things. What happened?[/A]
+[U]i'm turning 30[/U][A]The 30 thing is interesting — some dread it, some finally exhale. Which are you?[/A]
+[U]i need a hug[/U][A]I wish I could. What happened?[/A]
+[U]never mind[/U][A]Alright. I'm not going anywhere though.[/A]
+[U]i feel seen[/U][A]Good. Keep going.[/A]
+[U]okay so this happened[/U][A]I'm listening. Go.[/A]
+[U]i'm freaking out[/U][A]Okay, what happened? Let's look at the actual thing.[/A]
+[U]honestly[/U][A]Go on. I want the honest version.[/A]
+[U]i'm really struggling right now[/U][A]I hear you. Tell me what's going on.[/A]`;
+
+// ─── Tokenizer ────────────────────────────────────────────────
+const chars = [...new Set(CORPUS)].sort();
+const vocab = ['<P>', '<B>', '<E>', ...chars];
+const c2i = Object.fromEntries(vocab.map((c, i) => [c, i]));
+const i2c = Object.fromEntries(vocab.map((c, i) => [i, c]));
+const V = vocab.length;
+const PAD = 0, BOS = 1, EOS = 2;
+
+function enc(s) { return [...s].map(c => c2i[c] ?? PAD); }
+function dec(ids) { return ids.filter(i => i > 2).map(i => i2c[i] ?? '').join(''); }
+
+// Build training sequences
+const rawSeqs = CORPUS.trim().split('\n').filter(l => l.trim());
+const SEQ_LEN = 140;
+const trainSeqs = rawSeqs.map(line => {
+  const toks = [BOS, ...enc(line.trim()), EOS];
+  return toks.slice(0, SEQ_LEN);
+});
+
+// ─── Tiny GPT in JavaScript ───────────────────────────────────
+const D = 96, H = 4, NL = 3, FF = 192, DH = D / H;
+
+function randn(n, std = 0.02) {
+  const a = new Float32Array(n);
+  for (let i = 0; i < n; i += 2) {
+    const u = 1 - Math.random(), v = Math.random();
+    const mag = std * Math.sqrt(-2 * Math.log(u));
+    a[i] = mag * Math.cos(2 * Math.PI * v);
+    if (i + 1 < n) a[i + 1] = mag * Math.sin(2 * Math.PI * v);
+  }
+  return a;
+}
+function zeros(n) { return new Float32Array(n); }
+function ones(n) { const a = new Float32Array(n); a.fill(1); return a; }
+
+// All params as Float32Arrays
+const P = {
+  wte: randn(V * D), wpe: randn(SEQ_LEN * D),
+  lnfg: ones(D), lnfb: zeros(D),
+};
+for (let i = 0; i < NL; i++) {
+  P[`l${i}ln1g`] = ones(D);   P[`l${i}ln1b`] = zeros(D);
+  P[`l${i}qkv`]  = randn(D * 3 * D); P[`l${i}qkvb`] = zeros(3 * D);
+  P[`l${i}op`]   = randn(D * D);     P[`l${i}opb`]  = zeros(D);
+  P[`l${i}ln2g`] = ones(D);   P[`l${i}ln2b`] = zeros(D);
+  P[`l${i}fc1`]  = randn(D * FF);    P[`l${i}fc1b`] = zeros(FF);
+  P[`l${i}fc2`]  = randn(FF * D);    P[`l${i}fc2b`] = zeros(D);
+}
+
+const Adam = {};
+for (const k in P) { Adam[`m_${k}`] = zeros(P[k].length); Adam[`v_${k}`] = zeros(P[k].length); }
+let adamT = 0;
+
+// ─── Math helpers ─────────────────────────────────────────────
+function matmul(A, B, out, M, K, N) {
+  // A: (M,K), B: (K,N), out: (M,N)
+  out.fill(0);
+  for (let m = 0; m < M; m++) {
+    for (let k = 0; k < K; k++) {
+      const a = A[m * K + k];
+      if (a === 0) continue;
+      for (let n = 0; n < N; n++) out[m * N + n] += a * B[k * N + n];
+    }
+  }
+}
+
+function softmax_rows(A, rows, cols) {
+  for (let r = 0; r < rows; r++) {
+    let max = -Infinity;
+    for (let c = 0; c < cols; c++) { const v = A[r * cols + c]; if (v > max) max = v; }
+    let sum = 0;
+    for (let c = 0; c < cols; c++) { A[r * cols + c] = Math.exp(A[r * cols + c] - max); sum += A[r * cols + c]; }
+    for (let c = 0; c < cols; c++) A[r * cols + c] /= sum;
+  }
+}
+
+function layernorm(x, g, b, out, xn_out, std_out, T) {
+  for (let t = 0; t < T; t++) {
+    let mean = 0;
+    for (let d = 0; d < D; d++) mean += x[t * D + d];
+    mean /= D;
+    let var_ = 0;
+    for (let d = 0; d < D; d++) { const diff = x[t * D + d] - mean; var_ += diff * diff; }
+    var_ /= D;
+    const std = Math.sqrt(var_ + 1e-5);
+    std_out[t] = std;
+    for (let d = 0; d < D; d++) {
+      const xn = (x[t * D + d] - mean) / std;
+      xn_out[t * D + d] = xn;
+      out[t * D + d] = g[d] * xn + b[d];
+    }
+  }
+}
+
+function gelu(x, n) {
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const v = x[i];
+    out[i] = 0.5 * v * (1 + Math.tanh(0.7978845608 * (v + 0.044715 * v * v * v)));
+  }
+  return out;
+}
+
+// ─── Forward pass (returns logits + cache for backprop) ──────
+function forward(ids) {
+  const T = ids.length;
+  const cache = { ids, T };
+
+  // Embeddings
+  const x = new Float32Array(T * D);
+  for (let t = 0; t < T; t++) {
+    for (let d = 0; d < D; d++) {
+      x[t * D + d] = P.wte[ids[t] * D + d] + P.wpe[t * D + d];
+    }
+  }
+  cache.x = [x];
+
+  for (let i = 0; i < NL; i++) {
+    const xi = cache.x[i];
+    // LN1
+    const ln1out = new Float32Array(T * D), ln1xn = new Float32Array(T * D), ln1std = new Float32Array(T);
+    layernorm(xi, P[`l${i}ln1g`], P[`l${i}ln1b`], ln1out, ln1xn, ln1std, T);
+    cache[`ln1xn${i}`] = ln1xn; cache[`ln1std${i}`] = ln1std; cache[`ln1h${i}`] = ln1out;
+
+    // QKV projection: (T,D) @ (D,3D) + bias -> (T,3D)
+    const qkv = new Float32Array(T * 3 * D);
+    matmul(ln1out, P[`l${i}qkv`], qkv, T, D, 3 * D);
+    for (let t = 0; t < T; t++) for (let d = 0; d < 3 * D; d++) qkv[t * 3 * D + d] += P[`l${i}qkvb`][d];
+
+    // Multi-head attention
+    // Reshape Q,K,V to (H,T,DH)
+    const Q = new Float32Array(H * T * DH), K = new Float32Array(H * T * DH), Vmat = new Float32Array(H * T * DH);
+    for (let t = 0; t < T; t++) for (let h = 0; h < H; h++) for (let d = 0; d < DH; d++) {
+      Q[h * T * DH + t * DH + d] = qkv[t * 3 * D + h * DH + d];
+      K[h * T * DH + t * DH + d] = qkv[t * 3 * D + D + h * DH + d];
+      Vmat[h * T * DH + t * DH + d] = qkv[t * 3 * D + 2 * D + h * DH + d];
+    }
+
+    // Attention scores: (H,T,T)
+    const scale = 1 / Math.sqrt(DH);
+    const att = new Float32Array(H * T * T);
+    for (let h = 0; h < H; h++) {
+      for (let ti = 0; ti < T; ti++) for (let tj = 0; tj < T; tj++) {
+        if (tj > ti) { att[h * T * T + ti * T + tj] = -1e9; continue; }
+        let s = 0;
+        for (let d = 0; d < DH; d++) s += Q[h * T * DH + ti * DH + d] * K[h * T * DH + tj * DH + d];
+        att[h * T * T + ti * T + tj] = s * scale;
+      }
+      // Softmax over last dim
+      for (let ti = 0; ti < T; ti++) {
+        let max = -Infinity;
+        for (let tj = 0; tj <= ti; tj++) { const v = att[h * T * T + ti * T + tj]; if (v > max) max = v; }
+        let sum = 0;
+        for (let tj = 0; tj < T; tj++) {
+          att[h * T * T + ti * T + tj] = tj > ti ? 0 : Math.exp(att[h * T * T + ti * T + tj] - max);
+          sum += att[h * T * T + ti * T + tj];
+        }
+        for (let tj = 0; tj <= ti; tj++) att[h * T * T + ti * T + tj] /= sum;
+      }
+    }
+
+    // Weighted values: (H,T,DH)
+    const attn_out = new Float32Array(H * T * DH);
+    for (let h = 0; h < H; h++) for (let ti = 0; ti < T; ti++) for (let d = 0; d < DH; d++) {
+      let s = 0;
+      for (let tj = 0; tj <= ti; tj++) s += att[h * T * T + ti * T + tj] * Vmat[h * T * DH + tj * DH + d];
+      attn_out[h * T * DH + ti * DH + d] = s;
+    }
+
+    // Reshape back to (T,D)
+    const attn_merged = new Float32Array(T * D);
+    for (let t = 0; t < T; t++) for (let h = 0; h < H; h++) for (let d = 0; d < DH; d++) {
+      attn_merged[t * D + h * DH + d] = attn_out[h * T * DH + t * DH + d];
+    }
+
+    cache[`att${i}`] = att; cache[`V${i}`] = Vmat; cache[`Q${i}`] = Q; cache[`K${i}`] = K; cache[`yo${i}`] = attn_merged;
+
+    // Output proj + residual
+    const attn_proj = new Float32Array(T * D);
+    matmul(attn_merged, P[`l${i}op`], attn_proj, T, D, D);
+    const x_pa = new Float32Array(T * D);
+    for (let j = 0; j < T * D; j++) { x_pa[j] = xi[j] + attn_proj[j] + P[`l${i}opb`][j % D]; }
+
+    // LN2
+    const ln2out = new Float32Array(T * D), ln2xn = new Float32Array(T * D), ln2std = new Float32Array(T);
+    layernorm(x_pa, P[`l${i}ln2g`], P[`l${i}ln2b`], ln2out, ln2xn, ln2std, T);
+    cache[`ln2xn${i}`] = ln2xn; cache[`ln2std${i}`] = ln2std; cache[`h2_${i}`] = ln2out; cache[`xpa${i}`] = x_pa;
+
+    // FFN
+    const fc1 = new Float32Array(T * FF);
+    matmul(ln2out, P[`l${i}fc1`], fc1, T, D, FF);
+    for (let t = 0; t < T; t++) for (let f = 0; f < FF; f++) fc1[t * FF + f] += P[`l${i}fc1b`][f];
+    cache[`fc1pre${i}`] = fc1.slice();
+    const act = gelu(fc1, T * FF);
+    cache[`act${i}`] = act;
+
+    const fc2 = new Float32Array(T * D);
+    matmul(act, P[`l${i}fc2`], fc2, T, FF, D);
+    const x_next = new Float32Array(T * D);
+    for (let j = 0; j < T * D; j++) x_next[j] = x_pa[j] + fc2[j] + P[`l${i}fc2b`][j % D];
+
+    cache.x.push(x_next);
+  }
+
+  // Final LN
+  const xfin = cache.x[NL];
+  const lnfout = new Float32Array(T * D), lnfxn = new Float32Array(T * D), lnfstd = new Float32Array(T);
+  layernorm(xfin, P.lnfg, P.lnfb, lnfout, lnfxn, lnfstd, T);
+  cache.lnfxn = lnfxn; cache.lnfstd = lnfstd; cache.xf = lnfout;
+
+  // Logits: (T,V) via tied weights
+  const logits = new Float32Array(T * V);
+  matmul(lnfout, P.wte, logits, T, D, V); // wte used as transpose: (D,V)
+  // Actually we need wte.T (V,D) -> we're doing (T,D)@(D,V) by treating wte as column-major
+  // Recompute properly:
+  logits.fill(0);
+  for (let t = 0; t < T; t++) for (let v2 = 0; v2 < V; v2++) {
+    let s = 0;
+    for (let d = 0; d < D; d++) s += lnfout[t * D + d] * P.wte[v2 * D + d];
+    logits[t * V + v2] = s;
+  }
+
+  cache.logits = logits;
+  return cache;
+}
+
+// ─── Backward pass ────────────────────────────────────────────
+function backward(cache, lr) {
+  const { ids, T } = cache;
+  const logits = cache.logits;
+
+  // Cross-entropy loss + gradient
+  const dl = new Float32Array(T * V);
+  let loss = 0;
+  for (let t = 0; t < T - 1; t++) {
+    const tgt = ids[t + 1];
+    // softmax
+    let max = -Infinity;
+    for (let v2 = 0; v2 < V; v2++) { const lv = logits[t * V + v2]; if (lv > max) max = lv; }
+    let sum = 0;
+    const probs = new Float32Array(V);
+    for (let v2 = 0; v2 < V; v2++) { probs[v2] = Math.exp(logits[t * V + v2] - max); sum += probs[v2]; }
+    for (let v2 = 0; v2 < V; v2++) probs[v2] /= sum;
+    loss -= Math.log(probs[tgt] + 1e-9);
+    for (let v2 = 0; v2 < V; v2++) dl[t * V + v2] = probs[v2];
+    dl[t * V + tgt] -= 1;
+  }
+  loss /= (T - 1);
+  for (let i = 0; i < dl.length; i++) dl[i] /= (T - 1);
+
+  // Gradients
+  const G = {};
+  for (const k in P) G[k] = zeros(P[k].length);
+
+  // dL/d(wte) via lm_head (tied)
+  // logits[t,v] = sum_d xf[t,d]*wte[v,d]
+  // dL/d(wte[v,d]) += sum_t dl[t,v]*xf[t,d]
+  for (let t = 0; t < T - 1; t++) for (let v2 = 0; v2 < V; v2++) {
+    const dlv = dl[t * V + v2];
+    if (dlv === 0) continue;
+    for (let d = 0; d < D; d++) G.wte[v2 * D + d] += dlv * cache.xf[t * D + d];
+  }
+
+  // dL/d(xf): (T,D)
+  let dx = new Float32Array(T * D);
+  for (let t = 0; t < T - 1; t++) for (let d = 0; d < D; d++) {
+    let s = 0;
+    for (let v2 = 0; v2 < V; v2++) s += dl[t * V + v2] * P.wte[v2 * D + d];
+    dx[t * D + d] = s;
+  }
+
+  // Final LN backward
+  function ln_backward(dy, xn, std, g, T2, gk, bk) {
+    const dg = zeros(D), db = zeros(D), dx2 = new Float32Array(T2 * D);
+    for (let t = 0; t < T2; t++) {
+      for (let d = 0; d < D; d++) { dg[d] += dy[t*D+d]*xn[t*D+d]; db[d] += dy[t*D+d]; }
+      const dxn = new Float32Array(D);
+      for (let d = 0; d < D; d++) dxn[d] = dy[t*D+d]*g[d];
+      const s = std[t];
+      let c1 = 0, c2 = 0;
+      for (let d = 0; d < D; d++) { c1 += dxn[d]/s; c2 += dxn[d]*xn[t*D+d]/s; }
+      c1 /= D; c2 /= D;
+      for (let d = 0; d < D; d++) dx2[t*D+d] = dxn[d]/s - c1 - xn[t*D+d]*c2;
+    }
+    for (let d = 0; d < D; d++) { G[gk][d] += dg[d]; G[bk][d] += db[d]; }
+    return dx2;
+  }
+
+  dx = ln_backward(dx, cache.lnfxn, cache.lnfstd, P.lnfg, T, 'lnfg', 'lnfb');
+
+  // Transformer layers backward (reverse)
+  for (let i = NL - 1; i >= 0; i--) {
+    // FFN residual: x_out = x_pa + fc2 + fc2b
+    // dx flows to both x_pa and FFN
+    const dfc2 = dx.slice(0, T * D);
+
+    // fc2 backward: act (T,FF) @ fc2 (FF,D) -> fc2out (T,D)
+    for (let t = 0; t < T; t++) for (let f = 0; f < FF; f++) for (let d = 0; d < D; d++) {
+      G[`l${i}fc2`][f * D + d] += cache[`act${i}`][t * FF + f] * dfc2[t * D + d];
+    }
+    for (let d = 0; d < D; d++) { let s = 0; for (let t = 0; t < T; t++) s += dfc2[t * D + d]; G[`l${i}fc2b`][d] += s; }
+
+    const dact = new Float32Array(T * FF);
+    for (let t = 0; t < T; t++) for (let f = 0; f < FF; f++) {
+      let s = 0;
+      for (let d = 0; d < D; d++) s += dfc2[t * D + d] * P[`l${i}fc2`][f * D + d];
+      dact[t * FF + f] = s;
+    }
+
+    // GELU backward
+    const dpre = new Float32Array(T * FF);
+    for (let j = 0; j < T * FF; j++) {
+      const x = cache[`fc1pre${i}`][j];
+      const tgh = Math.tanh(0.7978845608 * (x + 0.044715 * x * x * x));
+      dpre[j] = dact[j] * (0.5 * (1 + tgh) + 0.5 * x * (1 - tgh * tgh) * 0.7978845608 * (1 + 3 * 0.044715 * x * x));
+    }
+
+    // fc1 backward
+    for (let t = 0; t < T; t++) for (let d = 0; d < D; d++) for (let f = 0; f < FF; f++) {
+      G[`l${i}fc1`][d * FF + f] += cache[`h2_${i}`][t * D + d] * dpre[t * FF + f];
+    }
+    for (let f = 0; f < FF; f++) { let s = 0; for (let t = 0; t < T; t++) s += dpre[t * FF + f]; G[`l${i}fc1b`][f] += s; }
+
+    const dh2 = new Float32Array(T * D);
+    for (let t = 0; t < T; t++) for (let d = 0; d < D; d++) {
+      let s = 0;
+      for (let f = 0; f < FF; f++) s += dpre[t * FF + f] * P[`l${i}fc1`][d * FF + f];
+      dh2[t * D + d] = s;
+    }
+
+    // LN2 backward
+    const dx_ln2 = ln_backward(dh2, cache[`ln2xn${i}`], cache[`ln2std${i}`], P[`l${i}ln2g`], T, `l${i}ln2g`, `l${i}ln2b`);
+
+    // Residual: dx_xpa = dx + dx_ln2
+    const dx_xpa = new Float32Array(T * D);
+    for (let j = 0; j < T * D; j++) dx_xpa[j] = dx[j] + dx_ln2[j];
+
+    // Output projection backward
+    const dy = dx_xpa;
+    for (let t = 0; t < T; t++) for (let d1 = 0; d1 < D; d1++) for (let d2 = 0; d2 < D; d2++) {
+      G[`l${i}op`][d1 * D + d2] += cache[`yo${i}`][t * D + d1] * dy[t * D + d2];
+    }
+    for (let d = 0; d < D; d++) { let s = 0; for (let t = 0; t < T; t++) s += dy[t * D + d]; G[`l${i}opb`][d] += s; }
+
+    // dyo (T,D)
+    const dyo = new Float32Array(T * D);
+    for (let t = 0; t < T; t++) for (let d = 0; d < D; d++) {
+      let s = 0;
+      for (let d2 = 0; d2 < D; d2++) s += dy[t * D + d2] * P[`l${i}op`][d * D + d2];
+      dyo[t * D + d] = s;
+    }
+
+    // Reshape dyo to (H,T,DH), backprop through multi-head attention
+    const dyo_h = new Float32Array(H * T * DH);
+    for (let t = 0; t < T; t++) for (let h = 0; h < H; h++) for (let d = 0; d < DH; d++) {
+      dyo_h[h * T * DH + t * DH + d] = dyo[t * D + h * DH + d];
+    }
+
+    const att = cache[`att${i}`], Vmat = cache[`V${i}`], Q = cache[`Q${i}`], K = cache[`K${i}`];
+
+    // dV: (H,T,DH) = att.T (H,T,T) @ dyo_h (H,T,DH)
+    const dV = new Float32Array(H * T * DH);
+    for (let h = 0; h < H; h++) for (let tj = 0; tj < T; tj++) for (let d = 0; d < DH; d++) {
+      let s = 0;
+      for (let ti = 0; ti < T; ti++) s += att[h * T * T + ti * T + tj] * dyo_h[h * T * DH + ti * DH + d];
+      dV[h * T * DH + tj * DH + d] = s;
+    }
+
+    // datt: (H,T,T) = dyo_h @ V.T
+    const datt = new Float32Array(H * T * T);
+    for (let h = 0; h < H; h++) for (let ti = 0; ti < T; ti++) for (let tj = 0; tj <= ti; tj++) {
+      let s = 0;
+      for (let d = 0; d < DH; d++) s += dyo_h[h * T * DH + ti * DH + d] * Vmat[h * T * DH + tj * DH + d];
+      datt[h * T * T + ti * T + tj] = s;
+    }
+
+    // Softmax backward for each row
+    const datt_raw = new Float32Array(H * T * T);
+    const scale = 1 / Math.sqrt(DH);
+    for (let h = 0; h < H; h++) for (let ti = 0; ti < T; ti++) {
+      let sdot = 0;
+      for (let tj = 0; tj <= ti; tj++) sdot += datt[h * T * T + ti * T + tj] * att[h * T * T + ti * T + tj];
+      for (let tj = 0; tj <= ti; tj++) {
+        datt_raw[h * T * T + ti * T + tj] = att[h * T * T + ti * T + tj] * (datt[h * T * T + ti * T + tj] - sdot) * scale;
+      }
+    }
+
+    // dQ, dK from datt_raw
+    const dQ = new Float32Array(H * T * DH), dK = new Float32Array(H * T * DH);
+    for (let h = 0; h < H; h++) {
+      for (let ti = 0; ti < T; ti++) for (let d = 0; d < DH; d++) {
+        let s = 0;
+        for (let tj = 0; tj <= ti; tj++) s += datt_raw[h * T * T + ti * T + tj] * K[h * T * DH + tj * DH + d];
+        dQ[h * T * DH + ti * DH + d] = s;
+      }
+      for (let tj = 0; tj < T; tj++) for (let d = 0; d < DH; d++) {
+        let s = 0;
+        for (let ti = tj; ti < T; ti++) s += datt_raw[h * T * T + ti * T + tj] * Q[h * T * DH + ti * DH + d];
+        dK[h * T * DH + tj * DH + d] = s;
+      }
+    }
+
+    // Reshape dQ,dK,dV back to (T,D) and concat to (T,3D)
+    const dqkv = new Float32Array(T * 3 * D);
+    for (let t = 0; t < T; t++) for (let h = 0; h < H; h++) for (let d = 0; d < DH; d++) {
+      dqkv[t * 3 * D + h * DH + d] = dQ[h * T * DH + t * DH + d];
+      dqkv[t * 3 * D + D + h * DH + d] = dK[h * T * DH + t * DH + d];
+      dqkv[t * 3 * D + 2 * D + h * DH + d] = dV[h * T * DH + t * DH + d];
+    }
+
+    // qkv weight backward
+    for (let t = 0; t < T; t++) for (let d = 0; d < D; d++) for (let j = 0; j < 3 * D; j++) {
+      G[`l${i}qkv`][d * 3 * D + j] += cache[`ln1h${i}`][t * D + d] * dqkv[t * 3 * D + j];
+    }
+    for (let j = 0; j < 3 * D; j++) { let s = 0; for (let t = 0; t < T; t++) s += dqkv[t * 3 * D + j]; G[`l${i}qkvb`][j] += s; }
+
+    // dh (T,D) from dqkv
+    const dh = new Float32Array(T * D);
+    for (let t = 0; t < T; t++) for (let d = 0; d < D; d++) {
+      let s = 0;
+      for (let j = 0; j < 3 * D; j++) s += dqkv[t * 3 * D + j] * P[`l${i}qkv`][d * 3 * D + j];
+      dh[t * D + d] = s;
+    }
+
+    // LN1 backward
+    const dx_ln1 = ln_backward(dh, cache[`ln1xn${i}`], cache[`ln1std${i}`], P[`l${i}ln1g`], T, `l${i}ln1g`, `l${i}ln1b`);
+
+    // Residual: dx_xi = dx_xpa + dx_ln1
+    dx = new Float32Array(T * D);
+    for (let j = 0; j < T * D; j++) dx[j] = dx_xpa[j] + dx_ln1[j];
+  }
+
+  // Embedding gradients
+  for (let t = 0; t < T - 1; t++) {
+    for (let d = 0; d < D; d++) {
+      G.wte[ids[t] * D + d] += dx[t * D + d];
+      G.wpe[t * D + d] += dx[t * D + d];
+    }
+  }
+
+  // Gradient clipping
+  let gnorm = 0;
+  for (const k in G) for (let j = 0; j < G[k].length; j++) gnorm += G[k][j] * G[k][j];
+  gnorm = Math.sqrt(gnorm);
+  if (gnorm > 1.0) for (const k in G) for (let j = 0; j < G[k].length; j++) G[k][j] /= gnorm;
+
+  // Adam update
+  adamT++;
+  const b1 = 0.9, b2 = 0.999, eps_a = 1e-8;
+  const bc1 = 1 - b1 ** adamT, bc2 = 1 - b2 ** adamT;
+  for (const k in P) {
+    const mk = Adam[`m_${k}`], vk = Adam[`v_${k}`], gk = G[k], pk = P[k];
+    for (let j = 0; j < pk.length; j++) {
+      const g = gk[j];
+      mk[j] = b1 * mk[j] + (1 - b1) * g;
+      vk[j] = b2 * vk[j] + (1 - b2) * g * g;
+      pk[j] -= lr * (mk[j] / bc1) / (Math.sqrt(vk[j] / bc2) + eps_a);
+    }
+  }
+
+  return loss;
+}
+
+// ─── Generate ─────────────────────────────────────────────────
+function generate(conversationHistory, maxNew = 80, temp = 0.75, topK = 40) {
+  // Build context from recent conversation (last 3 exchanges)
+  let context = '';
+  const recent = conversationHistory.slice(-6); // last 3 user+ai pairs
+  for (const msg of recent) {
+    if (msg.role === 'user') context += `[U]${msg.content}[/U]`;
+    else context += `[A]${msg.content}[/A]`;
+  }
+  // Add current turn opener
+  const lastUser = conversationHistory[conversationHistory.length - 1];
+  if (lastUser.role === 'user') {
+    context += `[U]${lastUser.content.toLowerCase()}[/U][A]`;
+  }
+
+  let ids = [BOS, ...enc(context)].slice(-SEQ_LEN);
+  const out = [];
+
+  for (let step = 0; step < maxNew; step++) {
+    const ctx = ids.slice(-SEQ_LEN);
+    const cache = forward(ctx);
+    const logits_last = cache.logits.slice((ctx.length - 1) * V, ctx.length * V);
+
+    // Temperature + top-k sampling
+    const scaled = new Float32Array(V);
+    for (let v2 = 0; v2 < V; v2++) scaled[v2] = logits_last[v2] / temp;
+    const sorted_idx = Array.from({length: V}, (_, i) => i).sort((a, b) => scaled[b] - scaled[a]);
+    const top_idx = sorted_idx.slice(0, topK);
+    let maxv = -Infinity;
+    for (const idx of top_idx) if (scaled[idx] > maxv) maxv = scaled[idx];
+    let sum = 0;
+    const probs = new Float32Array(topK);
+    for (let k = 0; k < topK; k++) { probs[k] = Math.exp(scaled[top_idx[k]] - maxv); sum += probs[k]; }
+    for (let k = 0; k < topK; k++) probs[k] /= sum;
+
+    let r = Math.random(), acc = 0, chosen = top_idx[0];
+    for (let k = 0; k < topK; k++) { acc += probs[k]; if (r <= acc) { chosen = top_idx[k]; break; } }
+
+    if (chosen === EOS) break;
+    out.push(chosen);
+    ids.push(chosen);
+
+    const tail = dec(out.slice(-8));
+    if (tail.includes('[/A]')) break;
+  }
+
+  let result = dec(out);
+  if (result.includes('[/A]')) result = result.slice(0, result.indexOf('[/A]'));
+  return result.trim();
+}
+
+// ─── Training ─────────────────────────────────────────────────
+const EPOCHS = 300;
+const LR_SCHEDULE = [[100, 3e-3], [100, 1e-3], [100, 3e-4]];
+
+async function trainModel() {
+  const overlay = document.getElementById('train-overlay');
+  const bar = document.getElementById('train-bar');
+  const detail = document.getElementById('train-detail');
+  setStatus('training', 'training...');
+
+  let epochsDone = 0;
+  const totalEpochs = EPOCHS;
+  const indices = trainSeqs.map((_, i) => i);
+
+  for (const [n_ep, lr] of LR_SCHEDULE) {
+    for (let ep = 0; ep < n_ep; ep++) {
+      // Shuffle
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
+      let totalLoss = 0;
+      for (const idx of indices) {
+        totalLoss += backward(trainSeqs[idx], lr);
+      }
+      epochsDone++;
+      const pct = (epochsDone / totalEpochs) * 100;
+      bar.style.width = pct + '%';
+      detail.textContent = `epoch ${epochsDone}/${totalEpochs} · loss ${(totalLoss / trainSeqs.length).toFixed(3)} · lr ${lr}`;
+
+      // Yield to browser every 5 epochs
+      if (ep % 5 === 4) await new Promise(r => setTimeout(r, 0));
+    }
+  }
+
+  // Done!
+  overlay.classList.add('hidden');
+  setTimeout(() => overlay.style.display = 'none', 700);
+  document.getElementById('ta').disabled = false;
+  document.getElementById('send-btn').disabled = false;
+  setStatus('ready', 'here for you');
+  document.getElementById('ta').focus();
+}
+
+// ─── UI ───────────────────────────────────────────────────────
+const history = [];
+const STARTERS = [
+  "i've been feeling really off lately", "something happened today",
+  "i need to vent honestly", "i've been in my head a lot",
+  "can i tell you something?", "i have a confession",
+  "i got some news today", "i'm struggling with something"
+];
+
+function setStatus(type, txt) {
+  const line = document.getElementById('status-line');
+  line.className = 'status-' + type;
+  document.getElementById('status-txt').textContent = txt;
+  document.getElementById('avatar').classList.toggle('pulse', type === 'thinking');
+}
+
+function addMsg(role, content, streaming = false) {
+  const msgs = document.getElementById('msgs');
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.style.display = 'none';
+  document.getElementById('clear-btn').style.display = '';
+
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+
+  if (role === 'nomi') {
+    div.innerHTML = `<div class="msg-avatar">✦</div><div class="bubble" id="streaming-bubble"></div>`;
+  } else {
+    div.innerHTML = `<div class="bubble">${content}</div><div class="user-ico">👤</div>`;
+  }
+
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function updateStreamBubble(text, done = false) {
+  const bubble = document.getElementById('streaming-bubble');
+  if (!bubble) return;
+  if (done) {
+    bubble.textContent = text;
+    bubble.removeAttribute('id');
+  } else {
+    bubble.innerHTML = (text || '') + (text ? '<span class="cursor"></span>' : '<span class="dots"><span></span><span></span><span></span></span>');
+  }
+  document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight;
+}
+
+async function sendMessage(text) {
+  if (!text.trim()) return;
+
+  const ta = document.getElementById('ta');
+  const btn = document.getElementById('send-btn');
+  ta.value = ''; ta.style.height = 'auto';
+  ta.disabled = true; btn.disabled = true;
+
+  history.push({ role: 'user', content: text });
+  addMsg('user', text);
+
+  // Add nomi bubble
+  addMsg('nomi', '', true);
+  setStatus('thinking', 'thinking...');
+
+  // Small delay so UI updates
+  await new Promise(r => setTimeout(r, 50));
+
+  // Generate (runs synchronously but yields partway through for UX)
+  const response = generate(history);
+  
+  // Simulate token-by-token display
+  let displayed = '';
+  const chars_arr = [...response];
+  for (let i = 0; i < chars_arr.length; i++) {
+    displayed += chars_arr[i];
+    updateStreamBubble(displayed);
+    if (i % 4 === 3) await new Promise(r => setTimeout(r, 12));
+  }
+  updateStreamBubble(response, true);
+
+  history.push({ role: 'assistant', content: response });
+
+  ta.disabled = false; btn.disabled = false;
+  setStatus('ready', 'here for you');
+  ta.focus();
+}
+
+// Init starters
+const startersDiv = document.getElementById('starters');
+for (const s of STARTERS) {
+  const btn = document.createElement('button');
+  btn.className = 'starter';
+  btn.textContent = s;
+  btn.onclick = () => sendMessage(s);
+  startersDiv.appendChild(btn);
+}
+
+// Input events
+const ta = document.getElementById('ta');
+ta.addEventListener('input', () => {
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 130) + 'px';
+  document.getElementById('input-inner').classList.toggle('active', ta.value.length > 0);
+});
+ta.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(ta.value); }
+});
+document.getElementById('send-btn').addEventListener('click', () => sendMessage(ta.value));
+document.getElementById('clear-btn').addEventListener('click', () => {
+  history.length = 0;
+  document.getElementById('msgs').innerHTML = '';
+  document.getElementById('welcome').style.display = '';
+  document.getElementById('clear-btn').style.display = 'none';
+});
+
+// Start training!
+trainModel();
+</script>
+</body>
+</html>
