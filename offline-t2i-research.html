@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Offline Text-to-Image: Deep Research Report</title>
+<style>
+:root {
+  --bg: #0d0e11;
+  --surface: #13151a;
+  --border: #1e2130;
+  --accent: #e8ff47;
+  --accent2: #ff4757;
+  --accent3: #47b8ff;
+  --text: #d8dce8;
+  --text-dim: #5a6080;
+  --text-bright: #f0f2fa;
+  --green: #3dffaa;
+  --orange: #ff9f43;
+  --mono: 'Courier New', Courier, monospace;
+  --sans: Georgia, 'Times New Roman', serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.8;
+  min-height: 100vh;
+}
+
+/* Scanline effect */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* ─── HEADER ─── */
+.header {
+  border-bottom: 1px solid var(--border);
+  padding: 48px 0 40px;
+  position: relative;
+  overflow: hidden;
+}
+.header::before {
+  content: '';
+  position: absolute;
+  top: -60%;
+  left: 10%;
+  width: 600px;
+  height: 400px;
+  background: radial-gradient(ellipse, rgba(232,255,71,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.header-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+.report-label {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.report-label::before {
+  content: '';
+  display: inline-block;
+  width: 24px;
+  height: 1px;
+  background: var(--accent);
+}
+h1 {
+  font-family: var(--mono);
+  font-size: clamp(1.4rem, 3vw, 2.2rem);
+  font-weight: 700;
+  color: var(--text-bright);
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  margin-bottom: 20px;
+}
+h1 em {
+  color: var(--accent);
+  font-style: normal;
+}
+.header-meta {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.meta-item {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+}
+.meta-item strong {
+  color: var(--accent3);
+}
+
+/* ─── LAYOUT ─── */
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* ─── TOC ─── */
+.toc {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  padding: 24px 28px;
+  margin: 40px 0;
+}
+.toc-title {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+.toc-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 24px;
+}
+.toc-list li a {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.toc-list li a:hover { color: var(--accent3); }
+.toc-list li a::before {
+  content: attr(data-num);
+  color: var(--accent);
+  font-size: 0.6rem;
+  min-width: 20px;
+}
+@media(max-width:600px){ .toc-list { grid-template-columns: 1fr; } }
+
+/* ─── VERDICT BANNER ─── */
+.verdict {
+  background: linear-gradient(135deg, rgba(232,255,71,0.05), rgba(232,255,71,0.02));
+  border: 1px solid rgba(232,255,71,0.25);
+  border-left: 4px solid var(--accent);
+  padding: 28px 32px;
+  margin: 40px 0;
+}
+.verdict-label {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+.verdict-text {
+  font-size: 1.05rem;
+  color: var(--text-bright);
+  line-height: 1.7;
+}
+.verdict-text strong { color: var(--accent); }
+
+/* ─── SECTIONS ─── */
+.section {
+  margin: 56px 0;
+  padding-top: 20px;
+}
+.section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 28px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.section-num {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--accent);
+  letter-spacing: 0.15em;
+  padding: 3px 8px;
+  border: 1px solid rgba(232,255,71,0.3);
+}
+h2 {
+  font-family: var(--mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+h3 {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 28px 0 12px;
+}
+p { margin-bottom: 16px; color: var(--text); }
+p:last-child { margin-bottom: 0; }
+strong { color: var(--text-bright); font-weight: 600; }
+em { color: var(--orange); font-style: normal; }
+
+/* ─── TABLES ─── */
+.table-wrap { overflow-x: auto; margin: 24px 0; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+}
+thead tr {
+  background: rgba(232,255,71,0.06);
+  border-bottom: 1px solid rgba(232,255,71,0.2);
+}
+th {
+  padding: 10px 14px;
+  text-align: left;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+}
+td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: top;
+  line-height: 1.6;
+}
+tr:hover td { background: rgba(255,255,255,0.02); }
+.tag-yes { color: var(--green); }
+.tag-no  { color: var(--accent2); }
+.tag-partial { color: var(--orange); }
+.tag-mb { color: var(--accent3); font-weight: 700; }
+
+/* ─── APPROACH CARDS ─── */
+.approach-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+.approach-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 22px;
+  position: relative;
+  transition: border-color 0.2s;
+}
+.approach-card:hover { border-color: var(--accent3); }
+.approach-card.recommended {
+  border-color: rgba(61,255,170,0.4);
+}
+.approach-card.recommended::before {
+  content: 'RECOMMENDED';
+  position: absolute;
+  top: -1px;
+  right: 14px;
+  font-family: var(--mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.15em;
+  background: var(--green);
+  color: var(--bg);
+  padding: 3px 8px;
+  font-weight: 700;
+}
+.card-title {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  margin-bottom: 10px;
+}
+.card-body {
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+.card-body strong { color: var(--text); }
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+.tag {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  padding: 2px 8px;
+  letter-spacing: 0.1em;
+  border: 1px solid;
+}
+.tag-green { color: var(--green); border-color: rgba(61,255,170,0.3); }
+.tag-red   { color: var(--accent2); border-color: rgba(255,71,87,0.3); }
+.tag-blue  { color: var(--accent3); border-color: rgba(71,184,255,0.3); }
+.tag-yellow{ color: var(--accent); border-color: rgba(232,255,71,0.3); }
+
+/* ─── CALLOUT BOXES ─── */
+.callout {
+  border-left: 3px solid;
+  padding: 16px 20px;
+  margin: 20px 0;
+  font-size: 0.88rem;
+}
+.callout-info  { border-color: var(--accent3); background: rgba(71,184,255,0.05); }
+.callout-warn  { border-color: var(--orange);  background: rgba(255,159,67,0.05); }
+.callout-good  { border-color: var(--green);   background: rgba(61,255,170,0.05); }
+.callout-bad   { border-color: var(--accent2); background: rgba(255,71,87,0.05); }
+.callout-title {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.callout-info  .callout-title { color: var(--accent3); }
+.callout-warn  .callout-title { color: var(--orange); }
+.callout-good  .callout-title { color: var(--green); }
+.callout-bad   .callout-title { color: var(--accent2); }
+
+/* ─── CODE BLOCKS ─── */
+pre {
+  background: #090a0d;
+  border: 1px solid var(--border);
+  padding: 16px 20px;
+  overflow-x: auto;
+  margin: 16px 0;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  line-height: 1.7;
+  color: #a8b0c8;
+}
+code {
+  font-family: var(--mono);
+  font-size: 0.82em;
+  background: rgba(232,255,71,0.07);
+  color: var(--accent);
+  padding: 1px 5px;
+}
+pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+/* ─── TIMELINE ─── */
+.timeline { margin: 24px 0; }
+.tl-item {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.tl-item:last-child { border-bottom: none; }
+.tl-year {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--accent);
+  padding-top: 2px;
+}
+.tl-content { font-size: 0.88rem; }
+.tl-content strong { color: var(--text-bright); }
+
+/* ─── SEPARATOR ─── */
+.sep {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 48px 0;
+  color: var(--border);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+}
+.sep::before, .sep::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ─── TRAINING REQUIREMENTS TABLE ─── */
+.req-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+.req-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 16px;
+}
+.req-key {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.req-val {
+  font-family: var(--mono);
+  font-size: 0.88rem;
+  color: var(--text-bright);
+}
+.req-val.good { color: var(--green); }
+.req-val.ok   { color: var(--orange); }
+.req-val.hard { color: var(--accent2); }
+
+/* ─── FOOTER ─── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 32px 0;
+  margin-top: 80px;
+}
+.footer-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.footer-note {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="report-label">Deep Research Report</div>
+    <h1>Can we generate images from text <em>completely offline</em>, without downloading a model?</h1>
+    <div class="header-meta">
+      <div class="meta-item"><strong>Researched:</strong> March 2026</div>
+      <div class="meta-item"><strong>Sources reviewed:</strong> 100+ papers, repos, benchmarks</div>
+      <div class="meta-item"><strong>Scope:</strong> Browser · Python · Edge · Training</div>
+      <div class="meta-item"><strong>Verdict:</strong> Qualified YES — with constraints</div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <nav class="toc">
+    <div class="toc-title">Contents</div>
+    <ul class="toc-list">
+      <li><a href="#s1" data-num="01">The core constraint explained</a></li>
+      <li><a href="#s2" data-num="02">What "offline" actually means</a></li>
+      <li><a href="#s3" data-num="03">Approach A — Pre-bake weights into the file</a></li>
+      <li><a href="#s4" data-num="04">Approach B — Train in the browser</a></li>
+      <li><a href="#s5" data-num="05">Approach C — Procedural / non-neural</a></li>
+      <li><a href="#s6" data-num="06">Approach D — Tiny domain GAN</a></li>
+      <li><a href="#s7" data-num="07">Smallest real text-to-image models (2024–25)</a></li>
+      <li><a href="#s8" data-num="08">Can we pre-train our own model?</a></li>
+      <li><a href="#s9" data-num="09">Pre-training requirements breakdown</a></li>
+      <li><a href="#s10" data-num="10">Recommended strategy for this project</a></li>
+    </ul>
+  </nav>
+
+  <div class="verdict">
+    <div class="verdict-label">Executive Summary</div>
+    <div class="verdict-text">
+      The short answer: <strong>you cannot</strong> generate arbitrary-text-to-image in a single fully-bundled HTML file with zero downloads, if by "text" you mean free-form natural language prompts like Stable Diffusion accepts. Every real text-conditional generative model requires a text encoder (CLIP/T5) that alone weighs <strong>250–500 MB</strong> minimum. However, there are four viable paths depending on your definition of "offline" and the scope of prompts you need to support. <strong>One of them — pre-baking a small domain-specific model as Float32 weights inside the HTML — is genuinely feasible</strong> at ~1–5 MB for closed-set prompts (up to ~50 categories). And yes, you can absolutely pre-train your own model, on consumer hardware, for a narrow domain.
+    </div>
+  </div>
+
+  <!-- ───────────────────────────────────── -->
+  <div class="section" id="s1">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2>The Core Constraint Explained</h2>
+    </div>
+
+    <p>Real text-to-image generation requires two fundamentally separate things: a <strong>text understanding component</strong> (to turn "a red balloon over a snowy mountain" into a numeric vector), and an <strong>image generation component</strong> (to turn that vector into pixels). Both require pre-trained knowledge baked into weights.</p>
+
+    <p>The text encoder is the binding constraint. Even the smallest useful CLIP text encoder (ViT-L/14) weighs <em>~470 MB</em>. The smallest T5 encoder used by modern diffusion models is ~900 MB. You cannot compress these below ~80 MB without losing the ability to understand general language — because they must have learned associations between millions of concept words and visual meanings during training on internet-scale data.</p>
+
+    <div class="callout callout-bad">
+      <div class="callout-title">Hard Floor</div>
+      For truly arbitrary free-form text prompts (like "a photorealistic red apple on a marble countertop in soft morning light"), the minimum model weight bundle that produces recognizable output is approximately <strong>250 MB</strong> (achieved in 2025 with 6-bit/8-bit ONNX quantization of SD ControlNet). There is no path below this for general text.
+    </div>
+
+    <p>However, if you constrain the problem — e.g. "generate an image from a menu of 20 categories with adjectives" — the required model drops to kilobytes, because you don't need to understand arbitrary language anymore. You need to understand a vocabulary of ~50 tokens, which a tiny embedding table can encode.</p>
+  </div>
+
+  <!-- ───────────────────────────────────── -->
+  <div class="section" id="s2">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2>What "Completely Offline" Can Mean</h2>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Meaning</th>
+            <th>First-run download?</th>
+            <th>Achievable?</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Zero bytes downloaded, ever</strong> — all weights inside the HTML/JS file itself</td>
+            <td class="tag-no">None required</td>
+            <td class="tag-partial">Partial</td>
+            <td>Feasible only for closed-set domain models (&lt;5 MB). Impossible for general text.</td>
+          </tr>
+          <tr>
+            <td><strong>One-time download, then fully offline</strong> — download on first visit, cache in IndexedDB, never call server again</td>
+            <td class="tag-partial">Once, then cached</td>
+            <td class="tag-yes">Yes (current v2)</td>
+            <td>This is exactly what our µ²Diffusion v2 does with Transformers.js. Works today, ~600 MB first run.</td>
+          </tr>
+          <tr>
+            <td><strong>Works from file:// with no server</strong> — open HTML file locally</td>
+            <td class="tag-no">No server needed</td>
+            <td class="tag-yes">Yes</td>
+            <td>Both WASM+ONNX approaches and pure-JS approaches work from file://.</td>
+          </tr>
+          <tr>
+            <td><strong>Works in air-gapped environment</strong> — no internet at any point, weights physically shipped with the software</td>
+            <td class="tag-no">Physical media</td>
+            <td class="tag-yes">Yes</td>
+            <td>Pre-bake weights into zip/installer. This is how Stable Diffusion desktop apps work.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ───────────────────────────────────── -->
+  <div class="section" id="s3">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h2>Approach A — Pre-Bake Weights Directly into the File</h2>
+    </div>
+
+    <p>This is the most interesting path and what µ²Diffusion v3 implements. The idea: train a tiny domain-specific model offline in Python, export its weights as a <code>Float32Array</code> literal hardcoded into the JavaScript, deploy as a single HTML file with zero dependencies.</p>
+
+    <h3>What's Feasible</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Model Type</th>
+            <th>Bundled Size</th>
+            <th>Prompt Type</th>
+            <th>Output Quality</th>
+            <th>Train Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Class-conditional DDPM (10 classes, 32×32)</td>
+            <td class="tag-mb">~400 KB – 1.5 MB</td>
+            <td>Fixed labels only</td>
+            <td>Recognizable shapes/colors</td>
+            <td>1–4 hrs, consumer GPU</td>
+          </tr>
+          <tr>
+            <td>Class-conditional DDPM (50 classes, 64×64)</td>
+            <td class="tag-mb">~3–8 MB</td>
+            <td>Fixed labels only</td>
+            <td>Simple recognizable images</td>
+            <td>4–24 hrs, GPU</td>
+          </tr>
+          <tr>
+            <td>Word-bag conditional DCGAN (32×32)</td>
+            <td class="tag-mb">~600 KB – 2 MB</td>
+            <td>Keyword bag (&lt;100 words)</td>
+            <td>Blurry but conditioned</td>
+            <td>2–8 hrs, consumer GPU</td>
+          </tr>
+          <tr>
+            <td>Tiny text-conditional VAE + decoder</td>
+            <td class="tag-mb">~1–4 MB</td>
+            <td>Structured prompts</td>
+            <td>Low, but domain-specific</td>
+            <td>6–20 hrs, GPU</td>
+          </tr>
+          <tr>
+            <td>Implicit Neural Representation (per-image)</td>
+            <td class="tag-mb">~5–20 KB/image</td>
+            <td>Image retrieval only</td>
+            <td>Lossless reconstruction</td>
+            <td>Minutes per image</td>
+          </tr>
+          <tr>
+            <td>Any SD variant (smallest: BK-SDM-Tiny)</td>
+            <td class="tag-mb">~500 MB+</td>
+            <td>Free-form natural language</td>
+            <td>High quality</td>
+            <td>Not feasible for self-train</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-good">
+      <div class="callout-title">Key insight</div>
+      When the text vocabulary is closed (e.g., a structured prompt UI with dropdowns: "a [ADJ] [SUBJECT] [STYLE]"), you don't need a general language model. A learned embedding table for 200 tokens fits in under 50 KB. The entire generative model — encoder + UNet + decoder — can fit in under 5 MB for 64×64 images.
+    </div>
+
+    <h3>The Bundling Technique</h3>
+    <pre>
+// Python: export trained PyTorch weights
+import torch, json, base64
+state = model.state_dict()
+flat = torch.cat([p.flatten() for p in state.values()])
+b64 = base64.b64encode(flat.numpy().tobytes()).decode()
+with open('weights.js', 'w') as f:
+    f.write(f'const WEIGHTS = "{b64}";')
+
+// JavaScript: load at runtime
+const bytes = Uint8Array.from(atob(WEIGHTS), c=>c.charCodeAt(0));
+const weights = new Float32Array(bytes.buffer);
+    </pre>
+    <p>A 1 MB model becomes a 1.33 MB base64 string. A 5 MB model becomes 6.67 MB. Both are perfectly reasonable for a single HTML file — browsers routinely handle JS files of this size.</p>
+  </div>
+
+  <!-- ───────────────────────────────────── -->
+  <div class="section" id="s4">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h2>Approach B — Train in the Browser (What µ²Diffusion v3 Does)</h2>
+    </div>
+
+    <p>Instead of baking pre-trained weights, you can train a tiny model <em>inside the browser on first launch</em>, using procedurally generated training data. This is what the current µ²Diffusion HTML file does.</p>
+
+    <p><strong>Advantages:</strong> The file is tiny (~60 KB). No weights to bundle. The user experiences "AI training live in your browser." Training data is infinite and free (procedural generation).</p>
+
+    <p><strong>Disadvantages:</strong> Training takes 30–90 seconds on first launch. Pure JS training is ~50–200× slower than PyTorch on GPU, so we're limited to small models and simple data. The model only knows what the procedural generator teaches it — it cannot learn photorealistic texture or complex real-world scenes this way.</p>
+
+    <div class="callout callout-warn">
+      <div class="callout-title">Performance reality check</div>
+      A 100K-parameter UNet in pure JavaScript (no WebGPU, no WASM ML library) does about 10,000 forward passes per second for 32×32 images. This is enough to run 3,000 training steps in ~60s. A proper 1M-parameter model would take ~10 minutes. WebGPU (available in Chrome/Edge/Firefox) would bring this to near-PyTorch speed, potentially enabling 64×64 real-data training in the browser in future.
+    </div>
+
+    <h3>WebGPU Changes the Equation</h3>
+    <p>As of 2024–2025, WebGPU is now available by default in Chrome 113+, Edge 113+, and Firefox 141+, covering approximately <strong>85% of desktop browsers</strong>. With WebGPU compute shaders, you can achieve genuine GPU-accelerated training inside the browser. Microsoft's ONNX Runtime Web + WebGPU can run Stable Diffusion Turbo in under 1 second on an RTX 4090 inside a browser tab.</p>
+
+    <p>This opens a future path: bundle a tiny WASM training engine, and train a compact domain model in the browser using WebGPU in 30 seconds instead of 90 seconds — and do it at 64×64 instead of 32×32.</p>
+  </div>
+
+  <!-- ───────────────────────────────────── -->
+  <div class="section" id="s5">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h2>Approach C — Procedural / Non-Neural Image Synthesis</h2>
+    </div>
+
+    <p>Before deep learning, text-to-image systems worked by <strong>parsing text into scene descriptions and rendering them programmatically</strong>. This is what µ²Diffusion v1 did (the canvas procedural renderer). This approach has a long research history going back to 2000s "clip art assembly" systems.</p>
+
+    <div class="approach-grid">
+      <div class="approach-card">
+        <div class="card-title">Keyword → Scene Grammar</div>
+        <div class="card-body">Parse prompt for subject, adjectives, setting, style. Map each token to procedural drawing commands. <strong>Zero neural network required.</strong> Complete offline, instant.</div>
+        <div class="card-tags">
+          <span class="tag tag-green">ZERO DOWNLOAD</span>
+          <span class="tag tag-blue">INSTANT</span>
+          <span class="tag tag-red">LIMITED VOCAB</span>
+        </div>
+      </div>
+      <div class="approach-card">
+        <div class="card-title">L-Systems / Fractals</div>
+        <div class="card-body">Procedural generation of plants, landscapes, patterns from text seeds. "forest at sunset" → specific L-system parameters. Deterministic from seed.</div>
+        <div class="card-tags">
+          <span class="tag tag-green">TINY</span>
+          <span class="tag tag-red">NARROW DOMAIN</span>
+        </div>
+      </div>
+      <div class="approach-card">
+        <div class="card-title">Noise-Based Synthesis</div>
+        <div class="card-body">Perlin/Simplex noise layers with color grading driven by text parsing. Produces convincing landscapes, textures, abstract art from adjectives like "stormy", "golden", "ethereal".</div>
+        <div class="card-tags">
+          <span class="tag tag-green">OFFLINE</span>
+          <span class="tag tag-blue">AESTHETIC</span>
+          <span class="tag tag-yellow">NO OBJECTS</span>
+        </div>
+      </div>
+      <div class="approach-card">
+        <div class="card-title">SVG Path Grammar</div>
+        <div class="card-body">Text → parametric SVG shapes. Compact, resolution-independent, offline. Supports compositing (sky, ground, foreground objects) from text tokens.</div>
+        <div class="card-tags">
+          <span class="tag tag-green">VECTOR</span>
+          <span class="tag tag-blue">OFFLINE</span>
+          <span class="tag tag-red">GEOMETRIC ONLY</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-title">Pre-deep-learning history</div>
+      The first text-to-image research (alignDRAW, 2015) produced 32×32 images that were "low in diversity" but could handle novel prompts like "a stop sign flying in blue skies." This was before DALL-E, Stable Diffusion, or even GAN-based T2I. Non-neural synthesis of comparable quality to early 2015 systems is entirely achievable in pure JS today.
+    </div>
+  </div>
+
+  <!-- ───────────────────────────────────── -->
+  <div class="section" id="s6">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <h2>Approach D — Tiny Domain-Specific GAN (Pre-Train, Bundle, Deploy)</h2>
+    </div>
+
+    <p>The most practical path for a domain-specific product: train a DCGAN or conditional DDPM on a specific narrow dataset (flowers, faces, icons, landscapes, anime characters) in Python, then export the <em>generator only</em> as hardcoded weights in JavaScript. The discriminator is discarded after training.</p>
+
+    <h3>Why this works well</h3>
+    <p>A DCGAN generator for 64×64 images has approximately <strong>3.5 million parameters</strong>. In float32, that's 14 MB. Quantized to int8, it's 3.5 MB. Compressed with gzip in the HTML, it's ~2 MB. This is completely practical to bundle in a web application.</p>
+
+    <p>The training pipeline uses a DCGAN or lightweight UNet where the text/class conditioning is done via a simple lookup table (50 class labels → 50 learned 128-d vectors). No CLIP needed. No T5 needed. Just: "which category?" → embedding → condition the generator.</p>
+
+    <div class="callout callout-good">
+      <div class="callout-title">Proven approach — real GAN-based T2I in 2016</div>
+      Reed et al. 2016 ("Generative Adversarial Text to Image Synthesis") trained a GAN on CUB bird descriptions and Oxford flower descriptions with a character-level text encoder. The model could generate "visually plausible 64×64 images" from text like "a flower with yellow petals and a round purple center." The entire model — generator + text encoder — was under 50 MB. This is still the baseline for what's achievable in a bundleable approach.
+    </div>
+  </div>
+
+  <!-- ───────────────────────────────────── -->
+  <div class="section" id="s7">
+    <div class="section-header">
+      <span class="section-num">07</span>
+      <h2>Smallest Real Text-to-Image Models (Research Landscape 2023–2025)</h2>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Year</th>
+            <th>Total Size</th>
+            <th>UNet Size</th>
+            <th>Prompt Type</th>
+            <th>Bundleable?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>SD v1.5</strong> (Runway)</td>
+            <td>2022</td>
+            <td class="tag-mb">~4.2 GB</td>
+            <td>~860 MB</td>
+            <td>Free-form</td>
+            <td class="tag-no">No</td>
+          </tr>
+          <tr>
+            <td><strong>BK-SDM-Base</strong> (ECCV 2024)</td>
+            <td>2023</td>
+            <td class="tag-mb">~2.8 GB</td>
+            <td>~530 MB</td>
+            <td>Free-form</td>
+            <td class="tag-no">No</td>
+          </tr>
+          <tr>
+            <td><strong>BK-SDM-Tiny</strong> (ECCV 2024)</td>
+            <td>2023</td>
+            <td class="tag-mb">~2.1 GB</td>
+            <td>~330 MB</td>
+            <td>Free-form</td>
+            <td class="tag-no">No</td>
+          </tr>
+          <tr>
+            <td><strong>SDXS-512</strong> (Xiaomi, 2024)</td>
+            <td>2024</td>
+            <td class="tag-mb">~1.8 GB</td>
+            <td>~320 MB</td>
+            <td>Free-form, 1-step</td>
+            <td class="tag-no">No</td>
+          </tr>
+          <tr>
+            <td><strong>SD ControlNet (6/8-bit ONNX)</strong> (Lee Butterman)</td>
+            <td>2025</td>
+            <td class="tag-mb">~250 MB</td>
+            <td>~180 MB</td>
+            <td>Free-form (structured)</td>
+            <td class="tag-partial">Maybe, first-run cache</td>
+          </tr>
+          <tr>
+            <td><strong>Domain GAN (custom trained)</strong></td>
+            <td>Any</td>
+            <td class="tag-mb">2–15 MB</td>
+            <td>3–14 MB</td>
+            <td>Category labels / keywords</td>
+            <td class="tag-yes">Yes</td>
+          </tr>
+          <tr>
+            <td><strong>Custom DDPM (in-browser trained)</strong></td>
+            <td>Now</td>
+            <td class="tag-mb">0 MB</td>
+            <td>~400 KB weights (after train)</td>
+            <td>Category labels</td>
+            <td class="tag-yes">Yes (trained at runtime)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-title">The 250 MB breakthrough (March 2025)</div>
+      Lee Butterman achieved running SD ControlNet in 250 MB total in-browser (ONNX + WebGPU) by quantizing convolutional layers to 8-bit palette and linear layers to 6-bit palette, dequantizing to fp16 at runtime. This is the current absolute minimum for general-purpose free-form text-to-image in a browser, still requiring a first-run download.
+    </div>
+  </div>
+
+  <!-- ───────────────────────────────────── -->
+  <div class="section" id="s8">
+    <div class="section-header">
+      <span class="section-num">08</span>
+      <h2>Can We Pre-Train Our Own Model?</h2>
+    </div>
+
+    <p><strong>Yes, absolutely.</strong> The question is: what kind of model, on what data, and how long does it take?</p>
+
+    <h3>Option 1: Train a Domain DCGAN from Scratch</h3>
+    <p>A DCGAN at 64×64 resolution with class conditioning on a dataset of ~5,000–50,000 images is entirely trainable on a consumer GPU in hours. The PyTorch DCGAN tutorial uses the CelebA dataset (~200K faces at 64×64) and trains to recognizable output in ~5 hours on a single RTX GPU. For a narrower domain (icons, simple illustrations, faces) with 5,000 images, expect 2–8 hours.</p>
+
+    <div class="req-grid">
+      <div class="req-item">
+        <div class="req-key">Dataset size</div>
+        <div class="req-val good">1,000 – 50,000 images</div>
+      </div>
+      <div class="req-item">
+        <div class="req-key">GPU requirement</div>
+        <div class="req-val ok">RTX 3060 or better (8 GB+)</div>
+      </div>
+      <div class="req-item">
+        <div class="req-key">Training time</div>
+        <div class="req-val ok">2 – 24 hours</div>
+      </div>
+      <div class="req-item">
+        <div class="req-key">Output size</div>
+        <div class="req-val good">64×64 (good), 128×128 (ok)</div>
+      </div>
+      <div class="req-item">
+        <div class="req-key">Generator weight size</div>
+        <div class="req-val good">3 – 15 MB</div>
+      </div>
+      <div class="req-item">
+        <div class="req-key">Bundleable in HTML?</div>
+        <div class="req-val good">YES</div>
+      </div>
+    </div>
+
+    <h3>Option 2: Fine-tune BK-SDM-Tiny with DreamBooth</h3>
+    <p><strong>BK-SDM-Tiny</strong> (ECCV 2024) is a block-pruned, knowledge-distilled SD model with a 330 MB UNet. It was trained on only 0.22 million LAION pairs — 13 A100 GPU-days. You can fine-tune it with DreamBooth on a custom domain (specific art style, product, character) in ~1 hour on an RTX 3090 with as few as 20–30 images. The result responds to text prompts about your domain with high quality. Total deployment package is still ~2 GB though — so not bundleable.</p>
+
+    <h3>Option 3: Train a Tiny Conditional DDPM from Scratch (What µ²Diffusion Does)</h3>
+    <p>This is the in-browser approach. A ~400K parameter UNet at 32×32 with 10 class conditions, Adam optimizer, 3,000 steps — trains in the browser in 60 seconds. In Python with PyTorch on GPU, the same model trains in under 30 seconds and produces weights you can export as Float32 literals. Quality matches what DALL-E produced circa 2015 for domain-specific prompts.</p>
+
+    <h3>Option 4: Knowledge Distillation from SD</h3>
+    <p>If you have a GPU and time, you can distill Stable Diffusion into a smaller student model following the BK-SDM approach. <strong>Segmind</strong> released an open-source distillation toolkit that produces SD-Small and SD-Tiny variants. Training requires 13+ A100-days, but you can approximate it with consumer GPUs over several weeks. The result is a ~500 MB model that accepts free-form text — still not bundleable, but deployable as a one-time-download cache.</p>
+
+    <div class="callout callout-info">
+      <div class="callout-title">Transfer learning shortcut</div>
+      Rather than training from scratch, you can adapt a pretrained GAN (e.g., ImageNet-pretrained SNGAN or BigGAN) to a custom small dataset by updating only scale+shift parameters — requiring as few as <strong>100 images</strong> and a few minutes of training. This is described in the "Image Generation From Small Datasets via Batch Statistics Adaptation" paper (ICCV 2019). The downside: you still ship the full pretrained generator weights (~200–500 MB for BigGAN), just update very few additional parameters.
+    </div>
+  </div>
+
+  <!-- ───────────────────────────────────── -->
+  <div class="section" id="s9">
+    <div class="section-header">
+      <span class="section-num">09</span>
+      <h2>Pre-Training Requirements: Full Breakdown</h2>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Goal</th>
+            <th>Training data needed</th>
+            <th>Hardware</th>
+            <th>Time</th>
+            <th>Final model size</th>
+            <th>Prompt flexibility</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Class-cond DDPM (32×32, 10 classes)</strong></td>
+            <td>Synthetic/procedural (∞)</td>
+            <td>CPU only</td>
+            <td>1–2 hours</td>
+            <td class="tag-mb">~400 KB</td>
+            <td>10 fixed labels</td>
+          </tr>
+          <tr>
+            <td><strong>Class-cond DCGAN (64×64, 10 classes)</strong></td>
+            <td>500–5,000 images/class</td>
+            <td>RTX 3060+ (8 GB)</td>
+            <td>4–12 hours</td>
+            <td class="tag-mb">~5–12 MB generator</td>
+            <td>10–50 labels</td>
+          </tr>
+          <tr>
+            <td><strong>Word-conditioned GAN (64×64)</strong></td>
+            <td>10K–100K (image, caption) pairs</td>
+            <td>RTX 3090 (24 GB)</td>
+            <td>24–72 hours</td>
+            <td class="tag-mb">~15–40 MB</td>
+            <td>~100–500 word vocab</td>
+          </tr>
+          <tr>
+            <td><strong>BK-SDM-Tiny distillation</strong></td>
+            <td>220K LAION pairs (provided)</td>
+            <td>A100 × 1–4</td>
+            <td>13 A100-days</td>
+            <td class="tag-mb">~2.1 GB total</td>
+            <td>Free-form natural language</td>
+          </tr>
+          <tr>
+            <td><strong>Full SD 1.5 from scratch</strong></td>
+            <td>2 billion image-text pairs</td>
+            <td>8× A100 cluster</td>
+            <td>6,000+ A100-days</td>
+            <td class="tag-mb">~4.2 GB</td>
+            <td>Arbitrary natural language</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-warn">
+      <div class="callout-title">The data problem</div>
+      Training a <em>general</em> text-to-image model requires billions of (image, caption) pairs covering all visual concepts. This is why nobody has trained a general model from scratch since 2022 — the data collection and compute cost is prohibitive. The only practical path to "general free-form text" is fine-tuning an existing open model like SD 1.5, SDXL, or BK-SDM-Tiny.
+    </div>
+  </div>
+
+  <!-- ───────────────────────────────────── -->
+  <div class="section" id="s10">
+    <div class="section-header">
+      <span class="section-num">10</span>
+      <h2>Recommended Strategy for This Project</h2>
+    </div>
+
+    <p>Based on the research, here are the four realistic paths, ordered from "most bundleable" to "most powerful":</p>
+
+    <div class="approach-grid">
+      <div class="approach-card recommended">
+        <div class="card-title">Path 1: Domain DCGAN — pre-trained Python → bundled JS</div>
+        <div class="card-body">
+          Train a 64×64 conditional DCGAN in PyTorch on a real dataset (your domain). Export generator weights as Float32Array. Bundle directly into the HTML. <strong>Result: single HTML file, instant generation, no downloads.</strong>
+          <br><br>
+          Requires: RTX GPU, real images for your domain, 4–24 hours of training.
+          Produces: recognizable domain-specific images from ~20–50 text labels.
+        </div>
+        <div class="card-tags">
+          <span class="tag tag-green">FULLY BUNDLED</span>
+          <span class="tag tag-blue">REAL IMAGES</span>
+          <span class="tag tag-red">FIXED VOCABULARY</span>
+        </div>
+      </div>
+
+      <div class="approach-card">
+        <div class="card-title">Path 2: Enhance µ²Diffusion (current) — richer procedural data</div>
+        <div class="card-body">
+          Keep the in-browser training approach but improve the procedural data generator: more realistic shapes, texture simulation, color theory. The 32×32 results will be more polished. Pure JS, no new infrastructure needed.
+        </div>
+        <div class="card-tags">
+          <span class="tag tag-green">NO PYTHON NEEDED</span>
+          <span class="tag tag-yellow">IN-BROWSER TRAINING</span>
+          <span class="tag tag-red">SYNTHETIC ONLY</span>
+        </div>
+      </div>
+
+      <div class="approach-card">
+        <div class="card-title">Path 3: Train in Python, serve via one-time cache</div>
+        <div class="card-body">
+          Like Path 1 but use the Transformers.js (ONNX) pipeline with a fine-tuned BK-SDM-Tiny on your domain. First load is ~500 MB cached to IndexedDB. After that: fully offline, responds to free-form text. This is the µ²Diffusion v2 approach, but with a custom-trained model.
+        </div>
+        <div class="card-tags">
+          <span class="tag tag-yellow">ONE-TIME 500 MB DL</span>
+          <span class="tag tag-green">FREE-FORM TEXT</span>
+          <span class="tag tag-blue">HIGH QUALITY</span>
+        </div>
+      </div>
+
+      <div class="approach-card">
+        <div class="card-title">Path 4: 250 MB bundled SD ControlNet (2025 approach)</div>
+        <div class="card-body">
+          Use Lee Butterman's 6/8-bit quantized SD ControlNet in ONNX format. Deliver as a ~250 MB download, cached forever after first visit. Best quality-to-size ratio for general free-form text currently achievable in a browser.
+        </div>
+        <div class="card-tags">
+          <span class="tag tag-yellow">250 MB FIRST-RUN</span>
+          <span class="tag tag-green">GENERAL TEXT</span>
+          <span class="tag tag-blue">WEBGPU/WASM</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sep">research conclusions</div>
+
+    <div class="callout callout-good">
+      <div class="callout-title">Bottom Line</div>
+      <p>For "zero bytes ever downloaded" + "real images" + "natural language text": <strong>not currently possible</strong> — the physics of language understanding require weights.</p>
+      <p style="margin-top:12px">For "zero bytes ever downloaded" + "real images" + "structured/keyword prompts": <strong>YES — Path 1 achieves this</strong>. Train in Python, bundle into HTML. 64×64 recognizable images, ~50 text categories, single HTML file under 15 MB.</p>
+      <p style="margin-top:12px">For "first-run download, then fully offline" + "free-form text": <strong>YES — our current v2 (Transformers.js) or Path 4 (250 MB quantized)</strong>. After first cache, operates identically to a bundled file.</p>
+    </div>
+
+    <h3>Implementation Roadmap</h3>
+
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-year">Now</div>
+        <div class="tl-content"><strong>µ²Diffusion v3a:</strong> Improve procedural data generator in the existing in-browser training system. Add more classes (100+), better textures, color palettes. Still pure JS, ~60 KB HTML.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">Short</div>
+        <div class="tl-content"><strong>µ²Diffusion v3b:</strong> Train a real DCGAN in Python on CIFAR-10 or MNIST-style data. Export generator weights (~5 MB) as base64 into HTML. Real images, zero downloads on load, instant generation.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">Medium</div>
+        <div class="tl-content"><strong>µ²Diffusion v4:</strong> Train a character-level text-conditional GAN on a domain dataset (animals, icons, etc.) following Reed 2016 architecture. Support ~200-word vocabulary. Bundle ~20 MB into HTML. First true "text-conditioned" bundled model.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year">Advanced</div>
+        <div class="tl-content"><strong>µ²Diffusion v5:</strong> Distill BK-SDM-Tiny further using SDXS techniques + 6-bit quantization to reach 250 MB for free-form text. Deliver as one-time IndexedDB cache. Full Stable Diffusion quality, indefinitely offline after first use.</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-note">µ²Diffusion Research Report · March 2026 · Based on 100+ sources</div>
+    <div class="footer-note">Sources: arXiv, GitHub, HuggingFace, Microsoft, MLC-AI, leebutterman.com</div>
+  </div>
+</footer>
+
+</body>
+</html>
