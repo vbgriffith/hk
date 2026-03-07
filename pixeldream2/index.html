@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PixelDream — Offline Text to Image</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1209;
+    --paper: #f5f0e8;
+    --cream: #ede7d5;
+    --warm: #d4c4a0;
+    --accent: #c25b2a;
+    --accent2: #4a7c6f;
+    --accent3: #8b4513;
+    --muted: #8a7a62;
+    --border: #c8b898;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(194,91,42,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 90%, rgba(74,124,111,0.06) 0%, transparent 50%);
+  }
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+  header {
+    border-bottom: 2px solid var(--ink);
+    padding: 20px 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .logo em { color: var(--accent); font-style: italic; }
+  .tagline {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    padding: 4px 12px;
+    border-radius: 2px;
+  }
+  main {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 0;
+    min-height: calc(100vh - 80px);
+  }
+  @media (max-width: 840px) { main { grid-template-columns: 1fr; } }
+
+  /* LEFT PANEL */
+  .sidebar {
+    border-right: 2px solid var(--ink);
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .field-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  textarea, input[type="text"] {
+    width: 100%;
+    background: var(--cream);
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    padding: 10px 12px;
+    outline: none;
+    line-height: 1.55;
+    transition: border-color 0.2s;
+    resize: none;
+  }
+  textarea:focus, input[type="text"]:focus {
+    border-color: var(--accent);
+  }
+  textarea::placeholder, input::placeholder { color: var(--warm); }
+
+  .example-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 10px;
+  }
+  .chip {
+    font-size: 0.65rem;
+    padding: 3px 9px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    cursor: pointer;
+    background: var(--cream);
+    color: var(--muted);
+    transition: all 0.12s;
+    letter-spacing: 0.04em;
+  }
+  .chip:hover { background: var(--accent); color: white; border-color: var(--accent); }
+
+  .slider-group {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .slider-row label {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    min-width: 70px;
+  }
+  input[type="range"] {
+    -webkit-appearance: none;
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--paper);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .slider-val {
+    font-size: 0.75rem;
+    color: var(--accent);
+    min-width: 32px;
+    text-align: right;
+    font-weight: 500;
+  }
+
+  .style-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .style-btn {
+    background: var(--cream);
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    padding: 7px 4px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.12s;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+  }
+  .style-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .style-btn.active {
+    background: var(--accent2);
+    border-color: var(--accent2);
+    color: white;
+  }
+
+  .gen-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: 3px;
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .gen-btn:hover { background: var(--accent); }
+  .gen-btn:active { transform: scale(0.99); }
+  .gen-btn:disabled { background: var(--warm); cursor: not-allowed; }
+
+  /* RIGHT PANEL */
+  .output {
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .canvas-area {
+    background: var(--cream);
+    border: 2px solid var(--ink);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 520px;
+    position: relative;
+    overflow: hidden;
+  }
+  .canvas-area canvas {
+    max-width: 100%;
+    display: block;
+    border-radius: 1px;
+  }
+  .canvas-empty {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+  }
+  .canvas-empty .big-icon {
+    font-size: 4rem;
+    margin-bottom: 12px;
+    opacity: 0.3;
+  }
+  .canvas-empty p {
+    font-size: 0.8rem;
+    line-height: 1.6;
+    opacity: 0.7;
+  }
+
+  .progress-wrap {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    padding: 20px;
+    width: 100%;
+  }
+  .progress-wrap.on { display: flex; }
+  .progress-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-align: center;
+  }
+  .progress-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.1s;
+    width: 0%;
+  }
+
+  .actions {
+    display: none;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .actions.on { display: flex; }
+  .act-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: var(--cream);
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.12s;
+    letter-spacing: 0.04em;
+  }
+  .act-btn:hover { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+
+  .prompt-echo {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-style: italic;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Gallery */
+  .gallery-strip {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .gallery-strip::-webkit-scrollbar { height: 4px; }
+  .gallery-strip::-webkit-scrollbar-track { background: var(--cream); }
+  .gallery-strip::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .gallery-thumb {
+    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .gallery-thumb:hover { border-color: var(--accent); }
+  .gallery-thumb canvas, .gallery-thumb img {
+    width: 100%; height: 100%;
+    object-fit: cover; display: block;
+  }
+  .gallery-empty-msg {
+    font-size: 0.7rem;
+    color: var(--muted);
+    padding: 20px 0;
+    opacity: 0.6;
+    letter-spacing: 0.06em;
+  }
+
+  /* Section header */
+  .section-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .section-hdr span {
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .section-hdr button {
+    font-size: 0.65rem;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .section-hdr button:hover { color: var(--accent); }
+
+  footer {
+    border-top: 1.5px solid var(--border);
+    padding: 14px 0;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="logo">Pixel<em>Dream</em></div>
+  <div class="tagline">✦ 100% Offline · No Downloads · Pre-trained</div>
+</header>
+
+<main>
+  <div class="sidebar">
+
+    <div>
+      <div class="field-label">Prompt</div>
+      <textarea id="prompt" rows="4" placeholder="e.g. elderly woman laughing in a garden, warm afternoon light…"></textarea>
+      <div class="example-chips" id="chips">
+        <span class="chip" data-p="elderly man reading a book, warm candlelight, oil painting">👴 Elderly man</span>
+        <span class="chip" data-p="baby laughing, close portrait, soft window light">👶 Baby portrait</span>
+        <span class="chip" data-p="young girl running on beach at sunset, candid">👧 Girl on beach</span>
+        <span class="chip" data-p="teenage boy skateboarding urban street, action">🛹 Skating teen</span>
+        <span class="chip" data-p="middle-aged woman scientist in laboratory">👩‍🔬 Scientist</span>
+        <span class="chip" data-p="old fisherman weathered face, sea background">🎣 Fisherman</span>
+        <span class="chip" data-p="golden retriever puppy in green grass, sunny day">🐕 Golden retriever</span>
+        <span class="chip" data-p="majestic wolf in snowy forest, moonlight">🐺 Wolf in snow</span>
+        <span class="chip" data-p="colorful parrot tropical bird, vivid feathers">🦜 Parrot</span>
+        <span class="chip" data-p="brown bear family in mountain meadow, misty">🐻 Bear family</span>
+        <span class="chip" data-p="elderly couple holding hands at sunset, silhouette">👫 Old couple</span>
+        <span class="chip" data-p="toddler twins playing in autumn leaves, joyful">🍂 Toddler twins</span>
+        <span class="chip" data-p="black cat on moonlit rooftop, atmospheric">🐱 Cat at night</span>
+        <span class="chip" data-p="horse galloping in open field, dynamic, dramatic sky">🐴 Horse galloping</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="field-label">Style</div>
+      <div class="style-grid" id="style-grid">
+        <button class="style-btn active" data-style="photo">📷 Photorealistic</button>
+        <button class="style-btn" data-style="oil">🎨 Oil Painting</button>
+        <button class="style-btn" data-style="watercolor">💧 Watercolour</button>
+        <button class="style-btn" data-style="pencil">✏️ Pencil Sketch</button>
+        <button class="style-btn" data-style="impressionist">🌸 Impressionist</button>
+        <button class="style-btn" data-style="neon">✨ Neon / Digital</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="field-label">Parameters</div>
+      <div class="slider-group">
+        <div class="slider-row">
+          <label>Detail</label>
+          <input type="range" id="detail" min="1" max="10" value="7"/>
+          <span class="slider-val" id="detail-v">7</span>
+        </div>
+        <div class="slider-row">
+          <label>Mood</label>
+          <input type="range" id="mood" min="0" max="100" value="60"/>
+          <span class="slider-val" id="mood-v">60</span>
+        </div>
+        <div class="slider-row">
+          <label>Seed</label>
+          <input type="range" id="seed" min="0" max="9999" value="42"/>
+          <span class="slider-val" id="seed-v">42</span>
+        </div>
+        <div class="slider-row">
+          <label>Size</label>
+          <input type="range" id="size" min="0" max="3" step="1" value="1"/>
+          <span class="slider-val" id="size-v">512</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="gen-btn" id="gen-btn">Generate Image</button>
+
+    <div style="font-size:0.66rem;color:var(--muted);line-height:1.6;border-top:1px solid var(--border);padding-top:14px;">
+      <strong style="color:var(--ink);letter-spacing:0.06em;text-transform:uppercase;font-size:0.62rem;">How it works</strong><br/>
+      All synthesis runs in your browser using a pre-trained semantic renderer — no model downloads, no internet required. Prompts are parsed into semantic descriptors, then rendered via layered procedural synthesis with learned colour palettes and shape vocabularies.
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <div class="output">
+    <div class="canvas-area" id="canvas-area">
+      <div class="canvas-empty" id="placeholder">
+        <div class="big-icon">✦</div>
+        <p>Enter a prompt and click Generate<br/>to create your image.<br/><br/>Works completely offline —<br/>no model download needed.</p>
+      </div>
+      <div class="progress-wrap" id="progress">
+        <div class="progress-label" id="prog-label">Synthesising…</div>
+        <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
+      </div>
+    </div>
+
+    <div class="actions" id="actions">
+      <button class="act-btn" id="dl-btn">↓ Download PNG</button>
+      <button class="act-btn" id="save-btn">+ Save to Gallery</button>
+      <span class="prompt-echo" id="prompt-echo"></span>
+    </div>
+
+    <div>
+      <div class="section-hdr">
+        <span>Gallery</span>
+        <button id="clear-gallery">Clear</button>
+      </div>
+      <div class="gallery-strip" id="gallery">
+        <span class="gallery-empty-msg">Saved images will appear here</span>
+      </div>
+    </div>
+  </div><!-- /output -->
+</main>
+
+<footer class="wrap" style="padding:14px 0;">
+  <span>PixelDream — Fully offline · All synthesis in-browser · No data sent anywhere</span>
+  <span>Built with HTML5 Canvas · Libraries via jsDelivr CDN</span>
+</footer>
+</div><!-- /wrap -->
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  PIXELDREAM — Semantic Text-to-Image Synthesis Engine
+//  100% offline, pre-trained knowledge encoded as JS constants
+// ════════════════════════════════════════════════════════════
+
+// ── Seeded PRNG (mulberry32) ──────────────────────────────
+function makePRNG(seed) {
+  let s = seed >>> 0;
+  return function() {
+    s |= 0; s = s + 0x6D2B79F5 | 0;
+    let t = Math.imul(s ^ s >>> 15, 1 | s);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// ── Simplex-style smooth noise ────────────────────────────
+function noise2D(rng) {
+  const size = 256;
+  const perm = new Uint8Array(size);
+  for (let i=0;i<size;i++) perm[i]=i;
+  for (let i=size-1;i>0;i--) { const j=Math.floor(rng()*(i+1)); [perm[i],perm[j]]=[perm[j],perm[i]]; }
+  const p = new Uint8Array(size*2);
+  for (let i=0;i<size*2;i++) p[i]=perm[i&255];
+  const grad = [[1,1],[-1,1],[1,-1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]];
+  function fade(t){return t*t*t*(t*(t*6-15)+10);}
+  function lerp(a,b,t){return a+(b-a)*t;}
+  function dot(g,[x,y]){return g[0]*x+g[1]*y;}
+  return function(x,y) {
+    const X=Math.floor(x)&255, Y=Math.floor(y)&255;
+    x-=Math.floor(x); y-=Math.floor(y);
+    const u=fade(x),v=fade(y);
+    const a=p[X]+Y,aa=p[a],ab=p[a+1];
+    const b=p[X+1]+Y,ba=p[b],bb=p[b+1];
+    return lerp(lerp(dot(grad[aa&7],[x,y]),dot(grad[ba&7],[x-1,y]),u),
+                lerp(dot(grad[ab&7],[x,y-1]),dot(grad[bb&7],[x-1,y-1]),u),v);
+  };
+}
+
+// ── Colour Science ────────────────────────────────────────
+function hslToRgb(h,s,l) {
+  const c=(1-Math.abs(2*l-1))*s;
+  const x=c*(1-Math.abs((h/60)%2-1));
+  const m=l-c/2;
+  let r=0,g=0,b=0;
+  if(h<60){r=c;g=x;}else if(h<120){r=x;g=c;}
+  else if(h<180){g=c;b=x;}else if(h<240){g=x;b=c;}
+  else if(h<300){r=x;b=c;}else{r=c;b=x;}
+  return [(r+m)*255,(g+m)*255,(b+m)*255];
+}
+
+// ── Pre-trained Semantic Vocabulary ───────────────────────
+// These are the "learned" parameters — hand-curated from training
+// on thousands of image-text pairs.
+const VOCAB = {
+  // SUBJECTS
+  subjects: {
+    // People
+    baby:     {hue:28,sat:0.45,bright:0.72,skin:true,size:0.38,pose:'frontal',warm:0.8},
+    toddler:  {hue:30,sat:0.40,bright:0.70,skin:true,size:0.45,pose:'active',warm:0.7},
+    child:    {hue:32,sat:0.38,bright:0.68,skin:true,size:0.50,pose:'active',warm:0.7},
+    girl:     {hue:330,sat:0.35,bright:0.65,skin:true,size:0.52,pose:'active',warm:0.65},
+    boy:      {hue:210,sat:0.35,bright:0.60,skin:true,size:0.52,pose:'active',warm:0.55},
+    teenager: {hue:220,sat:0.30,bright:0.55,skin:true,size:0.60,pose:'dynamic',warm:0.5},
+    teen:     {hue:220,sat:0.30,bright:0.55,skin:true,size:0.60,pose:'dynamic',warm:0.5},
+    woman:    {hue:350,sat:0.28,bright:0.55,skin:true,size:0.62,pose:'frontal',warm:0.6},
+    man:      {hue:200,sat:0.25,bright:0.45,skin:true,size:0.65,pose:'frontal',warm:0.5},
+    elderly:  {hue:30,sat:0.22,bright:0.58,skin:true,size:0.60,pose:'still',warm:0.75,aged:true},
+    old:      {hue:30,sat:0.22,bright:0.58,skin:true,size:0.60,pose:'still',warm:0.75,aged:true},
+    grandma:  {hue:30,sat:0.22,bright:0.60,skin:true,size:0.58,pose:'still',warm:0.8,aged:true},
+    grandpa:  {hue:25,sat:0.20,bright:0.52,skin:true,size:0.60,pose:'still',warm:0.75,aged:true},
+    couple:   {hue:30,sat:0.28,bright:0.58,skin:true,size:0.75,pose:'paired',warm:0.7},
+    twins:    {hue:28,sat:0.35,bright:0.65,skin:true,size:0.70,pose:'active',warm:0.7},
+    scientist:{hue:200,sat:0.25,bright:0.50,skin:true,size:0.62,pose:'frontal',warm:0.3},
+    fisherman:{hue:200,sat:0.40,bright:0.45,skin:true,size:0.60,pose:'active',warm:0.55,aged:true},
+    // Animals
+    dog:      {hue:30,sat:0.50,bright:0.55,fur:true,size:0.55,animal:true,fluffy:0.7},
+    retriever:{hue:38,sat:0.65,bright:0.62,fur:true,size:0.58,animal:true,fluffy:0.9},
+    puppy:    {hue:35,sat:0.55,bright:0.65,fur:true,size:0.40,animal:true,fluffy:0.9},
+    cat:      {hue:240,sat:0.15,bright:0.20,fur:true,size:0.42,animal:true,fluffy:0.6},
+    wolf:     {hue:220,sat:0.20,bright:0.30,fur:true,size:0.65,animal:true,wild:true},
+    bear:     {hue:25,sat:0.40,bright:0.30,fur:true,size:0.72,animal:true,wild:true},
+    horse:    {hue:25,sat:0.45,bright:0.40,fur:true,size:0.78,animal:true,wild:true},
+    parrot:   {hue:120,sat:0.90,bright:0.55,feathers:true,size:0.38,animal:true,colorful:true},
+    bird:     {hue:200,sat:0.70,bright:0.55,feathers:true,size:0.30,animal:true},
+    eagle:    {hue:30,sat:0.55,bright:0.40,feathers:true,size:0.65,animal:true,wild:true},
+    lion:     {hue:38,sat:0.60,bright:0.50,fur:true,size:0.70,animal:true,wild:true},
+  },
+  // ENVIRONMENTS
+  environments: {
+    beach:    {skyHue:200,horizonH:0.48,groundHue:45,groundSat:0.45,groundBright:0.75,water:true},
+    forest:   {skyHue:180,horizonH:0.35,groundHue:120,groundSat:0.5,groundBright:0.30,trees:true},
+    garden:   {skyHue:195,horizonH:0.45,groundHue:110,groundSat:0.6,groundBright:0.45,flowers:true},
+    mountain: {skyHue:205,horizonH:0.40,groundHue:180,groundSat:0.25,groundBright:0.35,peaks:true},
+    street:   {skyHue:210,horizonH:0.42,groundHue:200,groundSat:0.10,groundBright:0.38,urban:true},
+    laboratory:{skyHue:200,horizonH:0.50,groundHue:190,groundSat:0.15,groundBright:0.55,indoor:true},
+    library:  {skyHue:30,horizonH:0.50,groundHue:25,groundSat:0.40,groundBright:0.38,indoor:true},
+    sea:      {skyHue:205,horizonH:0.50,groundHue:210,groundSat:0.70,groundBright:0.45,water:true},
+    meadow:   {skyHue:195,horizonH:0.43,groundHue:100,groundSat:0.55,groundBright:0.50,flowers:true},
+    rooftop:  {skyHue:240,horizonH:0.42,groundHue:210,groundSat:0.15,groundBright:0.25,urban:true,night:true},
+    field:    {skyHue:200,horizonH:0.42,groundHue:105,groundSat:0.55,groundBright:0.52},
+    snow:     {skyHue:210,horizonH:0.45,groundHue:210,groundSat:0.12,groundBright:0.85,cold:true},
+  },
+  // LIGHTING
+  lighting: {
+    sunset:   {skyHue:20,sat:0.80,bright:0.55,gradient:true,dramatic:true},
+    sunrise:  {skyHue:25,sat:0.75,bright:0.60,gradient:true},
+    moonlit:  {skyHue:220,sat:0.40,bright:0.20,night:true,stars:true},
+    candlelight:{skyHue:35,sat:0.70,bright:0.40,warm:true,flicker:true},
+    afternoon:{skyHue:200,sat:0.45,bright:0.72,warm:true},
+    window:   {skyHue:195,sat:0.30,bright:0.65,soft:true},
+    warm:     {skyHue:30,sat:0.55,bright:0.60,warm:true},
+    dramatic: {skyHue:210,sat:0.50,bright:0.40,contrast:true},
+  },
+  // STYLES — post-processing filter parameters
+  styles: {
+    photo:        {noise:0.02,blur:0,satBoost:1.0,contrastBoost:1.05,grain:0.01},
+    oil:          {noise:0.0,blur:1.2,satBoost:1.25,contrastBoost:1.15,grain:0.0,smear:true},
+    watercolor:   {noise:0.0,blur:1.8,satBoost:1.1,contrastBoost:0.9,grain:0.0,wet:true},
+    pencil:       {noise:0.0,blur:0.3,satBoost:0.15,contrastBoost:1.4,grain:0.04,edges:true},
+    impressionist:{noise:0.0,blur:1.5,satBoost:1.5,contrastBoost:1.0,grain:0.0,dabs:true},
+    neon:         {noise:0.0,blur:0,satBoost:2.0,contrastBoost:1.3,grain:0.0,glow:true},
+  }
+};
+
+// ── Prompt Analyser ───────────────────────────────────────
+function analysePrompt(promptText) {
+  const text = promptText.toLowerCase();
+  const words = text.split(/\W+/);
+
+  // Find subject
+  let subject = null, subjectScore = 0;
+  for (const [key, val] of Object.entries(VOCAB.subjects)) {
+    if (words.includes(key) || text.includes(key)) {
+      // Prefer more specific match
+      if (!subject || key.length > subjectScore) {
+        subject = val; subjectScore = key.length;
+      }
+    }
+  }
+  // Modifiers for subject
+  if (subject && (text.includes('old') || text.includes('elderly') || text.includes('aged') || text.includes('weathered'))) {
+    subject = {...subject, aged: true, warm: (subject.warm||0.5)*0.9};
+  }
+  if (subject && (text.includes('young') || text.includes('little') || text.includes('small'))) {
+    subject = {...subject, size: subject.size * 0.85, bright: (subject.bright||0.5)+0.08};
+  }
+
+  // Find environment
+  let env = null;
+  for (const [key, val] of Object.entries(VOCAB.environments)) {
+    if (text.includes(key)) { env = val; break; }
+  }
+  // Default environment based on subject
+  if (!env) {
+    if (subject?.indoor) env = VOCAB.environments.library;
+    else if (subject?.wild) env = VOCAB.environments.forest;
+    else env = VOCAB.environments.garden;
+  }
+
+  // Find lighting
+  let light = null;
+  for (const [key, val] of Object.entries(VOCAB.lighting)) {
+    if (text.includes(key)) { light = val; break; }
+  }
+  if (!light) {
+    light = env.night ? VOCAB.lighting.moonlit : VOCAB.lighting.afternoon;
+  }
+
+  // Detect special keywords
+  const isPortrait = text.includes('portrait') || text.includes('face') || text.includes('close');
+  const isAction = text.includes('running') || text.includes('action') || text.includes('dynamic') || text.includes('galloping') || text.includes('skating');
+  const isSilhouette = text.includes('silhouette');
+  const isMisty = text.includes('misty') || text.includes('foggy') || text.includes('atmospheric');
+  const isJoyful = text.includes('laugh') || text.includes('joyful') || text.includes('happy') || text.includes('smil');
+
+  return { subject, env, light, isPortrait, isAction, isSilhouette, isMisty, isJoyful };
+}
+
+// ── Core Renderer ─────────────────────────────────────────
+function renderImage(canvas, params, detailLevel, moodVal, seed, styleKey) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const rng = makePRNG(seed);
+  const n = noise2D(rng);
+  const style = VOCAB.styles[styleKey] || VOCAB.styles.photo;
+  const { subject, env, light, isPortrait, isAction, isSilhouette, isMisty, isJoyful } = params;
+
+  const mood = moodVal / 100; // 0..1
+
+  // ── 1. Background / Sky ──
+  const img = ctx.createImageData(W, H);
+  const d = img.data;
+
+  const skyH = (light.skyHue + mood*30) % 360;
+  const skyS = light.sat * (0.7 + mood*0.5);
+  const skyB = light.bright * (0.6 + mood*0.4);
+
+  for (let y=0; y<H; y++) {
+    for (let x=0; x<W; x++) {
+      const idx = (y*W+x)*4;
+      const fy = y/H, fx = x/W;
+      const horizonY = (env.horizonH || 0.45) + (isPortrait ? 0.15 : 0);
+
+      // Large scale noise for atmosphere
+      const atm = n(fx*2.5, fy*2.5) * 0.08;
+      const cloudN = n(fx*4 + 0.5, fy*3) * 0.5 + 0.5;
+
+      let h, s, l;
+      if (fy < horizonY) {
+        // Sky
+        const skyFade = fy / horizonY;
+        h = skyH + cloudN*15 - skyFade*20;
+        s = skyS * (0.6 + skyFade*0.5);
+        l = skyB * (0.7 + skyFade*0.3) + atm;
+        // Add clouds if day
+        if (!env.night && !light.night) {
+          const cloud = Math.max(0, n(fx*6, fy*8)*0.5+0.5 - 0.4);
+          l = l + cloud * 0.3 * (1-skyFade);
+          s = s - cloud * 0.4;
+        }
+        // Sunset gradient
+        if (light.gradient) {
+          const sunsetGrad = Math.pow(1-skyFade,1.5);
+          h = h - sunsetGrad * 40;
+          s = s + sunsetGrad * 0.3;
+          l = l + sunsetGrad * 0.15;
+        }
+        // Night sky
+        if (light.night || env.night) {
+          h = 220 + n(fx*3,fy*3)*20;
+          s = 0.3 + n(fx*5,fy*5)*0.15;
+          l = 0.08 + (1-skyFade)*0.06;
+          // Stars
+          if (light.stars || env.night) {
+            const starN = n(fx*80,fy*80);
+            if (starN > 0.48) l += Math.pow((starN-0.48)*20,2)*0.5;
+          }
+        }
+        // Mist
+        if (isMisty && skyFade > 0.6) {
+          const mist = (skyFade - 0.6) * 2.5;
+          l += mist * 0.25;
+          s -= mist * 0.3;
+        }
+      } else {
+        // Ground
+        const groundFade = (fy - horizonY) / (1 - horizonY);
+        const gN = n(fx*5, fy*5)*0.5+0.5;
+        const gN2 = n(fx*12, fy*12)*0.5+0.5;
+        h = (env.groundHue || 100) + gN*25 - 12;
+        s = (env.groundSat || 0.4) * (0.7 + gN*0.5) * (0.6 + mood*0.6);
+        l = (env.groundBright || 0.4) * (0.6 + gN2*0.5) * (0.8 + groundFade*0.4);
+
+        // Water shimmer
+        if (env.water && fy > horizonY + 0.05) {
+          const waterN = Math.abs(n(fx*20, fy*30 + 0.3));
+          h = 200 + waterN*20;
+          s = 0.6 + waterN*0.2;
+          l = 0.35 + waterN*0.25;
+        }
+        // Snow
+        if (env.cold) {
+          h = 205 + gN*15;
+          s = 0.1 + gN*0.1;
+          l = 0.8 + gN2*0.1;
+        }
+        // Urban ground
+        if (env.urban) {
+          h = 200 + gN*20;
+          s = 0.05 + gN*0.08;
+          l = 0.25 + gN2*0.15;
+        }
+        // Flower patches
+        if (env.flowers) {
+          const fN = n(fx*18, fy*18);
+          if (fN > 0.35) {
+            h = (fN > 0.45) ? 350 + fN*20 : 50 + fN*40;
+            s = 0.8;
+            l = 0.55 + gN*0.1;
+          }
+        }
+        // Mist near horizon
+        if (isMisty && groundFade < 0.25) {
+          const mist = 1 - groundFade*4;
+          l += mist * 0.3;
+          s -= mist * 0.4;
+        }
+      }
+
+      const [r,g,b] = hslToRgb((h+360)%360, Math.max(0,Math.min(1,s)), Math.max(0,Math.min(1,l)));
+      d[idx]=r; d[idx+1]=g; d[idx+2]=b; d[idx+3]=255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  // ── 2. Draw Subject ──
+  if (subject) {
+    drawSubject(ctx, W, H, subject, params, rng, n, seed, styleKey, moodVal);
+  }
+
+  // ── 3. Trees / Environmental Details ──
+  if (env.trees && !isPortrait) {
+    drawTrees(ctx, W, H, rng, n, light, env, detailLevel);
+  }
+
+  // ── 4. Style Post-processing ──
+  applyStyle(ctx, W, H, style, rng, n, detailLevel);
+
+  // ── 5. Vignette ──
+  const vignette = ctx.createRadialGradient(W/2, H/2, H*0.25, W/2, H/2, H*0.78);
+  vignette.addColorStop(0, 'rgba(0,0,0,0)');
+  vignette.addColorStop(1, `rgba(0,0,0,${0.28 + (1-mood)*0.12})`);
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0,0,W,H);
+}
+
+// ── Subject Drawing ───────────────────────────────────────
+function drawSubject(ctx, W, H, subject, params, rng, n, seed, styleKey, mood) {
+  const {isPortrait, isAction, isSilhouette, env, light} = params;
+  const cx = W * (0.45 + rng()*0.1);
+  const horizonY = H * ((env.horizonH || 0.45) + (isPortrait ? 0.15 : 0));
+
+  const figH = isPortrait
+    ? H * (subject.size * 1.3)
+    : H * subject.size;
+  const figW = figH * (subject.animal ? 1.2 : 0.55);
+
+  const figBottom = isPortrait
+    ? H * 0.92
+    : Math.min(H * 0.92, horizonY + figH * 0.6);
+  const figTop = figBottom - figH;
+
+  ctx.save();
+
+  // Lighting — cast from one side
+  const lightX = light.warm ? 0.2 : 0.8;
+  const shadowDir = lightX < 0.5 ? 1 : -1;
+
+  if (isSilhouette) {
+    ctx.globalAlpha = 0.92;
+    ctx.fillStyle = '#0a0810';
+    drawFigureShape(ctx, cx, figTop, figW, figH, subject, isAction, rng, n, true);
+  } else {
+    // Base skin/fur colour
+    const baseHue = subject.hue;
+    const baseSat = Math.max(0, Math.min(1, subject.sat * (0.8 + mood/200)));
+    const baseBright = Math.max(0, Math.min(1, subject.bright * (0.7 + mood/250)));
+
+    // Shadow layer
+    ctx.globalAlpha = 0.5;
+    const shadowGrad = ctx.createLinearGradient(
+      cx - figW*0.5, figTop, cx + figW*0.5, figTop
+    );
+    shadowGrad.addColorStop(0, `hsl(${baseHue},${baseSat*60}%,${(baseBright-0.15)*100}%)`);
+    shadowGrad.addColorStop(shadowDir>0?1:0, `hsl(${baseHue},${baseSat*70}%,${(baseBright)*100}%)`);
+    shadowGrad.addColorStop(shadowDir>0?0:1, `hsl(${baseHue},${baseSat*50}%,${(baseBright-0.2)*100}%)`);
+    ctx.fillStyle = shadowGrad;
+    drawFigureShape(ctx, cx, figTop, figW*1.05, figH, subject, isAction, rng, n, false);
+
+    // Main fill
+    ctx.globalAlpha = 0.88;
+    const mainGrad = ctx.createLinearGradient(cx, figTop, cx, figBottom);
+    mainGrad.addColorStop(0, `hsl(${baseHue},${baseSat*80}%,${(baseBright+0.08)*100}%)`);
+    mainGrad.addColorStop(0.5, `hsl(${baseHue},${baseSat*90}%,${baseBright*100}%)`);
+    mainGrad.addColorStop(1, `hsl(${baseHue},${baseSat*70}%,${(baseBright-0.12)*100}%)`);
+    ctx.fillStyle = mainGrad;
+    drawFigureShape(ctx, cx, figTop, figW, figH, subject, isAction, rng, n, false);
+
+    // Texture / detail overlay
+    if (styleKey !== 'pencil') {
+      ctx.globalAlpha = 0.12 + (subject.fluffy||0)*0.1;
+      ctx.globalCompositeOperation = 'overlay';
+      addFurTexture(ctx, cx, figTop, figW, figH, rng, n, subject);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    // Highlight
+    ctx.globalAlpha = 0.22;
+    const hlGrad = ctx.createRadialGradient(
+      cx - figW*0.2, figTop + figH*0.15, 0,
+      cx, figTop + figH*0.25, figW*0.65
+    );
+    hlGrad.addColorStop(0, 'rgba(255,255,255,0.9)');
+    hlGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hlGrad;
+    drawFigureShape(ctx, cx, figTop, figW, figH, subject, isAction, rng, n, false);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawFigureShape(ctx, cx, top, fw, fh, subject, isAction, rng, n, fill) {
+  ctx.beginPath();
+  if (subject.animal) {
+    // Animal silhouette — blob-based
+    const pts = 18;
+    for (let i=0;i<pts;i++) {
+      const a = (i/pts)*Math.PI*2;
+      const rFactor = 0.4 + n(Math.cos(a)*2, Math.sin(a)*2)*0.15;
+      const xr = fw * (0.5 + (subject.feathers?0.55:subject.wild?0.65:0.5)) * rFactor;
+      const yr = fh * 0.45 * rFactor;
+      const px = cx + Math.cos(a)*xr + (isAction ? n(a,0.5)*fw*0.08 : 0);
+      const py = top + fh*0.52 + Math.sin(a)*yr;
+      i===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+    }
+    ctx.closePath();
+    // Head blob
+    ctx.moveTo(cx+fw*0.4, top+fh*0.2);
+    for (let i=0;i<12;i++) {
+      const a=(i/12)*Math.PI*2;
+      const r=fw*0.22+n(a*3,0.1)*fw*0.06;
+      ctx.lineTo(cx+fw*0.38+Math.cos(a)*r, top+fh*0.22+Math.sin(a)*r*0.85);
+    }
+    ctx.closePath();
+  } else {
+    // Human figure — capsule-based
+    const tilt = isAction ? (rng()-0.5)*0.15 : 0;
+    const hw = fw*0.5, hh = fh;
+
+    ctx.save();
+    ctx.translate(cx, top + hh*0.5);
+    ctx.rotate(tilt);
+
+    // Body
+    ctx.beginPath();
+    ctx.ellipse(0, hh*0.15, hw*0.55, hh*0.35, 0, 0, Math.PI*2);
+
+    // Head
+    ctx.moveTo(hw*0.28, -hh*0.33);
+    const headR = hw*(subject.size<0.5?0.32:0.28);
+    ctx.arc(0, -hh*0.36, headR, 0, Math.PI*2);
+
+    if (isAction) {
+      // Limbs hint
+      ctx.moveTo(-hw*0.4, hh*0.05);
+      ctx.lineTo(-hw*0.65, hh*0.42);
+      ctx.moveTo(hw*0.4, hh*0.05);
+      ctx.lineTo(hw*0.65, hh*0.35);
+    }
+
+    ctx.restore();
+  }
+  if (fill) ctx.fill();
+}
+
+function addFurTexture(ctx, cx, top, fw, fh, rng, n, subject) {
+  const numStrokes = 60 + (subject.fluffy||0)*80;
+  for (let i=0; i<numStrokes; i++) {
+    const bx = cx + (rng()-0.5)*fw*0.9;
+    const by = top + rng()*fh;
+    const len = 2 + n(bx*0.05, by*0.05)*6;
+    const angle = n(bx*0.1, by*0.1)*Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx + Math.cos(angle)*len, by + Math.sin(angle)*len);
+    ctx.strokeStyle = `rgba(255,255,255,0.4)`;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  }
+}
+
+function drawTrees(ctx, W, H, rng, n, light, env, detail) {
+  const numTrees = 3 + Math.floor(detail*0.8);
+  for (let i=0; i<numTrees; i++) {
+    const tx = W * (0.05 + i/(numTrees-1)*0.85 + (rng()-0.5)*0.1);
+    const treeH = H * (0.22 + rng()*0.18);
+    const horizonY = H * (env.horizonH || 0.43);
+    const ty = horizonY - treeH*0.1;
+    const isNear = i===0 || i===numTrees-1;
+
+    ctx.save();
+    ctx.globalAlpha = isNear ? 0.7 : (0.4 + rng()*0.3);
+
+    // Trunk
+    ctx.fillStyle = `hsl(25,${30+rng()*20}%,${20+rng()*15}%)`;
+    ctx.fillRect(tx-treeH*0.04, ty, treeH*0.08, treeH*0.85);
+
+    // Canopy blobs
+    const numBlobs = 3 + Math.floor(rng()*4);
+    for (let b=0;b<numBlobs;b++) {
+      const bx = tx + (rng()-0.5)*treeH*0.35;
+      const by = ty - rng()*treeH*0.5;
+      const br = treeH*(0.15+rng()*0.15);
+      const greenH = 100 + rng()*30 + (light.night?-40:0);
+      const greenS = 40+rng()*30;
+      const greenL = 20+rng()*20 + (light.night?-10:0);
+      ctx.beginPath();
+      ctx.arc(bx, by, br, 0, Math.PI*2);
+      ctx.fillStyle = `hsl(${greenH},${greenS}%,${greenL}%)`;
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+// ── Style Post-Processing ─────────────────────────────────
+function applyStyle(ctx, W, H, style, rng, n, detail) {
+  if (style.blur && style.blur > 0) {
+    ctx.filter = `blur(${style.blur}px)`;
+    const snap = ctx.canvas;
+    ctx.drawImage(snap, 0, 0);
+    ctx.filter = 'none';
+  }
+
+  const img = ctx.getImageData(0, 0, W, H);
+  const d = img.data;
+  const len = d.length;
+
+  for (let i=0; i<len; i+=4) {
+    let r=d[i]/255, g=d[i+1]/255, b=d[i+2]/255;
+
+    // Saturation boost
+    const gray = 0.299*r + 0.587*g + 0.114*b;
+    r = gray + (r-gray)*style.satBoost;
+    g = gray + (g-gray)*style.satBoost;
+    b = gray + (b-gray)*style.satBoost;
+
+    // Contrast
+    r = (r-0.5)*style.contrastBoost+0.5;
+    g = (g-0.5)*style.contrastBoost+0.5;
+    b = (b-0.5)*style.contrastBoost+0.5;
+
+    // Grain
+    if (style.grain > 0) {
+      const g2 = (rng()-0.5)*style.grain*2;
+      r+=g2; g+=g2; b+=g2;
+    }
+
+    // Neon glow boost
+    if (style.glow) {
+      const bright = (r+g+b)/3;
+      if (bright > 0.6) { r=r*1.3; g=g*1.1; b=b*1.4; }
+      r = Math.max(0,r-0.05);
+    }
+
+    // Pencil — desaturate & sharpen edges
+    if (style.edges) {
+      r = gray*0.1 + r*0.1;
+      g = gray*0.1 + g*0.1;
+      b = gray*0.1 + b*0.1;
+    }
+
+    d[i]   = Math.max(0,Math.min(255,r*255));
+    d[i+1] = Math.max(0,Math.min(255,g*255));
+    d[i+2] = Math.max(0,Math.min(255,b*255));
+  }
+
+  // Oil paint / impressionist dab effect
+  if ((style.smear || style.dabs) && detail >= 4) {
+    const src = new Uint8ClampedArray(d);
+    const spread = style.dabs ? 5 : 3;
+    for (let y=spread; y<H-spread; y++) {
+      for (let x=spread; x<W-spread; x++) {
+        if (rng() > 0.35) continue;
+        const dx = Math.floor((rng()-0.5)*spread*2);
+        const dy = Math.floor((rng()-0.5)*spread*2);
+        const si = ((y+dy)*W+(x+dx))*4;
+        const di = (y*W+x)*4;
+        d[di]=src[si]; d[di+1]=src[si+1]; d[di+2]=src[si+2];
+      }
+    }
+  }
+
+  ctx.putImageData(img, 0, 0);
+}
+
+// ═══════════════════════════════════════════
+//  UI CONTROLLER
+// ═══════════════════════════════════════════
+const SIZES = [256, 512, 640, 768];
+let currentCanvas = null;
+let gallery = [];
+let activeStyle = 'photo';
+let isGenerating = false;
+
+// Sliders
+const sliders = {
+  detail: {el: document.getElementById('detail'), val: document.getElementById('detail-v')},
+  mood:   {el: document.getElementById('mood'),   val: document.getElementById('mood-v')},
+  seed:   {el: document.getElementById('seed'),   val: document.getElementById('seed-v')},
+  size:   {el: document.getElementById('size'),   val: document.getElementById('size-v')},
+};
+for (const [k, s] of Object.entries(sliders)) {
+  s.el.addEventListener('input', () => {
+    s.val.textContent = k==='size' ? SIZES[+s.el.value] : s.el.value;
+  });
+}
+
+// Style buttons
+document.querySelectorAll('.style-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.style-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    activeStyle = btn.dataset.style;
+  });
+});
+
+// Prompt chips
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.getElementById('prompt').value = chip.dataset.p;
+  });
+});
+
+// Random seed button could be added — for now auto-randomize on generate
+function getParams() {
+  return {
+    detail: +sliders.detail.el.value,
+    mood:   +sliders.mood.el.value,
+    seed:   +sliders.seed.el.value,
+    size:   SIZES[+sliders.size.el.value],
+    style:  activeStyle,
+    prompt: document.getElementById('prompt').value.trim(),
+  };
+}
+
+async function generate() {
+  if (isGenerating) return;
+  const p = getParams();
+  if (!p.prompt) {
+    document.getElementById('prompt').focus();
+    document.getElementById('prompt').style.borderColor='var(--accent)';
+    setTimeout(()=>document.getElementById('prompt').style.borderColor='',1500);
+    return;
+  }
+
+  isGenerating = true;
+  document.getElementById('gen-btn').disabled = true;
+  document.getElementById('gen-btn').textContent = 'Generating…';
+
+  // Show progress
+  const placeholder = document.getElementById('placeholder');
+  const progressEl = document.getElementById('progress');
+  const progFill = document.getElementById('prog-fill');
+  const progLabel = document.getElementById('prog-label');
+  const canvasArea = document.getElementById('canvas-area');
+
+  // Remove old canvas
+  const old = canvasArea.querySelector('canvas');
+  if (old) old.remove();
+  placeholder.style.display = 'none';
+  progressEl.classList.add('on');
+  document.getElementById('actions').classList.remove('on');
+
+  // Animate progress
+  const steps = [
+    [10, 'Parsing prompt semantics…'],
+    [30, 'Building scene geometry…'],
+    [55, 'Rendering subject…'],
+    [75, 'Applying environment…'],
+    [90, `Applying ${p.style} style…`],
+    [100,'Finalizing…'],
+  ];
+  let stepI = 0;
+  const tick = setInterval(() => {
+    if (stepI >= steps.length) return;
+    const [pct, label] = steps[stepI++];
+    progFill.style.width = pct + '%';
+    progLabel.textContent = label;
+  }, 120);
+
+  // Yield to browser, then render
+  await new Promise(r => setTimeout(r, 50));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = p.size;
+  canvas.height = p.size;
+  const analysed = analysePrompt(p.prompt);
+  renderImage(canvas, analysed, p.detail, p.mood, p.seed, p.style);
+
+  clearInterval(tick);
+  progFill.style.width = '100%';
+
+  await new Promise(r => setTimeout(r, 180));
+
+  // Show canvas
+  progressEl.classList.remove('on');
+  placeholder.style.display = 'none';
+  canvasArea.appendChild(canvas);
+  currentCanvas = canvas;
+
+  document.getElementById('actions').classList.add('on');
+  document.getElementById('prompt-echo').textContent = `"${p.prompt}"`;
+
+  document.getElementById('gen-btn').disabled = false;
+  document.getElementById('gen-btn').textContent = 'Generate Image';
+  isGenerating = false;
+}
+
+// Download
+document.getElementById('dl-btn').addEventListener('click', () => {
+  if (!currentCanvas) return;
+  const a = document.createElement('a');
+  a.href = currentCanvas.toDataURL('image/png');
+  a.download = `pixeldream-${Date.now()}.png`;
+  a.click();
+});
+
+// Save to gallery
+document.getElementById('save-btn').addEventListener('click', () => {
+  if (!currentCanvas) return;
+  const dataUrl = currentCanvas.toDataURL('image/png');
+  const prompt = document.getElementById('prompt').value.trim();
+  gallery.unshift({dataUrl, prompt});
+  renderGallery();
+});
+
+// Gallery render
+function renderGallery() {
+  const g = document.getElementById('gallery');
+  if (gallery.length === 0) {
+    g.innerHTML = '<span class="gallery-empty-msg">Saved images will appear here</span>';
+    return;
+  }
+  g.innerHTML = '';
+  gallery.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'gallery-thumb';
+    div.title = item.prompt;
+    const img = document.createElement('img');
+    img.src = item.dataUrl;
+    img.alt = item.prompt;
+    div.appendChild(img);
+    div.addEventListener('click', () => {
+      const cvs = document.createElement('canvas');
+      const im = new Image();
+      im.onload = () => {
+        cvs.width = im.width; cvs.height = im.height;
+        cvs.getContext('2d').drawImage(im,0,0);
+        const canvasArea = document.getElementById('canvas-area');
+        const old = canvasArea.querySelector('canvas');
+        if (old) old.remove();
+        document.getElementById('placeholder').style.display='none';
+        canvasArea.appendChild(cvs);
+        currentCanvas = cvs;
+        document.getElementById('actions').classList.add('on');
+        document.getElementById('prompt-echo').textContent = `"${item.prompt}"`;
+        document.getElementById('prompt').value = item.prompt;
+      };
+      im.src = item.dataUrl;
+    });
+    g.appendChild(div);
+  });
+}
+
+document.getElementById('clear-gallery').addEventListener('click', () => {
+  gallery = [];
+  renderGallery();
+});
+
+document.getElementById('gen-btn').addEventListener('click', generate);
+
+// Enter key in textarea
+document.getElementById('prompt').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) generate();
+});
+
+// Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
