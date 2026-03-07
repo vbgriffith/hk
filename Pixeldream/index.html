@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PixelDream — In-Browser Text to Image</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface2: #1c1c28;
+      --border: #2a2a3a;
+      --accent: #ff6b35;
+      --accent2: #7c3aed;
+      --accent3: #06b6d4;
+      --text: #f0f0f8;
+      --text-muted: #6b6b85;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --canvas-size: 512px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      overflow-x: hidden;
+    }
+
+    /* Animated background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(124,58,237,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,58,237,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .noise {
+      position: fixed;
+      inset: 0;
+      opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header */
+    header {
+      padding: 32px 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 20px rgba(255,107,53,0.4);
+    }
+
+    .logo h1 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .logo span {
+      color: var(--accent);
+    }
+
+    .badge {
+      font-size: 0.65rem;
+      background: rgba(6,182,212,0.15);
+      color: var(--accent3);
+      border: 1px solid rgba(6,182,212,0.3);
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    .status-dot.ready { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .status-dot.loading { background: var(--warning); box-shadow: 0 0 8px var(--warning); animation: pulse 1s infinite; }
+    .status-dot.error { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* Main layout */
+    main {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 28px;
+      padding: 28px 0;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+    }
+
+    /* Controls Panel */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,107,53,0.4), transparent);
+    }
+
+    .panel-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    label {
+      display: block;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.82rem;
+      padding: 12px 14px;
+      resize: vertical;
+      min-height: 100px;
+      line-height: 1.6;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(255,107,53,0.1);
+    }
+
+    textarea::placeholder { color: var(--text-muted); }
+
+    .prompt-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .chip {
+      font-size: 0.68rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(255,107,53,0.08);
+    }
+
+    /* Slider */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .slider-val {
+      font-size: 0.85rem;
+      color: var(--accent3);
+      font-weight: 700;
+      min-width: 32px;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      background: var(--surface2);
+      border-radius: 2px;
+      outline: none;
+      margin-bottom: 12px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(255,107,53,0.5);
+    }
+
+    /* Size select */
+    .size-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .size-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      padding: 8px 4px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+
+    .size-btn:hover { border-color: var(--accent2); color: var(--text); }
+    .size-btn.active {
+      border-color: var(--accent2);
+      background: rgba(124,58,237,0.15);
+      color: var(--accent2);
+      box-shadow: 0 0 8px rgba(124,58,237,0.2);
+    }
+
+    /* Generate Button */
+    .generate-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--accent), #ff4500);
+      border: none;
+      border-radius: 12px;
+      color: white;
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(255,107,53,0.35);
+    }
+
+    .generate-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .generate-btn:hover:not(:disabled)::before { opacity: 1; }
+    .generate-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(255,107,53,0.45); }
+    .generate-btn:active:not(:disabled) { transform: translateY(0); }
+
+    .generate-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: linear-gradient(135deg, #666, #444);
+      box-shadow: none;
+    }
+
+    /* Output Area */
+    .output-area {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .canvas-wrapper {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      min-height: 580px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .canvas-wrapper::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(124,58,237,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    #output-canvas {
+      border-radius: 10px;
+      max-width: 100%;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      display: none;
+    }
+
+    .canvas-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex: 1;
+      width: 100%;
+      min-height: 400px;
+    }
+
+    .placeholder-art {
+      width: 120px;
+      height: 120px;
+      position: relative;
+    }
+
+    .placeholder-art svg {
+      width: 100%;
+      height: 100%;
+      opacity: 0.3;
+    }
+
+    .placeholder-text {
+      text-align: center;
+    }
+
+    .placeholder-text h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .placeholder-text p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      opacity: 0.6;
+      line-height: 1.5;
+    }
+
+    /* Progress bar */
+    .progress-container {
+      width: 100%;
+      max-width: 480px;
+      display: none;
+    }
+
+    .progress-container.visible { display: block; }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      letter-spacing: 0.06em;
+    }
+
+    .progress-bar {
+      height: 4px;
+      background: var(--surface2);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent2), var(--accent3));
+      border-radius: 2px;
+      transition: width 0.3s;
+      width: 0%;
+      box-shadow: 0 0 8px rgba(6,182,212,0.5);
+    }
+
+    /* Step progress */
+    .step-progress {
+      width: 100%;
+      max-width: 480px;
+      display: none;
+    }
+
+    .step-progress.visible { display: block; }
+
+    .step-info {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 6px;
+      letter-spacing: 0.04em;
+    }
+
+    .step-bar {
+      height: 2px;
+      background: var(--surface2);
+      border-radius: 1px;
+      overflow: hidden;
+    }
+
+    .step-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #ff4500);
+      border-radius: 1px;
+      transition: width 0.15s;
+      width: 0%;
+    }
+
+    /* Canvas actions */
+    .canvas-actions {
+      display: flex;
+      gap: 10px;
+      display: none;
+    }
+
+    .canvas-actions.visible { display: flex; }
+
+    .action-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .action-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+
+    /* Gallery */
+    .gallery-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .gallery-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .gallery-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .clear-btn {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+
+    .clear-btn:hover { color: #ef4444; }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 8px;
+    }
+
+    .gallery-item {
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      aspect-ratio: 1;
+      border: 1px solid var(--border);
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .gallery-item:hover {
+      border-color: var(--accent);
+      transform: scale(1.03);
+    }
+
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .gallery-empty {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 20px;
+      opacity: 0.6;
+    }
+
+    /* Model info */
+    .model-info {
+      background: linear-gradient(135deg, rgba(124,58,237,0.08), rgba(6,182,212,0.05));
+      border: 1px solid rgba(124,58,237,0.2);
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 0.72rem;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+
+    .model-info strong {
+      color: var(--accent3);
+      display: block;
+      margin-bottom: 4px;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+    }
+
+    /* Log */
+    #log {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      max-height: 90px;
+      overflow-y: auto;
+      line-height: 1.6;
+      font-family: 'Space Mono', monospace;
+      display: none;
+    }
+
+    #log.visible { display: block; }
+
+    .log-entry { margin-bottom: 2px; }
+    .log-entry.ok { color: var(--success); }
+    .log-entry.warn { color: var(--warning); }
+    .log-entry.err { color: #ef4444; }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 16px 0;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      letter-spacing: 0.05em;
+    }
+
+    /* Loading shimmer */
+    @keyframes shimmer {
+      0% { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+
+    .shimmer {
+      background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%);
+      background-size: 400px 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    /* Loading canvas overlay */
+    .canvas-loading {
+      width: 100%;
+      max-width: 512px;
+      aspect-ratio: 1;
+      border-radius: 10px;
+      display: none;
+    }
+
+    .canvas-loading.visible {
+      display: block;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      header { flex-wrap: wrap; gap: 12px; }
+      .header-right { flex-wrap: wrap; }
+      .size-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="noise"></div>
+
+<div class="app">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">✦</div>
+      <div>
+        <h1>Pixel<span>Dream</span></h1>
+        <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">In-Browser Text → Image</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="badge">100% Offline</span>
+      <div class="status-pill">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Initializing…</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Controls -->
+    <div class="controls">
+
+      <div class="panel">
+        <div class="panel-title">Prompt</div>
+        <label for="prompt">Describe your image</label>
+        <textarea id="prompt" placeholder="e.g. elderly woman with kind eyes, oil painting style, warm light…" rows="4"></textarea>
+        <div class="prompt-row" id="prompt-chips">
+          <span class="chip" data-prompt="elderly man reading in a cozy library, warm candlelight">👴 Elderly man reading</span>
+          <span class="chip" data-prompt="young girl playing with golden retriever puppy in a garden, sunny day">👧 Girl with puppy</span>
+          <span class="chip" data-prompt="teenage boy skateboarding in urban street, dynamic action shot">🛹 Teen skating</span>
+          <span class="chip" data-prompt="middle-aged woman scientist in laboratory, professional portrait">👩‍🔬 Scientist</span>
+          <span class="chip" data-prompt="baby laughing with fluffy white cat, soft natural light">👶 Baby with cat</span>
+          <span class="chip" data-prompt="majestic wolf howling at full moon in snowy forest">🐺 Wolf at moon</span>
+          <span class="chip" data-prompt="colorful parrot perched on tropical branch, vibrant feathers">🦜 Parrot portrait</span>
+          <span class="chip" data-prompt="old man fisherman on weathered boat at sunset, documentary style">🎣 Old fisherman</span>
+          <span class="chip" data-prompt="toddler twins running on beach, candid joyful moment">👫 Toddler twins</span>
+          <span class="chip" data-prompt="brown bear family in misty mountain meadow, wildlife photography">🐻 Bear family</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Negative Prompt</div>
+        <label for="neg-prompt">Exclude from image</label>
+        <textarea id="neg-prompt" placeholder="blurry, ugly, deformed, low quality…" rows="2">blurry, ugly, distorted, deformed, low quality, watermark, text, signature</textarea>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Parameters</div>
+
+        <label>Output Size</label>
+        <div class="size-grid">
+          <button class="size-btn active" data-w="256" data-h="256">256×256<br><span style="font-size:0.6rem;opacity:0.6">Fast</span></button>
+          <button class="size-btn" data-w="384" data-h="384">384×384<br><span style="font-size:0.6rem;opacity:0.6">Medium</span></button>
+          <button class="size-btn" data-w="512" data-h="512">512×512<br><span style="font-size:0.6rem;opacity:0.6">Quality</span></button>
+          <button class="size-btn" data-w="512" data-h="768">512×768<br><span style="font-size:0.6rem;opacity:0.6">Portrait</span></button>
+          <button class="size-btn" data-w="768" data-h="512">768×512<br><span style="font-size:0.6rem;opacity:0.6">Landscape</span></button>
+          <button class="size-btn" data-w="768" data-h="768">768×768<br><span style="font-size:0.6rem;opacity:0.6">High-Res</span></button>
+        </div>
+
+        <br />
+
+        <div class="slider-row">
+          <label style="margin:0">Steps</label>
+          <span class="slider-val" id="steps-val">20</span>
+        </div>
+        <input type="range" id="steps" min="1" max="50" value="20" />
+
+        <div class="slider-row">
+          <label style="margin:0">Guidance Scale</label>
+          <span class="slider-val" id="guidance-val">7.5</span>
+        </div>
+        <input type="range" id="guidance" min="1" max="20" step="0.5" value="7.5" />
+
+        <div class="slider-row">
+          <label style="margin:0">Seed</label>
+          <span class="slider-val" id="seed-val">42</span>
+        </div>
+        <input type="range" id="seed" min="0" max="9999" value="42" />
+      </div>
+
+      <div class="model-info">
+        <strong>Model Info</strong>
+        Uses <b>Xenova/stable-diffusion-v1-5</b> via Transformers.js (ONNX Runtime Web). Models are downloaded once from HuggingFace then cached in your browser — fully offline after first run. Optimized for people across all ages &amp; animals.
+      </div>
+
+      <button class="generate-btn" id="generate-btn" disabled>
+        ⚡ Generate Image
+      </button>
+
+    </div>
+
+    <!-- Output -->
+    <div class="output-area">
+      <div class="canvas-wrapper">
+        <div class="canvas-placeholder" id="placeholder">
+          <div class="placeholder-art">
+            <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="10" y="10" width="100" height="100" rx="12" stroke="#7c3aed" stroke-width="2" stroke-dasharray="8 4"/>
+              <circle cx="40" cy="45" r="12" stroke="#ff6b35" stroke-width="2"/>
+              <path d="M15 90 L40 60 L65 80 L85 55 L105 80" stroke="#06b6d4" stroke-width="2" stroke-linejoin="round"/>
+              <circle cx="85" cy="38" r="8" stroke="#ff6b35" stroke-width="1.5" stroke-dasharray="3 2"/>
+            </svg>
+          </div>
+          <div class="placeholder-text">
+            <h3>Your image will appear here</h3>
+            <p>Load the model and describe what<br/>you'd like to generate</p>
+          </div>
+        </div>
+
+        <div class="canvas-loading shimmer" id="canvas-loading"></div>
+
+        <canvas id="output-canvas"></canvas>
+
+        <div class="progress-container" id="model-progress">
+          <div class="progress-label">
+            <span id="progress-label-text">Loading model…</span>
+            <span id="progress-pct">0%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+        </div>
+
+        <div class="step-progress" id="step-progress">
+          <div class="step-info" id="step-info">Denoising step 0 / 20</div>
+          <div class="step-bar">
+            <div class="step-fill" id="step-fill"></div>
+          </div>
+        </div>
+
+        <div class="canvas-actions" id="canvas-actions">
+          <button class="action-btn" id="download-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download PNG
+          </button>
+          <button class="action-btn" id="save-gallery-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            Save to Gallery
+          </button>
+        </div>
+      </div>
+
+      <div class="gallery-section">
+        <div class="gallery-header">
+          <div class="gallery-title">Gallery</div>
+          <button class="clear-btn" id="clear-gallery">Clear all</button>
+        </div>
+        <div class="gallery-grid" id="gallery-grid">
+          <div class="gallery-empty">Generated images will appear here</div>
+        </div>
+      </div>
+
+      <div id="log" class="visible"></div>
+    </div>
+  </main>
+
+  <footer>
+    <span>PixelDream — 100% in-browser · No server · No data sent</span>
+    <span>Powered by Transformers.js + ONNX Runtime Web</span>
+  </footer>
+</div>
+
+<!-- Transformers.js from jsDelivr -->
+<script type="module">
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js';
+
+// ═══════════════════════════════════════════
+// Config
+// ═══════════════════════════════════════════
+env.allowLocalModels = false;
+env.useBrowserCache = true; // Cache models in IndexedDB for offline use
+
+// ═══════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════
+let pipe = null;
+let isGenerating = false;
+let gallery = [];
+let selectedSize = { w: 256, h: 256 };
+
+// ═══════════════════════════════════════════
+// DOM refs
+// ═══════════════════════════════════════════
+const statusDot = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+const generateBtn = document.getElementById('generate-btn');
+const promptEl = document.getElementById('prompt');
+const negPromptEl = document.getElementById('neg-prompt');
+const outputCanvas = document.getElementById('output-canvas');
+const placeholder = document.getElementById('placeholder');
+const canvasLoading = document.getElementById('canvas-loading');
+const modelProgress = document.getElementById('model-progress');
+const progressFill = document.getElementById('progress-fill');
+const progressPct = document.getElementById('progress-pct');
+const progressLabelText = document.getElementById('progress-label-text');
+const stepProgress = document.getElementById('step-progress');
+const stepInfo = document.getElementById('step-info');
+const stepFill = document.getElementById('step-fill');
+const canvasActions = document.getElementById('canvas-actions');
+const logEl = document.getElementById('log');
+const galleryGrid = document.getElementById('gallery-grid');
+const stepsInput = document.getElementById('steps');
+const guidanceInput = document.getElementById('guidance');
+const seedInput = document.getElementById('seed');
+
+// ═══════════════════════════════════════════
+// Logging
+// ═══════════════════════════════════════════
+function log(msg, type = '') {
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${type}`;
+  entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  logEl.appendChild(entry);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ═══════════════════════════════════════════
+// Status
+// ═══════════════════════════════════════════
+function setStatus(text, state) {
+  statusText.textContent = text;
+  statusDot.className = `status-dot ${state}`;
+}
+
+// ═══════════════════════════════════════════
+// Sliders
+// ═══════════════════════════════════════════
+stepsInput.addEventListener('input', () => {
+  document.getElementById('steps-val').textContent = stepsInput.value;
+});
+guidanceInput.addEventListener('input', () => {
+  document.getElementById('guidance-val').textContent = guidanceInput.value;
+});
+seedInput.addEventListener('input', () => {
+  document.getElementById('seed-val').textContent = seedInput.value;
+});
+
+// ═══════════════════════════════════════════
+// Size buttons
+// ═══════════════════════════════════════════
+document.querySelectorAll('.size-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedSize = { w: parseInt(btn.dataset.w), h: parseInt(btn.dataset.h) };
+  });
+});
+
+// ═══════════════════════════════════════════
+// Prompt chips
+// ═══════════════════════════════════════════
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    promptEl.value = chip.dataset.prompt;
+    promptEl.focus();
+  });
+});
+
+// ═══════════════════════════════════════════
+// Load Model
+// ═══════════════════════════════════════════
+async function loadModel() {
+  setStatus('Downloading model…', 'loading');
+  modelProgress.classList.add('visible');
+  log('Loading Stable Diffusion (first run downloads ~600MB, cached after)…', 'warn');
+
+  try {
+    pipe = await pipeline('text-to-image', 'Xenova/stable-diffusion-v1-5', {
+      progress_callback: (p) => {
+        if (p.status === 'progress' && p.total) {
+          const pct = Math.round((p.loaded / p.total) * 100);
+          progressFill.style.width = `${pct}%`;
+          progressPct.textContent = `${pct}%`;
+          progressLabelText.textContent = `Loading ${p.file ?? 'model'}…`;
+        } else if (p.status === 'done') {
+          progressLabelText.textContent = 'Model component loaded ✓';
+        } else if (p.status === 'ready') {
+          progressFill.style.width = '100%';
+        }
+      }
+    });
+
+    modelProgress.classList.remove('visible');
+    setStatus('Ready', 'ready');
+    generateBtn.disabled = false;
+    log('Model loaded and cached. Fully offline from here!', 'ok');
+  } catch (err) {
+    setStatus('Error loading model', 'error');
+    log(`Error: ${err.message}`, 'err');
+    modelProgress.classList.remove('visible');
+    generateBtn.textContent = '⚠ Retry Load Model';
+    generateBtn.disabled = false;
+    generateBtn.onclick = () => { generateBtn.disabled = true; loadModel(); };
+  }
+}
+
+// ═══════════════════════════════════════════
+// Generate
+// ═══════════════════════════════════════════
+async function generate() {
+  if (isGenerating || !pipe) return;
+  const prompt = promptEl.value.trim();
+  if (!prompt) { promptEl.focus(); return; }
+
+  isGenerating = true;
+  generateBtn.disabled = true;
+  generateBtn.textContent = '⏳ Generating…';
+  setStatus('Generating…', 'loading');
+
+  // Show loading state
+  placeholder.style.display = 'none';
+  outputCanvas.style.display = 'none';
+  canvasActions.classList.remove('visible');
+  canvasLoading.style.width = selectedSize.w + 'px';
+  canvasLoading.style.height = selectedSize.h + 'px';
+  canvasLoading.classList.add('visible');
+
+  const numSteps = parseInt(stepsInput.value);
+  const guidance = parseFloat(guidanceInput.value);
+  const seed = parseInt(seedInput.value);
+
+  stepProgress.classList.add('visible');
+  let currentStep = 0;
+
+  log(`Generating: "${prompt.substring(0, 60)}…"`, '');
+  log(`Steps: ${numSteps} | Guidance: ${guidance} | Seed: ${seed} | Size: ${selectedSize.w}×${selectedSize.h}`, '');
+
+  try {
+    const result = await pipe(prompt, {
+      negative_prompt: negPromptEl.value,
+      num_inference_steps: numSteps,
+      guidance_scale: guidance,
+      seed: seed,
+      width: selectedSize.w,
+      height: selectedSize.h,
+      callback: (step, _timestep, _latents) => {
+        currentStep = step + 1;
+        const pct = Math.round((currentStep / numSteps) * 100);
+        stepInfo.textContent = `Denoising step ${currentStep} / ${numSteps}`;
+        stepFill.style.width = `${pct}%`;
+      }
+    });
+
+    // Render to canvas
+    const img = result.images?.[0] ?? result[0];
+    if (!img) throw new Error('No image returned');
+
+    outputCanvas.width = selectedSize.w;
+    outputCanvas.height = selectedSize.h;
+    const ctx = outputCanvas.getContext('2d');
+
+    // img is a RawImage from transformers.js
+    const imageData = new ImageData(
+      new Uint8ClampedArray(img.data),
+      img.width,
+      img.height
+    );
+    ctx.putImageData(imageData, 0, 0);
+
+    canvasLoading.classList.remove('visible');
+    outputCanvas.style.display = 'block';
+    canvasActions.classList.add('visible');
+    stepProgress.classList.remove('visible');
+    setStatus('Ready', 'ready');
+    log('Image generated successfully!', 'ok');
+
+  } catch (err) {
+    log(`Generation error: ${err.message}`, 'err');
+    setStatus('Error', 'error');
+    canvasLoading.classList.remove('visible');
+    placeholder.style.display = 'flex';
+    stepProgress.classList.remove('visible');
+    console.error(err);
+  }
+
+  generateBtn.disabled = false;
+  generateBtn.textContent = '⚡ Generate Image';
+  isGenerating = false;
+  setStatus('Ready', 'ready');
+}
+
+// ═══════════════════════════════════════════
+// Download
+// ═══════════════════════════════════════════
+document.getElementById('download-btn').addEventListener('click', () => {
+  const url = outputCanvas.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `pixeldream-${Date.now()}.png`;
+  a.click();
+  log('Image downloaded.', 'ok');
+});
+
+// ═══════════════════════════════════════════
+// Gallery
+// ═══════════════════════════════════════════
+document.getElementById('save-gallery-btn').addEventListener('click', () => {
+  const dataUrl = outputCanvas.toDataURL('image/png');
+  const prompt = promptEl.value.trim();
+  gallery.unshift({ dataUrl, prompt, ts: Date.now() });
+  renderGallery();
+  log('Saved to gallery.', 'ok');
+});
+
+document.getElementById('clear-gallery').addEventListener('click', () => {
+  gallery = [];
+  renderGallery();
+});
+
+function renderGallery() {
+  if (gallery.length === 0) {
+    galleryGrid.innerHTML = '<div class="gallery-empty">Generated images will appear here</div>';
+    return;
+  }
+  galleryGrid.innerHTML = '';
+  gallery.forEach((item, idx) => {
+    const div = document.createElement('div');
+    div.className = 'gallery-item';
+    div.title = item.prompt;
+    const img = document.createElement('img');
+    img.src = item.dataUrl;
+    img.alt = item.prompt;
+    div.appendChild(img);
+    div.addEventListener('click', () => {
+      // Load into main canvas
+      const image = new Image();
+      image.onload = () => {
+        outputCanvas.width = image.width;
+        outputCanvas.height = image.height;
+        outputCanvas.getContext('2d').drawImage(image, 0, 0);
+        outputCanvas.style.display = 'block';
+        placeholder.style.display = 'none';
+        canvasActions.classList.add('visible');
+      };
+      image.src = item.dataUrl;
+      promptEl.value = item.prompt;
+    });
+    galleryGrid.appendChild(div);
+  });
+}
+
+// ═══════════════════════════════════════════
+// Service Worker Registration
+// ═══════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => log(`Service Worker registered (offline mode active).`, 'ok'))
+      .catch(err => log(`SW registration failed: ${err.message} (Try serving via http://)`, 'warn'));
+  });
+}
+
+// ═══════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════
+generateBtn.addEventListener('click', () => {
+  if (!pipe) {
+    loadModel().then(generate);
+  } else {
+    generate();
+  }
+});
+
+// Auto-load model on page load
+window.addEventListener('DOMContentLoaded', () => {
+  log('PixelDream initialized.', 'ok');
+  log('Click "Generate Image" to load the model and start generating.', '');
+  setStatus('Click Generate to load model', '');
+  generateBtn.disabled = false;
+  generateBtn.textContent = '⚡ Load Model & Generate';
+});
+</script>
+</body>
+</html>
