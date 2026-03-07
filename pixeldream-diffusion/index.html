@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PixelDream — AI Image Generator</title>
+<style>
+/* ── Reset & Variables ──────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d14;
+  --surface:#13131f;
+  --card:#1a1a2e;
+  --border:#252540;
+  --accent:#6c63ff;
+  --accent2:#ff6584;
+  --green:#22c55e;
+  --yellow:#eab308;
+  --red:#ef4444;
+  --text:#e8e8f0;
+  --muted:#6b6b8a;
+  --font: -apple-system, 'Segoe UI', system-ui, sans-serif;
+  --mono: 'Cascadia Code','Fira Code','Consolas',monospace;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font)}
+
+/* ── Layout ────────────────────────────────────────────── */
+.shell{display:grid;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
+nav{
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;
+  padding:0 20px;gap:16px;
+  background:var(--surface);
+  position:relative;z-index:10;
+}
+.nav-logo{font-size:1.1rem;font-weight:700;letter-spacing:-0.02em}
+.nav-logo span{color:var(--accent)}
+.nav-badge{
+  font-size:.65rem;padding:3px 9px;border-radius:20px;
+  background:rgba(108,99,255,.15);color:var(--accent);
+  border:1px solid rgba(108,99,255,.3);letter-spacing:.06em;
+  text-transform:uppercase;
+}
+.nav-status{
+  margin-left:auto;display:flex;align-items:center;gap:8px;
+  font-size:.72rem;color:var(--muted);
+}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:all .3s}
+.dot.ready{background:var(--green);box-shadow:0 0 8px var(--green)}
+.dot.loading{background:var(--yellow);box-shadow:0 0 8px var(--yellow);animation:blink 1s infinite}
+.dot.error{background:var(--red);box-shadow:0 0 8px var(--red)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.workspace{display:grid;grid-template-columns:340px 1fr;height:100%;overflow:hidden}
+@media(max-width:860px){.workspace{grid-template-columns:1fr;grid-template-rows:auto 1fr}}
+
+/* ── Left Panel ─────────────────────────────────────────── */
+.panel{
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;gap:0;
+  overflow-y:auto;background:var(--surface);
+}
+.panel::-webkit-scrollbar{width:4px}
+.panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+.section{padding:16px 18px;border-bottom:1px solid var(--border)}
+.section-label{
+  font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:10px;font-weight:600;
+}
+textarea{
+  width:100%;background:var(--card);border:1px solid var(--border);
+  border-radius:6px;color:var(--text);font-family:var(--font);font-size:.83rem;
+  padding:10px 12px;resize:none;outline:none;line-height:1.55;
+  transition:border-color .2s;
+}
+textarea:focus{border-color:var(--accent)}
+textarea::placeholder{color:var(--muted)}
+
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.chip{
+  font-size:.64rem;padding:4px 9px;border-radius:4px;
+  background:var(--card);border:1px solid var(--border);
+  color:var(--muted);cursor:pointer;transition:all .12s;
+}
+.chip:hover{border-color:var(--accent);color:var(--accent);background:rgba(108,99,255,.08)}
+
+/* Style grid */
+.style-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.sty{
+  background:var(--card);border:1px solid var(--border);border-radius:6px;
+  color:var(--muted);font-size:.64rem;padding:8px 4px;cursor:pointer;
+  text-align:center;transition:all .12s;line-height:1.4;
+}
+.sty:hover{border-color:var(--accent);color:var(--text)}
+.sty.on{border-color:var(--accent);background:rgba(108,99,255,.18);color:var(--accent)}
+
+/* Sliders */
+.sliders{display:flex;flex-direction:column;gap:12px}
+.srow{display:flex;align-items:center;gap:10px}
+.srow label{font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);width:62px;flex-shrink:0}
+input[type=range]{-webkit-appearance:none;flex:1;height:3px;background:var(--border);border-radius:2px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);box-shadow:0 0 0 1px var(--accent)}
+.sval{font-size:.75rem;color:var(--accent);width:36px;text-align:right;font-family:var(--mono)}
+
+/* Model section */
+.model-card{
+  background:var(--card);border:1px solid var(--border);border-radius:8px;
+  padding:12px;margin-bottom:10px;
+}
+.model-name{font-size:.8rem;font-weight:600;margin-bottom:2px}
+.model-desc{font-size:.68rem;color:var(--muted);line-height:1.5}
+.model-meta{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.mtag{font-size:.6rem;padding:2px 7px;border-radius:3px;background:rgba(108,99,255,.12);color:var(--accent);border:1px solid rgba(108,99,255,.2)}
+
+/* Progress bars */
+.pbar-wrap{margin-top:10px;display:none}
+.pbar-wrap.on{display:block}
+.pbar-label{display:flex;justify-content:space-between;font-size:.68rem;color:var(--muted);margin-bottom:5px}
+.pbar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.pbar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width .3s;width:0}
+
+/* Generate button */
+.gen-btn{
+  width:100%;padding:13px;background:var(--accent);color:#fff;
+  border:none;border-radius:8px;font-size:.95rem;font-weight:600;
+  cursor:pointer;transition:all .15s;letter-spacing:.01em;
+  box-shadow:0 4px 16px rgba(108,99,255,.3);
+}
+.gen-btn:hover:not(:disabled){background:#7c74ff;transform:translateY(-1px);box-shadow:0 6px 24px rgba(108,99,255,.4)}
+.gen-btn:disabled{opacity:.45;cursor:not-allowed;background:#444;box-shadow:none;transform:none}
+
+/* ── Right Panel ────────────────────────────────────────── */
+.output{display:flex;flex-direction:column;overflow:hidden}
+.output-top{flex:1;display:flex;align-items:center;justify-content:center;padding:20px;overflow:hidden;position:relative}
+
+/* Setup screen */
+#setup-screen{
+  max-width:520px;width:100%;
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:32px;text-align:center;
+}
+#setup-screen h2{font-size:1.4rem;margin-bottom:8px;letter-spacing:-.02em}
+#setup-screen p{font-size:.82rem;color:var(--muted);line-height:1.65;margin-bottom:20px}
+.setup-steps{text-align:left;margin:0 auto 24px;max-width:340px}
+.step{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
+.step-num{
+  width:24px;height:24px;border-radius:50%;
+  background:var(--accent);color:#fff;
+  font-size:.72rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.step-text{font-size:.78rem;color:var(--text);line-height:1.5;padding-top:2px}
+.step-text strong{color:var(--accent)}
+.start-btn{
+  width:100%;padding:13px;background:var(--accent);color:#fff;
+  border:none;border-radius:8px;font-size:1rem;font-weight:600;
+  cursor:pointer;transition:all .15s;box-shadow:0 4px 16px rgba(108,99,255,.3);
+}
+.start-btn:hover{background:#7c74ff;box-shadow:0 6px 24px rgba(108,99,255,.4)}
+.warning-box{
+  background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.25);
+  border-radius:6px;padding:10px 14px;font-size:.72rem;color:#d4a800;
+  text-align:left;margin-top:16px;line-height:1.55;
+}
+
+/* Canvas area */
+#canvas-wrap{
+  display:none;flex-direction:column;align-items:center;gap:16px;
+  width:100%;height:100%;
+}
+#canvas-wrap.on{display:flex}
+#out-canvas{
+  max-width:100%;max-height:calc(100vh - 200px);
+  border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.6);
+  display:block;
+}
+.canvas-placeholder{
+  width:512px;max-width:100%;aspect-ratio:1;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:12px;
+}
+.canvas-placeholder .icon{font-size:3rem;opacity:.2}
+.canvas-placeholder p{font-size:.78rem;color:var(--muted);opacity:.7;text-align:center}
+
+/* Loading overlay on canvas */
+#generating-overlay{
+  display:none;position:absolute;inset:0;
+  background:rgba(13,13,20,.85);
+  align-items:center;justify-content:center;
+  flex-direction:column;gap:16px;
+  backdrop-filter:blur(4px);
+}
+#generating-overlay.on{display:flex}
+.gen-spinner{
+  width:40px;height:40px;border:3px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.gen-step-label{font-size:.78rem;color:var(--muted);text-align:center;max-width:300px}
+.gen-step-bar{width:260px;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.gen-step-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width .15s;width:0}
+
+/* Bottom bar */
+.output-bottom{
+  border-top:1px solid var(--border);padding:12px 20px;
+  display:flex;align-items:center;gap:10px;
+  background:var(--surface);flex-shrink:0;
+}
+.act-btn{
+  display:flex;align-items:center;gap:6px;padding:7px 13px;
+  background:var(--card);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-family:var(--font);font-size:.72rem;cursor:pointer;
+  transition:all .12s;
+}
+.act-btn:hover{border-color:var(--accent);color:var(--accent)}
+.act-btn:disabled{opacity:.35;cursor:not-allowed}
+.prompt-echo{font-size:.7rem;color:var(--muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic}
+
+/* Gallery */
+.gallery-strip{
+  border-top:1px solid var(--border);padding:10px 16px;
+  background:var(--surface);flex-shrink:0;
+  display:flex;align-items:center;gap:8px;overflow-x:auto;
+  min-height:72px;
+}
+.gallery-strip::-webkit-scrollbar{height:3px}
+.gallery-strip::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.gallery-strip .empty{font-size:.7rem;color:var(--muted);opacity:.5;letter-spacing:.06em}
+.gthumb{
+  flex-shrink:0;width:52px;height:52px;border-radius:5px;
+  overflow:hidden;cursor:pointer;border:1.5px solid var(--border);
+  transition:border-color .15s;
+}
+.gthumb:hover{border-color:var(--accent)}
+.gthumb img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* Log */
+#log-area{
+  font-family:var(--mono);font-size:.66rem;color:var(--muted);
+  padding:8px 18px;max-height:80px;overflow-y:auto;
+  border-top:1px solid var(--border);background:var(--bg);
+  line-height:1.7;
+}
+.log-ok{color:var(--green)}
+.log-warn{color:var(--yellow)}
+.log-err{color:var(--red)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Nav -->
+  <nav>
+    <div class="nav-logo">Pixel<span>Dream</span></div>
+    <div class="nav-badge">Stable Diffusion</div>
+    <div class="nav-status">
+      <div class="dot" id="dot"></div>
+      <span id="status-txt">Not loaded</span>
+    </div>
+  </nav>
+
+  <div class="workspace">
+
+    <!-- ── Left Panel ── -->
+    <div class="panel">
+
+      <div class="section">
+        <div class="section-label">Prompt</div>
+        <textarea id="prompt" rows="4" placeholder="elderly woman laughing in a garden, warm afternoon light, oil painting style…"></textarea>
+        <div class="chips" id="chips">
+          <span class="chip" data-p="elderly man reading a book by candlelight, oil painting, warm tones">👴 Elderly man</span>
+          <span class="chip" data-p="happy baby laughing, close-up portrait, soft natural light, photorealistic">👶 Baby portrait</span>
+          <span class="chip" data-p="young girl running on a sunny beach at golden hour, candid photography">👧 Girl on beach</span>
+          <span class="chip" data-p="teenage boy skateboarding in urban street, action shot, cinematic">🛹 Skating teen</span>
+          <span class="chip" data-p="middle-aged woman scientist in laboratory, professional portrait">👩‍🔬 Scientist</span>
+          <span class="chip" data-p="weathered old fisherman on a boat at sea, dramatic sky, portrait">🎣 Fisherman</span>
+          <span class="chip" data-p="golden retriever puppy playing in green grass, sunny day, vivid colors">🐕 Retriever pup</span>
+          <span class="chip" data-p="majestic gray wolf in a snowy pine forest, moonlight, dramatic">🐺 Wolf</span>
+          <span class="chip" data-p="colorful macaw parrot perched on a tropical branch, vivid feathers">🦜 Parrot</span>
+          <span class="chip" data-p="mother brown bear and cubs in a mountain meadow, misty morning">🐻 Bear family</span>
+          <span class="chip" data-p="elderly couple holding hands at sunset on a pier, silhouette, romantic">👫 Old couple</span>
+          <span class="chip" data-p="black cat sitting on a moonlit rooftop, atmospheric night scene">🐱 Night cat</span>
+          <span class="chip" data-p="wild horse galloping across an open field, dramatic stormy sky">🐴 Wild horse</span>
+          <span class="chip" data-p="toddler twins laughing in autumn leaves, joyful candid photo">🍂 Toddler twins</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Negative Prompt</div>
+        <textarea id="neg-prompt" rows="2" placeholder="blurry, ugly, deformed…">blurry, ugly, deformed, distorted, watermark, text, low quality, nsfw</textarea>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Style Suffix</div>
+        <div class="style-grid" id="sty-grid">
+          <div class="sty on" data-s="">📷 Photo</div>
+          <div class="sty" data-s=", oil painting, brushstrokes, textured canvas">🎨 Oil Paint</div>
+          <div class="sty" data-s=", watercolor painting, soft washes, paper texture">💧 Watercolour</div>
+          <div class="sty" data-s=", pencil sketch, hatching, graphite, black and white">✏️ Pencil</div>
+          <div class="sty" data-s=", impressionist painting, Monet style, loose brushwork">🌸 Impressionist</div>
+          <div class="sty" data-s=", digital art, neon lights, vibrant colors, cyberpunk">✨ Neon / Digital</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Parameters</div>
+        <div class="sliders">
+          <div class="srow">
+            <label>Steps</label>
+            <input type="range" id="steps" min="1" max="20" value="4"/>
+            <span class="sval" id="steps-v">4</span>
+          </div>
+          <div class="srow">
+            <label>Guidance</label>
+            <input type="range" id="guidance" min="0" max="15" step="0.5" value="0"/>
+            <span class="sval" id="guidance-v">0.0</span>
+          </div>
+          <div class="srow">
+            <label>Seed</label>
+            <input type="range" id="seed" min="0" max="9999" value="42"/>
+            <span class="sval" id="seed-v">42</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Model</div>
+        <div class="model-card">
+          <div class="model-name">Xenova/stable-diffusion-v1-5</div>
+          <div class="model-desc">SD 1.5 ONNX — optimised for browser inference via WASM/WebGPU. ~600 MB download, cached permanently in IndexedDB after first run.</div>
+          <div class="model-meta">
+            <span class="mtag">512×512</span>
+            <span class="mtag">ONNX</span>
+            <span class="mtag">Transformers.js v3</span>
+            <span class="mtag">Offline after cache</span>
+          </div>
+        </div>
+        <div class="pbar-wrap" id="model-pbar">
+          <div class="pbar-label">
+            <span id="pbar-label-txt">Downloading model…</span>
+            <span id="pbar-pct">0%</span>
+          </div>
+          <div class="pbar"><div class="pbar-fill" id="pbar-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="section" style="margin-top:auto">
+        <button class="gen-btn" id="gen-btn" disabled>⚡ Load Model &amp; Generate</button>
+      </div>
+
+    </div><!-- /panel -->
+
+    <!-- ── Right Panel ── -->
+    <div class="output">
+      <div class="output-top" id="output-top">
+
+        <!-- Setup screen shown before model is loaded -->
+        <div id="setup-screen">
+          <h2>Real AI Image Generation</h2>
+          <p>PixelDream uses <strong>Stable Diffusion 1.5</strong> running entirely in your browser via Transformers.js + ONNX Runtime. No server, no API, no data uploaded.</p>
+          <div class="setup-steps">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div class="step-text"><strong>First run only:</strong> ~600 MB model downloads from HuggingFace and is cached permanently in your browser's IndexedDB storage.</div>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div class="step-text"><strong>After caching:</strong> Fully offline. The model loads from local storage in seconds with zero internet needed.</div>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div class="step-text"><strong>Generation:</strong> Each image takes 30–120 seconds on CPU (WASM), or 5–20 seconds if your browser supports WebGPU.</div>
+            </div>
+          </div>
+          <button class="start-btn" id="start-btn">Download Model &amp; Start →</button>
+          <div class="warning-box">
+            ⚠️ <strong>Requires internet for first download only.</strong> Use Chrome 113+, Edge 113+, or Firefox for best results. WebGPU (Chrome/Edge) gives dramatically faster generation.
+          </div>
+        </div>
+
+        <!-- Canvas shown after model loaded -->
+        <div id="canvas-wrap">
+          <div class="canvas-placeholder" id="canvas-placeholder">
+            <div class="icon">✦</div>
+            <p>Model ready — enter a prompt<br/>and click Generate</p>
+          </div>
+          <canvas id="out-canvas" style="display:none"></canvas>
+        </div>
+
+        <!-- Generating overlay -->
+        <div id="generating-overlay">
+          <div class="gen-spinner"></div>
+          <div class="gen-step-label" id="gen-step-label">Denoising step 0 / 4</div>
+          <div class="gen-step-bar"><div class="gen-step-fill" id="gen-step-fill"></div></div>
+        </div>
+
+      </div>
+
+      <!-- Bottom action bar -->
+      <div class="output-bottom">
+        <button class="act-btn" id="dl-btn" disabled>↓ Download PNG</button>
+        <button class="act-btn" id="save-btn" disabled>＋ Gallery</button>
+        <span class="prompt-echo" id="prompt-echo">Generate an image to see it here</span>
+      </div>
+
+      <!-- Gallery strip -->
+      <div class="gallery-strip" id="gallery">
+        <span class="empty">Saved images appear here</span>
+      </div>
+
+      <!-- Log -->
+      <div id="log-area"></div>
+
+    </div><!-- /output -->
+
+  </div><!-- /workspace -->
+</div><!-- /shell -->
+
+<script type="module">
+// ── Transformers.js v3 via jsDelivr ──────────────────────
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.2/dist/transformers.min.js';
+
+// ── Config ───────────────────────────────────────────────
+env.allowLocalModels   = false;
+env.useBrowserCache    = true;   // IndexedDB — persists between sessions
+
+// ── State ────────────────────────────────────────────────
+let pipe         = null;
+let isGenerating = false;
+let gallery      = [];
+let currentCanvas = null;
+let activeStyle  = '';
+let totalSteps   = 4;
+
+// ── DOM ──────────────────────────────────────────────────
+const dot          = document.getElementById('dot');
+const statusTxt    = document.getElementById('status-txt');
+const genBtn       = document.getElementById('gen-btn');
+const startBtn     = document.getElementById('start-btn');
+const promptEl     = document.getElementById('prompt');
+const negPromptEl  = document.getElementById('neg-prompt');
+const setupScreen  = document.getElementById('setup-screen');
+const canvasWrap   = document.getElementById('canvas-wrap');
+const outCanvas    = document.getElementById('out-canvas');
+const placeholder  = document.getElementById('canvas-placeholder');
+const overlay      = document.getElementById('generating-overlay');
+const stepLabel    = document.getElementById('gen-step-label');
+const stepFill     = document.getElementById('gen-step-fill');
+const modelPbar    = document.getElementById('model-pbar');
+const pbarFill     = document.getElementById('pbar-fill');
+const pbarPct      = document.getElementById('pbar-pct');
+const pbarLabelTxt = document.getElementById('pbar-label-txt');
+const dlBtn        = document.getElementById('dl-btn');
+const saveBtn      = document.getElementById('save-btn');
+const promptEcho   = document.getElementById('prompt-echo');
+const logArea      = document.getElementById('log-area');
+
+// ── Utilities ────────────────────────────────────────────
+function setStatus(text, state) {
+  statusTxt.textContent = text;
+  dot.className = 'dot ' + (state || '');
+}
+
+function log(msg, type) {
+  const el = document.createElement('div');
+  el.className = type ? 'log-' + type : '';
+  el.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  logArea.appendChild(el);
+  logArea.scrollTop = logArea.scrollHeight;
+}
+
+// ── Slider bindings ──────────────────────────────────────
+document.getElementById('steps').addEventListener('input', e => {
+  totalSteps = +e.target.value;
+  document.getElementById('steps-v').textContent = e.target.value;
+});
+document.getElementById('guidance').addEventListener('input', e => {
+  document.getElementById('guidance-v').textContent = (+e.target.value).toFixed(1);
+});
+document.getElementById('seed').addEventListener('input', e => {
+  document.getElementById('seed-v').textContent = e.target.value;
+});
+
+// ── Style buttons ────────────────────────────────────────
+document.querySelectorAll('.sty').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.sty').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    activeStyle = btn.dataset.s;
+  });
+});
+
+// ── Prompt chips ─────────────────────────────────────────
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    promptEl.value = chip.dataset.p;
+  });
+});
+
+// ── Load Model ───────────────────────────────────────────
+async function loadModel() {
+  setStatus('Downloading model…', 'loading');
+  modelPbar.classList.add('on');
+  genBtn.disabled = true;
+  genBtn.textContent = '⏳ Loading model…';
+  log('Starting model download (~600 MB). This is a one-time download — cached permanently after.', 'warn');
+
+  // Detect WebGPU
+  const hasWebGPU = navigator.gpu !== undefined;
+  if (hasWebGPU) {
+    log('WebGPU detected — will use GPU acceleration for faster generation!', 'ok');
+  } else {
+    log('No WebGPU — using CPU (WASM). Expect 30–120s per image.', 'warn');
+  }
+
+  try {
+    pipe = await pipeline('text-to-image', 'Xenova/stable-diffusion-v1-5', {
+      device: hasWebGPU ? 'webgpu' : 'wasm',
+      progress_callback: (p) => {
+        if (p.status === 'progress' && p.total) {
+          const pct = Math.round((p.loaded / p.total) * 100);
+          pbarFill.style.width = pct + '%';
+          pbarPct.textContent  = pct + '%';
+          const mb = (p.loaded / 1024 / 1024).toFixed(0);
+          pbarLabelTxt.textContent = `Downloading ${p.file ?? 'model'} — ${mb} MB…`;
+        } else if (p.status === 'done') {
+          pbarLabelTxt.textContent = '✓ ' + (p.file ?? 'Component') + ' loaded';
+        }
+      }
+    });
+
+    modelPbar.classList.remove('on');
+    setupScreen.style.display = 'none';
+    canvasWrap.classList.add('on');
+    setStatus('Ready', 'ready');
+    genBtn.disabled = false;
+    genBtn.textContent = '⚡ Generate Image';
+    log('Model ready. Cached in IndexedDB — fully offline from now on.', 'ok');
+
+  } catch (err) {
+    setStatus('Error loading model', 'error');
+    log('Load error: ' + err.message, 'err');
+    genBtn.disabled = false;
+    genBtn.textContent = '⚠ Retry Load Model';
+    console.error(err);
+  }
+}
+
+// ── Generate ─────────────────────────────────────────────
+async function generate() {
+  if (!pipe) { await loadModel(); if (!pipe) return; }
+  if (isGenerating) return;
+
+  const promptText = (promptEl.value.trim() + activeStyle).trim();
+  if (!promptText) { promptEl.focus(); return; }
+
+  isGenerating = true;
+  genBtn.disabled = true;
+  genBtn.textContent = '⏳ Generating…';
+  dlBtn.disabled = true;
+  saveBtn.disabled = true;
+  setStatus('Generating…', 'loading');
+
+  placeholder.style.display = 'none';
+  outCanvas.style.display = 'none';
+  overlay.classList.add('on');
+  stepFill.style.width = '0%';
+
+  const steps    = +document.getElementById('steps').value;
+  const guidance = +document.getElementById('guidance').value;
+  const seed     = +document.getElementById('seed').value;
+  totalSteps     = steps;
+
+  log(`Generating: "${promptText.substring(0, 72)}…" | steps:${steps} guidance:${guidance} seed:${seed}`, '');
+
+  let stepCount = 0;
+
+  try {
+    const result = await pipe(promptText, {
+      negative_prompt:    negPromptEl.value,
+      num_inference_steps: steps,
+      guidance_scale:      guidance,
+      seed,
+      callback_steps: 1,
+      callback: (step, _ts, _latents) => {
+        stepCount = step + 1;
+        const pct = Math.round((stepCount / totalSteps) * 100);
+        stepLabel.textContent = `Denoising step ${stepCount} / ${totalSteps}`;
+        stepFill.style.width  = pct + '%';
+      }
+    });
+
+    // result is an array of RawImage objects
+    const img = Array.isArray(result) ? result[0] : result?.images?.[0] ?? result;
+    if (!img) throw new Error('No image in result');
+
+    // Draw to canvas
+    const w = img.width, h = img.height;
+    outCanvas.width  = w;
+    outCanvas.height = h;
+    const ctx = outCanvas.getContext('2d');
+    const imageData = new ImageData(new Uint8ClampedArray(img.data), w, h);
+    ctx.putImageData(imageData, 0, 0);
+
+    overlay.classList.remove('on');
+    outCanvas.style.display = 'block';
+    currentCanvas = outCanvas;
+    dlBtn.disabled   = false;
+    saveBtn.disabled = false;
+    promptEcho.textContent = `"${promptText}"`;
+    setStatus('Ready', 'ready');
+    log('Image generated successfully!', 'ok');
+
+  } catch (err) {
+    overlay.classList.remove('on');
+    placeholder.style.display = '';
+    setStatus('Error', 'error');
+    log('Generation error: ' + err.message, 'err');
+    console.error(err);
+  }
+
+  genBtn.disabled  = false;
+  genBtn.textContent = '⚡ Generate Image';
+  isGenerating = false;
+}
+
+// ── Buttons ──────────────────────────────────────────────
+startBtn.addEventListener('click', () => {
+  setupScreen.style.display = 'none';
+  canvasWrap.classList.add('on');
+  loadModel();
+});
+
+genBtn.addEventListener('click', () => {
+  if (!pipe) loadModel().then(generate);
+  else generate();
+});
+
+promptEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) generate();
+});
+
+dlBtn.addEventListener('click', () => {
+  if (!currentCanvas) return;
+  const a = document.createElement('a');
+  a.href = currentCanvas.toDataURL('image/png');
+  a.download = 'pixeldream-' + Date.now() + '.png';
+  a.click();
+});
+
+saveBtn.addEventListener('click', () => {
+  if (!currentCanvas) return;
+  gallery.unshift({ url: currentCanvas.toDataURL('image/png'), prompt: promptEl.value });
+  renderGallery();
+  log('Saved to gallery.', 'ok');
+});
+
+// ── Gallery ──────────────────────────────────────────────
+function renderGallery() {
+  const g = document.getElementById('gallery');
+  if (!gallery.length) {
+    g.innerHTML = '<span class="empty">Saved images appear here</span>';
+    return;
+  }
+  g.innerHTML = '';
+  gallery.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'gthumb';
+    div.title = item.prompt;
+    const img = document.createElement('img');
+    img.src = item.url;
+    div.appendChild(img);
+    div.addEventListener('click', () => {
+      const i = new Image();
+      i.onload = () => {
+        outCanvas.width = i.width;
+        outCanvas.height = i.height;
+        outCanvas.getContext('2d').drawImage(i, 0, 0);
+        outCanvas.style.display = 'block';
+        placeholder.style.display = 'none';
+        overlay.classList.remove('on');
+        currentCanvas = outCanvas;
+        promptEcho.textContent = `"${item.prompt}"`;
+        dlBtn.disabled = false;
+        saveBtn.disabled = false;
+        promptEl.value = item.prompt;
+      };
+      i.src = item.url;
+    });
+    g.appendChild(div);
+  });
+}
+
+// ── Init ─────────────────────────────────────────────────
+log('PixelDream ready. Click "Download Model & Start" to begin.', 'ok');
+genBtn.disabled = false;
+genBtn.textContent = '⚡ Load Model & Generate';
+</script>
+</body>
+</html>
