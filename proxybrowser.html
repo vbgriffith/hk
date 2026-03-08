@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROXR — Browser & Port Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #040810;
+    --surface: #080f1a;
+    --panel: #0a1520;
+    --border: #0d3a5c;
+    --accent: #00d4ff;
+    --accent2: #00ff9d;
+    --warn: #ff6b35;
+    --danger: #ff2d55;
+    --text: #c8e6f0;
+    --muted: #3a6b80;
+    --glow: 0 0 20px rgba(0,212,255,0.3);
+    --glow2: 0 0 20px rgba(0,255,157,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Grid background */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── HEADER ── */
+  #header {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 10px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 2px 30px rgba(0,212,255,0.1);
+  }
+
+  .logo {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 22px;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    letter-spacing: 4px;
+    flex-shrink: 0;
+  }
+
+  .logo span { color: var(--accent2); }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-right: auto;
+  }
+
+  .tab {
+    padding: 6px 18px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .tab:hover { border-color: var(--accent); color: var(--accent); }
+  .tab.active {
+    background: rgba(0,212,255,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: var(--glow);
+  }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 10px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent2);
+    box-shadow: 0 0 8px var(--accent2);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ── MAIN PANELS ── */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+  }
+
+  .panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+  .panel.active { display: flex; }
+
+  /* ── BROWSER PANEL ── */
+  #browser-panel { padding: 0; }
+
+  .browser-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .proxy-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: rgba(0,212,255,0.05);
+    border: 1px solid var(--border);
+    font-size: 11px;
+  }
+
+  .proxy-label {
+    color: var(--muted);
+    letter-spacing: 1px;
+    font-size: 10px;
+  }
+
+  .proxy-input {
+    background: transparent;
+    border: none;
+    color: var(--accent2);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    width: 180px;
+    outline: none;
+  }
+
+  .proxy-input::placeholder { color: var(--muted); }
+
+  .nav-btn {
+    width: 30px; height: 30px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .url-bar {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 0 12px;
+    gap: 8px;
+    transition: border-color 0.2s;
+  }
+
+  .url-bar:focus-within { border-color: var(--accent); box-shadow: var(--glow); }
+
+  .url-protocol {
+    color: var(--accent2);
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .url-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    padding: 6px 0;
+    outline: none;
+  }
+
+  .url-input::placeholder { color: var(--muted); }
+
+  .go-btn {
+    padding: 6px 16px;
+    background: rgba(0,212,255,0.1);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .go-btn:hover {
+    background: rgba(0,212,255,0.2);
+    box-shadow: var(--glow);
+  }
+
+  .browser-frame {
+    flex: 1;
+    position: relative;
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  #browser-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: white;
+  }
+
+  .browser-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+  }
+
+  .overlay-logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 48px;
+    font-weight: 900;
+    color: var(--accent);
+    text-shadow: 0 0 60px rgba(0,212,255,0.5);
+    letter-spacing: 8px;
+  }
+
+  .overlay-logo span { color: var(--accent2); }
+
+  .overlay-sub {
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .proxy-services {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .proxy-chip {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+
+  .proxy-chip:hover {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    box-shadow: var(--glow2);
+  }
+
+  .browser-status {
+    padding: 4px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  #status-text { color: var(--accent2); }
+
+  /* ── PORT SCANNER ── */
+  #scanner-panel { padding: 16px; gap: 16px; overflow-y: auto; }
+
+  .scanner-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    flex: 1;
+  }
+
+  .scanner-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 16px;
+  }
+
+  .card-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title::before {
+    content: '';
+    display: block;
+    width: 8px; height: 8px;
+    background: var(--accent);
+    box-shadow: var(--glow);
+  }
+
+  .scan-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    align-items: center;
+  }
+
+  .field-label {
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 1px;
+    min-width: 50px;
+    flex-shrink: 0;
+  }
+
+  .scan-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    padding: 6px 10px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .scan-input:focus { border-color: var(--accent); }
+
+  .scan-range {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .range-sep { color: var(--muted); font-size: 12px; }
+
+  .preset-ports {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .preset-btn {
+    padding: 3px 10px;
+    font-size: 9px;
+    letter-spacing: 1px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Share Tech Mono', monospace;
+    transition: all 0.2s;
+  }
+
+  .preset-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .preset-btn.sel { border-color: var(--accent2); color: var(--accent2); background: rgba(0,255,157,0.08); }
+
+  .scan-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .option-toggle {
+    padding: 4px 12px;
+    font-size: 9px;
+    letter-spacing: 1px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Share Tech Mono', monospace;
+    transition: all 0.2s;
+  }
+
+  .option-toggle.on { border-color: var(--warn); color: var(--warn); background: rgba(255,107,53,0.08); }
+
+  .action-btn {
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 12px;
+    text-transform: uppercase;
+  }
+
+  .action-btn:hover { background: rgba(0,212,255,0.1); box-shadow: var(--glow); }
+  .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .action-btn.scanning { border-color: var(--warn); color: var(--warn); animation: borderPulse 1s infinite; }
+  .action-btn.stop-btn { border-color: var(--danger); color: var(--danger); }
+
+  @keyframes borderPulse {
+    0%, 100% { box-shadow: 0 0 5px rgba(255,107,53,0.3); }
+    50% { box-shadow: 0 0 20px rgba(255,107,53,0.6); }
+  }
+
+  /* Progress */
+  .progress-wrap {
+    margin-top: 10px;
+  }
+
+  .progress-bar-outer {
+    height: 4px;
+    background: var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .progress-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.1s;
+    box-shadow: 0 0 10px rgba(0,212,255,0.5);
+  }
+
+  .progress-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  #progress-pct { color: var(--accent); }
+  #scan-speed { color: var(--accent2); }
+
+  /* Results */
+  .results-full {
+    grid-column: 1 / -1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 16px;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .results-stats {
+    display: flex;
+    gap: 20px;
+    font-size: 11px;
+  }
+
+  .stat-item { display: flex; align-items: center; gap: 6px; }
+  .stat-val { font-family: 'Orbitron', sans-serif; font-size: 16px; }
+  .stat-open { color: var(--accent2); text-shadow: var(--glow2); }
+  .stat-closed { color: var(--muted); }
+  .stat-filtered { color: var(--warn); }
+
+  .export-btn {
+    padding: 4px 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+
+  .export-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .results-filter {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .filter-btn {
+    padding: 3px 12px;
+    font-size: 9px;
+    letter-spacing: 1px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Share Tech Mono', monospace;
+    transition: all 0.2s;
+  }
+
+  .filter-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,0.08); }
+
+  .results-table-wrap {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+
+  .results-table th {
+    text-align: left;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    position: sticky;
+    top: 0;
+    background: var(--panel);
+  }
+
+  .results-table td {
+    padding: 5px 12px;
+    border-bottom: 1px solid rgba(13,58,92,0.4);
+  }
+
+  .results-table tr:hover td { background: rgba(0,212,255,0.04); }
+
+  .port-num { color: var(--accent); font-family: 'Orbitron', sans-serif; font-size: 12px; }
+  .port-open { color: var(--accent2); }
+  .port-closed { color: var(--muted); }
+  .port-filtered { color: var(--warn); }
+  .port-service { color: var(--text); }
+  .port-risk-low { color: var(--accent2); }
+  .port-risk-med { color: var(--warn); }
+  .port-risk-high { color: var(--danger); }
+
+  .badge {
+    display: inline-block;
+    padding: 1px 8px;
+    font-size: 9px;
+    letter-spacing: 1px;
+    border: 1px solid;
+  }
+
+  .badge-open { border-color: var(--accent2); color: var(--accent2); }
+  .badge-closed { border-color: var(--muted); color: var(--muted); }
+  .badge-filtered { border-color: var(--warn); color: var(--warn); }
+
+  /* Terminal log */
+  .terminal-log {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 12px;
+    height: 150px;
+    overflow-y: auto;
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+
+  .log-line {
+    line-height: 1.6;
+    display: flex;
+    gap: 10px;
+  }
+
+  .log-time { color: var(--muted); flex-shrink: 0; }
+  .log-msg-info { color: var(--text); }
+  .log-msg-open { color: var(--accent2); }
+  .log-msg-warn { color: var(--warn); }
+  .log-msg-error { color: var(--danger); }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+  /* Tooltip */
+  [data-tip] { position: relative; }
+  [data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 10px;
+    padding: 4px 8px;
+    white-space: nowrap;
+    z-index: 100;
+  }
+
+  .notice {
+    background: rgba(255,107,53,0.07);
+    border: 1px solid rgba(255,107,53,0.3);
+    padding: 8px 14px;
+    font-size: 10px;
+    color: var(--warn);
+    letter-spacing: 0.5px;
+    line-height: 1.6;
+    margin-bottom: 0;
+  }
+
+  .notice strong { color: var(--danger); }
+
+  /* Animated corner brackets */
+  .bracket-wrap {
+    position: relative;
+  }
+  .bracket-wrap::before, .bracket-wrap::after {
+    content: '';
+    position: absolute;
+    width: 10px; height: 10px;
+  }
+  .bracket-wrap::before {
+    top: 0; left: 0;
+    border-top: 1px solid var(--accent);
+    border-left: 1px solid var(--accent);
+  }
+  .bracket-wrap::after {
+    bottom: 0; right: 0;
+    border-bottom: 1px solid var(--accent);
+    border-right: 1px solid var(--accent);
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--muted);
+    gap: 10px;
+  }
+
+  .empty-icon {
+    font-size: 36px;
+    opacity: 0.3;
+  }
+
+  .empty-text {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* About panel */
+  #about-panel {
+    padding: 40px;
+    overflow-y: auto;
+    align-items: center;
+  }
+
+  .about-content {
+    max-width: 700px;
+    width: 100%;
+  }
+
+  .about-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 36px;
+    font-weight: 900;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    letter-spacing: 6px;
+    margin-bottom: 8px;
+  }
+
+  .about-title span { color: var(--accent2); }
+
+  .about-sub {
+    color: var(--muted);
+    letter-spacing: 3px;
+    font-size: 11px;
+    margin-bottom: 32px;
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .feature-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 16px;
+  }
+
+  .feature-icon { font-size: 24px; margin-bottom: 8px; }
+  .feature-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+
+  .feature-desc { font-size: 11px; color: var(--muted); line-height: 1.7; }
+
+  .proxy-list {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .proxy-list-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+  }
+
+  .proxy-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(13,58,92,0.4);
+    font-size: 11px;
+  }
+
+  .proxy-entry:last-child { border-bottom: none; }
+  .proxy-name { color: var(--accent2); min-width: 140px; }
+  .proxy-url { color: var(--muted); flex: 1; font-size: 10px; }
+  .proxy-use-btn {
+    padding: 3px 10px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .proxy-use-btn:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div class="logo">PRO<span>X</span>R</div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('browser')">⬡ BROWSER</button>
+    <button class="tab" onclick="switchTab('scanner')">⬡ PORT SCAN</button>
+    <button class="tab" onclick="switchTab('about')">⬡ ABOUT</button>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-dot"></div>
+    <span id="header-status">READY</span>
+    <span style="color:var(--border)">|</span>
+    <span id="header-time"></span>
+  </div>
+</div>
+
+<!-- BROWSER PANEL -->
+<div id="browser-panel" class="panel active">
+  <div class="browser-toolbar">
+    <button class="nav-btn" onclick="navBack()" title="Back">←</button>
+    <button class="nav-btn" onclick="navForward()" title="Forward">→</button>
+    <button class="nav-btn" onclick="navRefresh()" title="Refresh">↻</button>
+    <button class="nav-btn" onclick="navHome()" title="Home">⌂</button>
+
+    <div class="proxy-section">
+      <span class="proxy-label">PROXY</span>
+      <select id="proxy-type" style="background:transparent;border:none;color:var(--accent2);font-family:'Share Tech Mono',monospace;font-size:11px;outline:none;cursor:pointer;">
+        <option value="allorigins" style="background:#040810">AllOrigins</option>
+        <option value="corsproxy" style="background:#040810">CORS Proxy</option>
+        <option value="thingproxy" style="background:#040810">ThingProxy</option>
+        <option value="custom" style="background:#040810">Custom</option>
+      </select>
+      <span style="color:var(--border)">|</span>
+      <input class="proxy-input" id="custom-proxy" placeholder="custom proxy url..." style="display:none">
+    </div>
+
+    <div class="url-bar">
+      <span class="url-protocol" id="url-protocol">https://</span>
+      <input class="url-input" id="url-input" placeholder="enter url to browse..." value="" 
+        onkeydown="if(event.key==='Enter')loadUrl()">
+    </div>
+    <button class="go-btn" onclick="loadUrl()">GO</button>
+  </div>
+
+  <div class="browser-frame">
+    <iframe id="browser-iframe" style="display:none" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+    <div class="browser-overlay" id="browser-overlay">
+      <div class="overlay-logo">PRO<span>X</span>R</div>
+      <div class="overlay-sub">Secure • Anonymous • Unrestricted</div>
+      <div class="proxy-services">
+        <div class="proxy-chip" onclick="quickNav('https://example.com')">example.com</div>
+        <div class="proxy-chip" onclick="quickNav('https://httpbin.org')">httpbin.org</div>
+        <div class="proxy-chip" onclick="quickNav('https://www.wikipedia.org')">wikipedia.org</div>
+        <div class="proxy-chip" onclick="quickNav('https://jsonplaceholder.typicode.com')">jsonplaceholder</div>
+        <div class="proxy-chip" onclick="quickNav('https://api.github.com')">github api</div>
+        <div class="proxy-chip" onclick="quickNav('https://news.ycombinator.com')">hackernews</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="browser-status">
+    <span>STATUS:</span>
+    <span id="status-text">READY</span>
+    <span style="margin-left:auto;color:var(--border)">|</span>
+    <span id="page-title">—</span>
+    <span style="color:var(--border)">|</span>
+    <span id="load-time">—</span>
+  </div>
+</div>
+
+<!-- PORT SCANNER PANEL -->
+<div id="scanner-panel" class="panel">
+  <div class="notice">
+    ⚠ <strong>NOTICE:</strong> True TCP port scanning is not possible from a browser environment due to security restrictions. This tool uses HTTP-based probing to detect open/accessible ports via CORS requests and connection timing analysis. For full TCP scanning, use tools like nmap from a terminal. Results here reflect HTTP reachability only.
+  </div>
+
+  <div class="scanner-grid" style="margin-top:16px">
+
+    <!-- CONFIG CARD -->
+    <div class="scanner-card bracket-wrap">
+      <div class="card-title">Scan Configuration</div>
+
+      <div class="scan-row">
+        <span class="field-label">TARGET</span>
+        <input class="scan-input" id="scan-target" placeholder="hostname or IP address" value="localhost">
+      </div>
+
+      <div class="scan-row">
+        <span class="field-label">RANGE</span>
+        <div class="scan-range" style="flex:1">
+          <input class="scan-input" id="port-start" placeholder="1" value="1" type="number" min="1" max="65535">
+          <span class="range-sep">→</span>
+          <input class="scan-input" id="port-end" placeholder="1024" value="1024" type="number" min="1" max="65535">
+        </div>
+      </div>
+
+      <div style="font-size:10px;color:var(--muted);margin:4px 0 6px 0;letter-spacing:1px">PRESETS:</div>
+      <div class="preset-ports">
+        <button class="preset-btn sel" onclick="setPreset(this, 1, 1024)">WELL-KNOWN</button>
+        <button class="preset-btn" onclick="setPreset(this, 1, 100)">TOP 100</button>
+        <button class="preset-btn" onclick="setPreset(this, 1, 10000)">FULL 10K</button>
+        <button class="preset-btn" onclick="setPreset(this, 1, 65535)">ALL PORTS</button>
+        <button class="preset-btn" onclick="setPreset(this, 0, 0, [20,21,22,23,25,53,80,110,143,443,445,3306,3389,5432,6379,8080,8443,27017])">COMMON</button>
+      </div>
+
+      <div style="font-size:10px;color:var(--muted);margin:10px 0 6px 0;letter-spacing:1px">OPTIONS:</div>
+      <div class="scan-options">
+        <button class="option-toggle on" id="opt-timeout" onclick="toggleOption(this)">TIMEOUT: 2s</button>
+        <button class="option-toggle" id="opt-parallel" onclick="toggleOption(this)">PARALLEL: OFF</button>
+        <button class="option-toggle" id="opt-banner" onclick="toggleOption(this)">BANNER GRAB</button>
+      </div>
+
+      <div class="scan-row" style="margin-top:10px">
+        <span class="field-label">CONCUR.</span>
+        <input class="scan-input" id="concurrency" placeholder="20" value="20" type="number" min="1" max="100" style="max-width:80px">
+        <span style="font-size:10px;color:var(--muted);margin-left:8px">threads</span>
+      </div>
+
+      <button class="action-btn" id="scan-btn" onclick="startScan()">▶ START SCAN</button>
+      <button class="action-btn stop-btn" id="stop-btn" onclick="stopScan()" style="display:none;margin-top:6px">■ STOP SCAN</button>
+
+      <div class="progress-wrap" id="progress-wrap" style="display:none">
+        <div class="progress-bar-outer">
+          <div class="progress-bar-inner" id="progress-bar" style="width:0%"></div>
+        </div>
+        <div class="progress-stats">
+          <span>Progress: <span id="progress-pct">0%</span></span>
+          <span id="scan-speed">0 ports/sec</span>
+          <span id="eta-text">ETA: —</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS SUMMARY CARD -->
+    <div class="scanner-card bracket-wrap">
+      <div class="card-title">Scan Summary</div>
+
+      <div class="results-stats" style="flex-direction:column;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <div style="text-align:center;padding:12px;background:var(--bg);border:1px solid var(--border)">
+            <div class="stat-val stat-open" id="stat-open">0</div>
+            <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-top:4px">OPEN</div>
+          </div>
+          <div style="text-align:center;padding:12px;background:var(--bg);border:1px solid var(--border)">
+            <div class="stat-val stat-closed" id="stat-closed">0</div>
+            <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-top:4px">CLOSED</div>
+          </div>
+          <div style="text-align:center;padding:12px;background:var(--bg);border:1px solid var(--border)">
+            <div class="stat-val stat-filtered" id="stat-filtered">0</div>
+            <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-top:4px">FILTERED</div>
+          </div>
+        </div>
+
+        <div style="font-size:10px;color:var(--muted);display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between">
+            <span>Scanned:</span><span id="stat-scanned" style="color:var(--text)">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span>Target:</span><span id="stat-target" style="color:var(--accent2)">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span>Duration:</span><span id="stat-duration" style="color:var(--text)">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span>Method:</span><span style="color:var(--warn)">HTTP PROBE</span>
+          </div>
+        </div>
+
+        <!-- Service risk breakdown -->
+        <div id="risk-breakdown" style="display:none">
+          <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:6px">RISK PROFILE:</div>
+          <div id="risk-bars"></div>
+        </div>
+      </div>
+
+      <!-- Terminal -->
+      <div style="margin-top:14px;font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:6px">SCAN LOG:</div>
+      <div class="terminal-log" id="scan-log">
+        <div class="log-line">
+          <span class="log-time">[--:--:--]</span>
+          <span class="log-msg-info">PROXR port scanner initialized. Configure target and press START SCAN.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS TABLE -->
+    <div class="results-full bracket-wrap">
+      <div class="results-header">
+        <div class="card-title" style="margin-bottom:0">Open Ports</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="results-filter">
+            <button class="filter-btn active" onclick="setFilter('all', this)">ALL</button>
+            <button class="filter-btn" onclick="setFilter('open', this)">OPEN</button>
+            <button class="filter-btn" onclick="setFilter('filtered', this)">FILTERED</button>
+            <button class="filter-btn" onclick="setFilter('closed', this)">CLOSED</button>
+          </div>
+          <button class="export-btn" onclick="exportResults()">⬇ EXPORT</button>
+        </div>
+      </div>
+
+      <div class="results-table-wrap">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">◈</div>
+          <div class="empty-text">No scan results — run a scan to begin</div>
+        </div>
+        <table class="results-table" id="results-table" style="display:none">
+          <thead>
+            <tr>
+              <th>PORT</th>
+              <th>STATUS</th>
+              <th>SERVICE</th>
+              <th>PROTOCOL</th>
+              <th>RISK</th>
+              <th>RESPONSE TIME</th>
+              <th>NOTES</th>
+            </tr>
+          </thead>
+          <tbody id="results-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ABOUT PANEL -->
+<div id="about-panel" class="panel">
+  <div class="about-content">
+    <div class="about-title">PRO<span>X</span>R</div>
+    <div class="about-sub">In-Browser Proxy Navigator & Network Probe Tool</div>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🌐</div>
+        <div class="feature-name">Proxy Browser</div>
+        <div class="feature-desc">Browse websites through multiple CORS proxy services. Bypass same-origin restrictions and access content from any domain using AllOrigins, CORS Proxy, ThingProxy, or a custom proxy URL.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <div class="feature-name">Port Scanner</div>
+        <div class="feature-desc">HTTP-based port probing across any target host. Detect open and accessible ports with configurable timeout, concurrency, and preset port ranges. Real-time results with service identification.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🛡️</div>
+        <div class="feature-name">Risk Analysis</div>
+        <div class="feature-desc">Each open port is automatically analyzed and tagged with a risk level based on the service running. Identify potential security exposures like open databases, remote desktop, or unencrypted services.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <div class="feature-name">Export & Reporting</div>
+        <div class="feature-desc">Export scan results as JSON for use in security audits, network documentation, or integration with other tools. Real-time scan log with timestamped entries tracks every probe attempt.</div>
+      </div>
+    </div>
+
+    <div class="proxy-list">
+      <div class="proxy-list-title">Available Proxy Services</div>
+      <div class="proxy-entry">
+        <span class="proxy-name">AllOrigins</span>
+        <span class="proxy-url">https://api.allorigins.win/raw?url=</span>
+        <button class="proxy-use-btn" onclick="useProxy('allorigins')">USE</button>
+      </div>
+      <div class="proxy-entry">
+        <span class="proxy-name">CORS Proxy</span>
+        <span class="proxy-url">https://corsproxy.io/?</span>
+        <button class="proxy-use-btn" onclick="useProxy('corsproxy')">USE</button>
+      </div>
+      <div class="proxy-entry">
+        <span class="proxy-name">ThingProxy</span>
+        <span class="proxy-url">https://thingproxy.freeboard.io/fetch/</span>
+        <button class="proxy-use-btn" onclick="useProxy('thingproxy')">USE</button>
+      </div>
+      <div class="proxy-entry">
+        <span class="proxy-name">Custom Proxy</span>
+        <span class="proxy-url">Enter your own proxy URL in the browser toolbar</span>
+        <button class="proxy-use-btn" onclick="useProxy('custom')">USE</button>
+      </div>
+    </div>
+
+    <div class="notice" style="margin-top:0">
+      ⚠ <strong>LEGAL NOTICE:</strong> Port scanning and network probing without explicit permission from the target system owner may be illegal in many jurisdictions. Only scan networks and systems you own or have written authorization to test. This tool is provided for educational and legitimate security research purposes only.
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CLOCK ──
+function updateClock() {
+  const now = new Date();
+  document.getElementById('header-time').textContent =
+    now.toTimeString().slice(0, 8);
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── TABS ──
+function switchTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(name + '-panel').classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── PROXY TYPE ──
+document.getElementById('proxy-type').addEventListener('change', function() {
+  const ci = document.getElementById('custom-proxy');
+  ci.style.display = this.value === 'custom' ? 'inline' : 'none';
+});
+
+function getProxyUrl(targetUrl) {
+  const type = document.getElementById('proxy-type').value;
+  const encoded = encodeURIComponent(targetUrl);
+  switch(type) {
+    case 'allorigins': return `https://api.allorigins.win/raw?url=${encoded}`;
+    case 'corsproxy':  return `https://corsproxy.io/?${encoded}`;
+    case 'thingproxy': return `https://thingproxy.freeboard.io/fetch/${targetUrl}`;
+    case 'custom': {
+      const cp = document.getElementById('custom-proxy').value.trim();
+      return cp ? cp + targetUrl : targetUrl;
+    }
+    default: return targetUrl;
+  }
+}
+
+// ── BROWSER ──
+let navHistory = [], navIdx = -1;
+
+function quickNav(url) {
+  document.getElementById('url-input').value = url.replace(/^https?:\/\//, '');
+  loadUrl();
+}
+
+function useProxy(type) {
+  document.getElementById('proxy-type').value = type;
+  document.getElementById('custom-proxy').style.display = type === 'custom' ? 'inline' : 'none';
+  switchTab('browser');
+  event.target.blur();
+}
+
+function loadUrl() {
+  let raw = document.getElementById('url-input').value.trim();
+  if (!raw) return;
+  if (!/^https?:\/\//i.test(raw)) raw = 'https://' + raw;
+
+  document.getElementById('url-protocol').textContent = raw.match(/^https?/i)[0].toLowerCase() + '://';
+  document.getElementById('url-input').value = raw.replace(/^https?:\/\//i, '');
+
+  const proxyUrl = getProxyUrl(raw);
+  const iframe = document.getElementById('browser-iframe');
+  const overlay = document.getElementById('browser-overlay');
+
+  setStatus('LOADING...');
+  document.getElementById('page-title').textContent = raw;
+  document.getElementById('header-status').textContent = 'LOADING';
+  const t0 = Date.now();
+
+  overlay.style.display = 'none';
+  iframe.style.display = 'block';
+  iframe.src = proxyUrl;
+
+  iframe.onload = () => {
+    const ms = Date.now() - t0;
+    setStatus('LOADED');
+    document.getElementById('load-time').textContent = ms + 'ms';
+    document.getElementById('header-status').textContent = 'READY';
+    try {
+      document.getElementById('page-title').textContent =
+        iframe.contentDocument?.title || raw;
+    } catch(e) {}
+  };
+
+  iframe.onerror = () => {
+    setStatus('ERROR — connection refused');
+    document.getElementById('header-status').textContent = 'ERROR';
+  };
+
+  if (navHistory[navIdx] !== raw) {
+    navHistory = navHistory.slice(0, navIdx + 1);
+    navHistory.push(raw);
+    navIdx = navHistory.length - 1;
+  }
+}
+
+function navBack() {
+  if (navIdx > 0) {
+    navIdx--;
+    const url = navHistory[navIdx];
+    document.getElementById('url-input').value = url.replace(/^https?:\/\//i, '');
+    loadUrl();
+  }
+}
+
+function navForward() {
+  if (navIdx < navHistory.length - 1) {
+    navIdx++;
+    const url = navHistory[navIdx];
+    document.getElementById('url-input').value = url.replace(/^https?:\/\//i, '');
+    loadUrl();
+  }
+}
+
+function navRefresh() {
+  const iframe = document.getElementById('browser-iframe');
+  if (iframe.src && iframe.style.display !== 'none') {
+    iframe.src = iframe.src;
+  }
+}
+
+function navHome() {
+  const iframe = document.getElementById('browser-iframe');
+  iframe.style.display = 'none';
+  document.getElementById('browser-overlay').style.display = 'flex';
+  document.getElementById('url-input').value = '';
+  setStatus('READY');
+  document.getElementById('page-title').textContent = '—';
+  document.getElementById('load-time').textContent = '—';
+}
+
+function setStatus(msg) {
+  document.getElementById('status-text').textContent = msg;
+}
+
+// ── PORT SCANNER ──
+const SERVICES = {
+  20: {name:'FTP-DATA',proto:'TCP',risk:'med'},
+  21: {name:'FTP',proto:'TCP',risk:'high'},
+  22: {name:'SSH',proto:'TCP',risk:'med'},
+  23: {name:'Telnet',proto:'TCP',risk:'high'},
+  25: {name:'SMTP',proto:'TCP',risk:'med'},
+  53: {name:'DNS',proto:'TCP/UDP',risk:'med'},
+  67: {name:'DHCP',proto:'UDP',risk:'low'},
+  68: {name:'DHCP',proto:'UDP',risk:'low'},
+  80: {name:'HTTP',proto:'TCP',risk:'low'},
+  110: {name:'POP3',proto:'TCP',risk:'med'},
+  111: {name:'RPC',proto:'TCP',risk:'high'},
+  135: {name:'MSRPC',proto:'TCP',risk:'high'},
+  139: {name:'NetBIOS',proto:'TCP',risk:'high'},
+  143: {name:'IMAP',proto:'TCP',risk:'med'},
+  194: {name:'IRC',proto:'TCP',risk:'med'},
+  389: {name:'LDAP',proto:'TCP',risk:'high'},
+  443: {name:'HTTPS',proto:'TCP',risk:'low'},
+  445: {name:'SMB',proto:'TCP',risk:'high'},
+  465: {name:'SMTPS',proto:'TCP',risk:'low'},
+  514: {name:'Syslog',proto:'UDP',risk:'med'},
+  515: {name:'LPD/LPR',proto:'TCP',risk:'med'},
+  587: {name:'SMTP/TLS',proto:'TCP',risk:'low'},
+  631: {name:'IPP/CUPS',proto:'TCP',risk:'med'},
+  993: {name:'IMAPS',proto:'TCP',risk:'low'},
+  995: {name:'POP3S',proto:'TCP',risk:'low'},
+  1080: {name:'SOCKS',proto:'TCP',risk:'high'},
+  1194: {name:'OpenVPN',proto:'UDP',risk:'low'},
+  1433: {name:'MSSQL',proto:'TCP',risk:'high'},
+  1521: {name:'Oracle DB',proto:'TCP',risk:'high'},
+  1723: {name:'PPTP',proto:'TCP',risk:'med'},
+  2049: {name:'NFS',proto:'TCP',risk:'high'},
+  2181: {name:'Zookeeper',proto:'TCP',risk:'high'},
+  2375: {name:'Docker',proto:'TCP',risk:'high'},
+  2376: {name:'Docker TLS',proto:'TCP',risk:'med'},
+  3000: {name:'Dev Server',proto:'TCP',risk:'med'},
+  3306: {name:'MySQL',proto:'TCP',risk:'high'},
+  3389: {name:'RDP',proto:'TCP',risk:'high'},
+  4444: {name:'Metasploit',proto:'TCP',risk:'high'},
+  5000: {name:'Flask/UPnP',proto:'TCP',risk:'med'},
+  5432: {name:'PostgreSQL',proto:'TCP',risk:'high'},
+  5900: {name:'VNC',proto:'TCP',risk:'high'},
+  5984: {name:'CouchDB',proto:'TCP',risk:'high'},
+  6379: {name:'Redis',proto:'TCP',risk:'high'},
+  6443: {name:'K8s API',proto:'TCP',risk:'high'},
+  7474: {name:'Neo4j',proto:'TCP',risk:'high'},
+  8000: {name:'HTTP Alt',proto:'TCP',risk:'med'},
+  8080: {name:'HTTP Proxy',proto:'TCP',risk:'med'},
+  8443: {name:'HTTPS Alt',proto:'TCP',risk:'low'},
+  8888: {name:'Jupyter',proto:'TCP',risk:'high'},
+  9000: {name:'PHP-FPM',proto:'TCP',risk:'high'},
+  9092: {name:'Kafka',proto:'TCP',risk:'high'},
+  9200: {name:'Elasticsearch',proto:'TCP',risk:'high'},
+  9300: {name:'Elasticsearch',proto:'TCP',risk:'high'},
+  11211: {name:'Memcached',proto:'TCP',risk:'high'},
+  27017: {name:'MongoDB',proto:'TCP',risk:'high'},
+  27018: {name:'MongoDB',proto:'TCP',risk:'high'},
+  50070: {name:'Hadoop',proto:'TCP',risk:'high'},
+};
+
+let scanRunning = false, scanAbort = false;
+let allResults = [], currentFilter = 'all';
+let scanStart = 0, portsScanned = 0, openCount = 0, closedCount = 0, filteredCount = 0;
+let customPorts = null;
+
+function setPreset(btn, start, end, ports) {
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+  if (ports) {
+    customPorts = ports;
+    document.getElementById('port-start').value = Math.min(...ports);
+    document.getElementById('port-end').value = Math.max(...ports);
+  } else {
+    customPorts = null;
+    document.getElementById('port-start').value = start;
+    document.getElementById('port-end').value = end;
+  }
+}
+
+function toggleOption(btn) {
+  btn.classList.toggle('on');
+}
+
+function addLog(msg, type = 'info') {
+  const log = document.getElementById('scan-log');
+  const now = new Date().toTimeString().slice(0, 8);
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-time">[${now}]</span><span class="log-msg-${type}">${msg}</span>`;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function probePort(host, port, timeoutMs = 2000) {
+  const t0 = performance.now();
+  const proto = port === 443 || port === 8443 ? 'https' : 'http';
+  const url = `${proto}://${host}:${port}/`;
+
+  return new Promise(resolve => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort();
+      resolve({ status: 'filtered', responseTime: Math.round(performance.now() - t0) });
+    }, timeoutMs);
+
+    fetch(url, {
+      method: 'HEAD',
+      mode: 'no-cors',
+      signal: controller.signal,
+      cache: 'no-store'
+    }).then(res => {
+      clearTimeout(timer);
+      resolve({ status: 'open', responseTime: Math.round(performance.now() - t0) });
+    }).catch(err => {
+      clearTimeout(timer);
+      const rt = Math.round(performance.now() - t0);
+      if (err.name === 'AbortError') {
+        resolve({ status: 'filtered', responseTime: rt });
+      } else if (err.message && (err.message.includes('NetworkError') || err.message.includes('Failed to fetch'))) {
+        // Connection refused = closed; timeout-like = filtered
+        resolve({ status: rt < timeoutMs * 0.9 ? 'closed' : 'filtered', responseTime: rt });
+      } else {
+        // Any other error usually means something is there (CORS block = port is open)
+        resolve({ status: 'open', responseTime: rt });
+      }
+    });
+  });
+}
+
+async function startScan() {
+  if (scanRunning) return;
+  const host = document.getElementById('scan-target').value.trim();
+  if (!host) { addLog('ERROR: No target specified', 'error'); return; }
+
+  const pStart = parseInt(document.getElementById('port-start').value) || 1;
+  const pEnd = parseInt(document.getElementById('port-end').value) || 1024;
+  const concurrency = Math.min(parseInt(document.getElementById('concurrency').value) || 20, 100);
+  const timeoutMs = document.getElementById('opt-timeout').classList.contains('on') ? 2000 : 3000;
+
+  let ports = customPorts ? [...customPorts] :
+    Array.from({length: pEnd - pStart + 1}, (_, i) => pStart + i);
+
+  scanRunning = true; scanAbort = false;
+  allResults = []; openCount = 0; closedCount = 0; filteredCount = 0;
+  portsScanned = 0; scanStart = Date.now();
+
+  document.getElementById('scan-btn').style.display = 'none';
+  document.getElementById('stop-btn').style.display = 'block';
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('results-table').style.display = 'table';
+  document.getElementById('results-tbody').innerHTML = '';
+  document.getElementById('stat-target').textContent = host;
+  document.getElementById('stat-scanned').textContent = '0 / ' + ports.length;
+  document.getElementById('header-status').textContent = 'SCANNING';
+
+  addLog(`Scan started → ${host} | Ports: ${ports[0]}-${ports[ports.length-1]} (${ports.length} total) | Concurrency: ${concurrency}`, 'info');
+
+  let speedTimer = setInterval(() => {
+    const elapsed = (Date.now() - scanStart) / 1000;
+    const speed = Math.round(portsScanned / elapsed);
+    const remaining = ports.length - portsScanned;
+    const eta = speed > 0 ? Math.round(remaining / speed) : 0;
+    document.getElementById('scan-speed').textContent = speed + ' p/s';
+    document.getElementById('eta-text').textContent = `ETA: ${eta}s`;
+  }, 500);
+
+  // Process in chunks for concurrency
+  let idx = 0;
+  async function runWorker() {
+    while (idx < ports.length && !scanAbort) {
+      const port = ports[idx++];
+      const result = await probePort(host, port, timeoutMs);
+      result.port = port;
+      result.service = SERVICES[port] || { name: 'Unknown', proto: 'TCP', risk: 'low' };
+
+      if (result.status === 'open') openCount++;
+      else if (result.status === 'filtered') filteredCount++;
+      else closedCount++;
+
+      allResults.push(result);
+      portsScanned++;
+
+      if (result.status === 'open' || result.status === 'filtered') {
+        addToTable(result);
+        if (result.status === 'open') {
+          addLog(`OPEN  port ${port} → ${result.service.name} (${result.responseTime}ms)`, 'open');
+        }
+      }
+
+      const pct = Math.round((portsScanned / ports.length) * 100);
+      document.getElementById('progress-bar').style.width = pct + '%';
+      document.getElementById('progress-pct').textContent = pct + '%';
+      document.getElementById('stat-scanned').textContent = `${portsScanned} / ${ports.length}`;
+      document.getElementById('stat-open').textContent = openCount;
+      document.getElementById('stat-closed').textContent = closedCount;
+      document.getElementById('stat-filtered').textContent = filteredCount;
+    }
+  }
+
+  const workers = Array.from({length: concurrency}, () => runWorker());
+  await Promise.all(workers);
+
+  clearInterval(speedTimer);
+  scanRunning = false;
+  const duration = ((Date.now() - scanStart) / 1000).toFixed(1);
+  document.getElementById('stat-duration').textContent = duration + 's';
+  document.getElementById('header-status').textContent = scanAbort ? 'STOPPED' : 'DONE';
+  document.getElementById('scan-btn').style.display = 'block';
+  document.getElementById('stop-btn').style.display = 'none';
+
+  if (!scanAbort) {
+    addLog(`Scan complete. ${openCount} open, ${filteredCount} filtered, ${closedCount} closed in ${duration}s`, 'open');
+    updateRiskBreakdown();
+  } else {
+    addLog('Scan aborted by user.', 'warn');
+  }
+
+  if (openCount === 0 && filteredCount === 0) {
+    addLog('No open or filtered ports detected. Target may be offline or behind a firewall.', 'warn');
+  }
+}
+
+function stopScan() {
+  scanAbort = true;
+  addLog('Stopping scan...', 'warn');
+}
+
+function addToTable(result) {
+  const tbody = document.getElementById('results-tbody');
+  const svc = result.service;
+  const risk = svc.risk;
+  const tr = document.createElement('tr');
+  tr.dataset.status = result.status;
+
+  tr.innerHTML = `
+    <td><span class="port-num">${result.port}</span></td>
+    <td><span class="badge badge-${result.status}">${result.status.toUpperCase()}</span></td>
+    <td class="port-service">${svc.name}</td>
+    <td style="color:var(--muted);font-size:10px">${svc.proto}</td>
+    <td><span class="port-risk-${risk}">${risk.toUpperCase()}</span></td>
+    <td style="color:var(--muted)">${result.responseTime}ms</td>
+    <td style="color:var(--muted);font-size:10px">${getRiskNote(result.port, svc)}</td>
+  `;
+  tbody.appendChild(tr);
+  applyFilter();
+}
+
+function getRiskNote(port, svc) {
+  const notes = {
+    21: 'Plaintext credentials — use SFTP',
+    22: 'Ensure key-auth only',
+    23: 'Unencrypted — disable immediately',
+    80: 'Redirect to HTTPS',
+    135: 'Windows RPC — restrict access',
+    139: 'NetBIOS — high attack surface',
+    445: 'SMB — EternalBlue target',
+    1433: 'SQL Server — restrict firewall',
+    3306: 'MySQL — bind to localhost',
+    3389: 'RDP — common bruteforce target',
+    5432: 'PostgreSQL — restrict access',
+    5900: 'VNC — weak auth risk',
+    6379: 'Redis — no auth by default',
+    8080: 'Proxy/alt HTTP',
+    8888: 'Jupyter — often no auth',
+    9200: 'Elasticsearch — no auth by default',
+    27017: 'MongoDB — no auth by default',
+  };
+  return notes[port] || '—';
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilter();
+}
+
+function applyFilter() {
+  const rows = document.querySelectorAll('#results-tbody tr');
+  rows.forEach(row => {
+    const show = currentFilter === 'all' || row.dataset.status === currentFilter;
+    row.style.display = show ? '' : 'none';
+  });
+}
+
+function updateRiskBreakdown() {
+  const high = allResults.filter(r => r.status === 'open' && r.service.risk === 'high').length;
+  const med = allResults.filter(r => r.status === 'open' && r.service.risk === 'med').length;
+  const low = allResults.filter(r => r.status === 'open' && r.service.risk === 'low').length;
+  if (high + med + low === 0) return;
+
+  document.getElementById('risk-breakdown').style.display = 'block';
+  const total = high + med + low;
+  document.getElementById('risk-bars').innerHTML = `
+    <div style="margin-bottom:4px">
+      <div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:2px">
+        <span style="color:var(--danger)">HIGH RISK</span><span style="color:var(--danger)">${high}</span>
+      </div>
+      <div style="height:3px;background:var(--border)"><div style="height:100%;background:var(--danger);width:${high/total*100}%"></div></div>
+    </div>
+    <div style="margin-bottom:4px">
+      <div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:2px">
+        <span style="color:var(--warn)">MEDIUM RISK</span><span style="color:var(--warn)">${med}</span>
+      </div>
+      <div style="height:3px;background:var(--border)"><div style="height:100%;background:var(--warn);width:${med/total*100}%"></div></div>
+    </div>
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:2px">
+        <span style="color:var(--accent2)">LOW RISK</span><span style="color:var(--accent2)">${low}</span>
+      </div>
+      <div style="height:3px;background:var(--border)"><div style="height:100%;background:var(--accent2);width:${low/total*100}%"></div></div>
+    </div>
+  `;
+}
+
+function exportResults() {
+  if (allResults.length === 0) { addLog('No results to export', 'warn'); return; }
+  const data = {
+    target: document.getElementById('scan-target').value,
+    scanTime: new Date().toISOString(),
+    duration: document.getElementById('stat-duration').textContent,
+    summary: { open: openCount, closed: closedCount, filtered: filteredCount },
+    results: allResults.filter(r => r.status === 'open' || r.status === 'filtered').map(r => ({
+      port: r.port,
+      status: r.status,
+      service: r.service.name,
+      protocol: r.service.proto,
+      risk: r.service.risk,
+      responseTime: r.responseTime
+    }))
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `proxr-scan-${Date.now()}.json`;
+  a.click();
+  addLog('Results exported to JSON', 'info');
+}
+</script>
+</body>
+</html>
