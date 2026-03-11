@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>漢字道場 · Kanji Dojo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;700&family=Noto+Sans+JP:wght@300;400;700&family=DM+Serif+Display&family=IBM+Plex+Mono:wght@300;400&display=swap" rel="stylesheet" />
+<style>
+/* ── ROOT & VARIABLES ─────────────────────────────────── */
+:root{
+  --ink:#1a1008;
+  --paper:#f5f0e8;
+  --aged:#ede5d0;
+  --sepia:#c4a882;
+  --vermillion:#c0392b;
+  --gold:#b8860b;
+  --gold-light:#f0c040;
+  --sage:#4a7c59;
+  --indigo:#2c4a7c;
+  --ink-light:#5a4a3a;
+  --red-accent:#d94f3d;
+  --card-bg:#faf7f2;
+  --border:#d4c4a8;
+  --shadow:rgba(26,16,8,.18);
+  --correct:#2d7a4f;
+  --wrong:#c0392b;
+  --tag-bg:#e8dfc8;
+  font-size:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--paper);color:var(--ink);font-family:'Noto Sans JP',sans-serif}
+
+/* ── SCROLLBAR ────────────────────────────────────────── */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--aged)}
+::-webkit-scrollbar-thumb{background:var(--sepia);border-radius:3px}
+
+/* ── LAYOUT ──────────────────────────────────────────── */
+#app{display:flex;flex-direction:column;min-height:100vh}
+
+/* ── HEADER ──────────────────────────────────────────── */
+header{
+  background:var(--ink);
+  color:var(--gold-light);
+  padding:0 2rem;
+  display:flex;align-items:center;justify-content:space-between;
+  height:64px;
+  position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 12px var(--shadow);
+}
+.logo{
+  font-family:'DM Serif Display',serif;
+  font-size:1.6rem;
+  letter-spacing:.04em;
+  display:flex;align-items:center;gap:.6rem;
+  user-select:none;
+}
+.logo-kanji{
+  font-family:'Noto Serif JP',serif;
+  font-size:2rem;
+  color:var(--vermillion);
+  text-shadow:0 0 12px rgba(192,57,43,.4);
+}
+nav{display:flex;gap:.2rem}
+nav button{
+  background:none;border:none;
+  color:var(--sepia);
+  font-family:'Noto Sans JP',sans-serif;
+  font-size:.8rem;
+  padding:.5rem .9rem;
+  border-radius:4px;
+  cursor:pointer;
+  transition:all .2s;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+nav button:hover{background:rgba(255,255,255,.08);color:var(--gold-light)}
+nav button.active{background:var(--vermillion);color:#fff}
+
+/* ── MAIN PANELS ─────────────────────────────────────── */
+main{flex:1;max-width:1100px;width:100%;margin:0 auto;padding:2rem 1.5rem}
+.panel{display:none;animation:fadeUp .35s ease}
+.panel.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── PAGE TITLES ─────────────────────────────────────── */
+.page-title{
+  font-family:'DM Serif Display',serif;
+  font-size:2.2rem;
+  color:var(--ink);
+  margin-bottom:.3rem;
+}
+.page-title span{color:var(--vermillion)}
+.page-sub{color:var(--ink-light);font-size:.9rem;margin-bottom:1.8rem;font-style:italic}
+
+/* ── FILTER BAR ──────────────────────────────────────── */
+.filter-bar{
+  display:flex;flex-wrap:wrap;gap:.5rem;
+  margin-bottom:1.5rem;
+  align-items:center;
+}
+.filter-bar input{
+  flex:1;min-width:180px;
+  padding:.5rem .9rem;
+  border:1.5px solid var(--border);
+  border-radius:6px;
+  background:var(--card-bg);
+  font-family:'Noto Sans JP',sans-serif;
+  font-size:.9rem;
+  color:var(--ink);
+  outline:none;
+  transition:border .2s;
+}
+.filter-bar input:focus{border-color:var(--gold)}
+.filter-btn{
+  padding:.5rem .9rem;
+  border:1.5px solid var(--border);
+  border-radius:6px;
+  background:var(--card-bg);
+  color:var(--ink-light);
+  font-size:.8rem;
+  cursor:pointer;
+  transition:all .2s;
+  font-family:'Noto Sans JP',sans-serif;
+}
+.filter-btn:hover,.filter-btn.on{background:var(--ink);color:var(--gold-light);border-color:var(--ink)}
+
+/* ── KANJI GRID ───────────────────────────────────────── */
+.kanji-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(170px,1fr));
+  gap:1rem;
+}
+.kanji-card{
+  background:var(--card-bg);
+  border:1.5px solid var(--border);
+  border-radius:8px;
+  padding:1.2rem 1rem 1rem;
+  cursor:pointer;
+  transition:all .25s;
+  position:relative;
+  overflow:hidden;
+}
+.kanji-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--vermillion),var(--gold));
+  transform:scaleX(0);transform-origin:left;
+  transition:transform .3s;
+}
+.kanji-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px var(--shadow)}
+.kanji-card:hover::before{transform:scaleX(1)}
+.kanji-big{
+  font-family:'Noto Serif JP',serif;
+  font-size:3.2rem;
+  line-height:1;
+  display:block;
+  color:var(--ink);
+  margin-bottom:.5rem;
+}
+.kanji-meaning{font-size:.85rem;color:var(--ink-light);margin-bottom:.3rem}
+.kanji-reading{font-size:.78rem;color:var(--indigo);font-family:'IBM Plex Mono',monospace}
+.kanji-meta{
+  display:flex;gap:.4rem;margin-top:.6rem;flex-wrap:wrap;
+}
+.tag{
+  font-size:.68rem;padding:.15rem .5rem;
+  border-radius:3px;background:var(--tag-bg);
+  color:var(--ink-light);font-family:'IBM Plex Mono',monospace;
+}
+.tag.n5{background:#dff0d8;color:#2d7a4f}
+.tag.n4{background:#d9edf7;color:#1a5276}
+.tag.n3{background:#fcf8e3;color:#8a6d3b}
+
+/* ── KANJI DETAIL MODAL ──────────────────────────────── */
+.modal-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(26,16,8,.55);
+  z-index:200;align-items:center;justify-content:center;
+  backdrop-filter:blur(3px);
+}
+.modal-overlay.open{display:flex}
+.modal{
+  background:var(--card-bg);
+  border:2px solid var(--border);
+  border-radius:12px;
+  padding:2rem;
+  max-width:520px;width:90%;
+  position:relative;
+  animation:fadeUp .3s ease;
+  max-height:85vh;overflow-y:auto;
+}
+.modal-close{
+  position:absolute;top:1rem;right:1rem;
+  background:none;border:none;font-size:1.4rem;
+  cursor:pointer;color:var(--sepia);
+  transition:color .2s;
+}
+.modal-close:hover{color:var(--vermillion)}
+.modal-kanji{
+  font-family:'Noto Serif JP',serif;
+  font-size:6rem;
+  line-height:1;
+  color:var(--ink);
+  text-align:center;
+  margin-bottom:1rem;
+}
+.modal-info{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1.2rem}
+.info-block label{
+  display:block;font-size:.7rem;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--sepia);margin-bottom:.2rem;
+}
+.info-block span{
+  font-size:1rem;color:var(--ink);
+  font-family:'IBM Plex Mono',monospace;
+}
+.modal-examples{margin-top:1rem}
+.modal-examples h4{
+  font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--sepia);margin-bottom:.8rem;
+}
+.example-item{
+  background:var(--aged);border-radius:6px;
+  padding:.8rem 1rem;margin-bottom:.6rem;
+}
+.ex-word{font-family:'Noto Serif JP',serif;font-size:1.4rem;color:var(--ink)}
+.ex-reading{font-size:.8rem;color:var(--indigo);font-family:'IBM Plex Mono',monospace}
+.ex-meaning{font-size:.85rem;color:var(--ink-light);margin-top:.1rem}
+.ex-sentence{font-size:.85rem;color:var(--ink);margin-top:.4rem;line-height:1.6;font-style:italic;border-left:2px solid var(--sepia);padding-left:.6rem}
+.ex-sentence-tr{font-size:.78rem;color:var(--ink-light);margin-top:.2rem;padding-left:.6rem}
+
+/* ── VOCABULARY TABLE ────────────────────────────────── */
+.vocab-list{display:flex;flex-direction:column;gap:.7rem}
+.vocab-item{
+  background:var(--card-bg);
+  border:1.5px solid var(--border);
+  border-radius:8px;
+  padding:1rem 1.2rem;
+  display:grid;
+  grid-template-columns:1fr 1fr 2fr;
+  gap:1rem;align-items:start;
+  cursor:pointer;
+  transition:all .2s;
+}
+.vocab-item:hover{border-color:var(--gold);transform:translateX(4px)}
+.vocab-word{font-family:'Noto Serif JP',serif;font-size:1.5rem;color:var(--ink)}
+.vocab-reading{font-size:.82rem;color:var(--indigo);font-family:'IBM Plex Mono',monospace;margin-top:.2rem}
+.vocab-meaning{font-size:.9rem;color:var(--ink-light)}
+.vocab-example{font-size:.82rem;color:var(--ink);line-height:1.6}
+.vocab-example-tr{font-size:.78rem;color:var(--ink-light)}
+
+/* ── PHRASES ──────────────────────────────────────────── */
+.phrase-list{display:flex;flex-direction:column;gap:.8rem}
+.phrase-card{
+  background:var(--card-bg);
+  border:1.5px solid var(--border);
+  border-radius:8px;
+  padding:1.2rem 1.4rem;
+  transition:all .2s;
+  cursor:pointer;
+}
+.phrase-card:hover{border-color:var(--vermillion);box-shadow:0 4px 12px var(--shadow)}
+.phrase-jp{font-family:'Noto Serif JP',serif;font-size:1.25rem;color:var(--ink);line-height:1.6}
+.phrase-romaji{font-size:.8rem;color:var(--indigo);font-family:'IBM Plex Mono',monospace;margin-top:.2rem}
+.phrase-en{font-size:.88rem;color:var(--ink-light);margin-top:.3rem}
+.phrase-notes{
+  font-size:.78rem;color:var(--sepia);
+  margin-top:.5rem;padding:.4rem .7rem;
+  background:var(--aged);border-radius:4px;
+  border-left:3px solid var(--sepia);
+  display:none;
+}
+.phrase-card.expanded .phrase-notes{display:block}
+.phrase-toggle{font-size:.7rem;color:var(--sepia);margin-top:.5rem;cursor:pointer;user-select:none}
+
+/* ── SENTENCES ────────────────────────────────────────── */
+.sentence-list{display:flex;flex-direction:column;gap:.8rem}
+.sentence-card{
+  background:var(--card-bg);
+  border:1.5px solid var(--border);
+  border-radius:8px;
+  padding:1.2rem 1.4rem;
+  transition:all .2s;
+}
+.sentence-card:hover{border-color:var(--sage)}
+.sentence-jp{font-family:'Noto Serif JP',serif;font-size:1.2rem;color:var(--ink);line-height:1.8}
+.sentence-reading{font-size:.8rem;color:var(--indigo);font-family:'IBM Plex Mono',monospace;margin-top:.2rem;display:none}
+.sentence-card.show-reading .sentence-reading{display:block}
+.sentence-en{font-size:.88rem;color:var(--ink-light);margin-top:.4rem;display:none}
+.sentence-card.show-en .sentence-en{display:block}
+.sentence-actions{display:flex;gap:.5rem;margin-top:.6rem}
+.btn-reveal{
+  font-size:.72rem;padding:.25rem .6rem;
+  border:1px solid var(--border);border-radius:4px;
+  background:none;color:var(--sepia);cursor:pointer;
+  transition:all .15s;font-family:'Noto Sans JP',sans-serif;
+}
+.btn-reveal:hover{background:var(--aged);color:var(--ink)}
+.sentence-tags{display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap}
+
+/* ── QUIZ ─────────────────────────────────────────────── */
+#panel-quiz{max-width:680px}
+.quiz-controls{
+  display:flex;gap:.8rem;margin-bottom:1.8rem;flex-wrap:wrap;
+}
+.quiz-type-btn{
+  flex:1;min-width:120px;
+  padding:.7rem 1rem;
+  background:var(--card-bg);
+  border:2px solid var(--border);
+  border-radius:8px;
+  cursor:pointer;
+  font-family:'Noto Sans JP',sans-serif;
+  font-size:.85rem;
+  color:var(--ink-light);
+  transition:all .2s;
+  text-align:center;
+}
+.quiz-type-btn:hover{border-color:var(--gold);color:var(--ink)}
+.quiz-type-btn.active{background:var(--ink);color:var(--gold-light);border-color:var(--ink)}
+.quiz-box{
+  background:var(--card-bg);
+  border:2px solid var(--border);
+  border-radius:12px;
+  padding:2.5rem 2rem;
+  text-align:center;
+  min-height:380px;
+  display:flex;flex-direction:column;
+  justify-content:center;
+}
+.quiz-question-label{
+  font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;
+  color:var(--sepia);margin-bottom:1.5rem;
+}
+.quiz-main-char{
+  font-family:'Noto Serif JP',serif;
+  font-size:5rem;color:var(--ink);
+  line-height:1;
+  margin-bottom:.8rem;
+  text-shadow:1px 1px 0 rgba(0,0,0,.05);
+}
+.quiz-question{font-size:1.05rem;color:var(--ink-light);margin-bottom.4rem;}
+.quiz-hint{
+  font-size:.8rem;color:var(--sepia);
+  font-family:'IBM Plex Mono',monospace;
+  margin-bottom:2rem;cursor:pointer;
+  border-bottom:1px dashed var(--sepia);display:inline-block;
+  padding-bottom:1px;
+}
+.quiz-hint span{display:none}
+.quiz-hint.revealed span{display:inline}
+.quiz-hint.revealed em{display:none}
+.quiz-options{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:.7rem;margin-top:1rem;
+}
+.quiz-opt{
+  padding:.8rem 1rem;
+  background:var(--aged);
+  border:2px solid var(--border);
+  border-radius:8px;
+  cursor:pointer;
+  font-family:'Noto Sans JP',sans-serif;
+  font-size:.9rem;
+  color:var(--ink);
+  transition:all .2s;
+  text-align:center;
+}
+.quiz-opt:hover:not(:disabled){background:var(--tag-bg);border-color:var(--sepia);transform:scale(1.02)}
+.quiz-opt.correct{background:#dff0d8;border-color:var(--correct);color:var(--correct)}
+.quiz-opt.wrong{background:#fde8e8;border-color:var(--wrong);color:var(--wrong)}
+.quiz-opt:disabled{cursor:default}
+.quiz-result{
+  margin-top:1.5rem;font-size:1.1rem;
+  font-weight:bold;min-height:1.5rem;
+}
+.quiz-result.correct{color:var(--correct)}
+.quiz-result.wrong{color:var(--wrong)}
+.quiz-next{
+  margin-top:1.2rem;
+  padding:.7rem 2rem;
+  background:var(--ink);
+  color:var(--gold-light);
+  border:none;border-radius:8px;
+  font-size:.9rem;
+  cursor:pointer;
+  transition:all .2s;
+  font-family:'Noto Sans JP',sans-serif;
+  display:none;
+}
+.quiz-next:hover{background:var(--vermillion)}
+.quiz-score{
+  display:flex;gap:1.5rem;margin-bottom:1rem;justify-content:center;
+}
+.score-block{text-align:center}
+.score-num{
+  font-family:'DM Serif Display',serif;
+  font-size:2.2rem;color:var(--ink);
+}
+.score-label{font-size:.72rem;text-transform:uppercase;color:var(--sepia);letter-spacing:.1em}
+/* progress ring */
+.progress-wrap{display:flex;justify-content:center;margin-bottom:1.5rem}
+.prog-ring{transform:rotate(-90deg)}
+.prog-ring-bg{fill:none;stroke:var(--aged);stroke-width:6}
+.prog-ring-fill{fill:none;stroke:var(--vermillion);stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .6s ease}
+
+/* ── WRITING PRACTICE ─────────────────────────────────── */
+#panel-write{max-width:960px}
+.write-layout{display:grid;grid-template-columns:260px 1fr;gap:1.5rem;align-items:start}
+@media(max-width:700px){.write-layout{grid-template-columns:1fr}}
+.write-picker{
+  background:var(--card-bg);
+  border:2px solid var(--border);
+  border-radius:10px;
+  overflow:hidden;
+  display:flex;flex-direction:column;
+}
+.write-picker-head{
+  padding:.8rem 1rem;
+  border-bottom:1.5px solid var(--border);
+  background:var(--aged);
+}
+.write-picker-search{
+  width:100%;
+  padding:.45rem .7rem;
+  border:1.5px solid var(--border);
+  border-radius:6px;
+  background:#fff;
+  font-family:'Noto Sans JP',sans-serif;
+  font-size:.85rem;
+  color:var(--ink);
+  outline:none;
+  transition:border .2s;
+  margin-bottom:.5rem;
+}
+.write-picker-search:focus{border-color:var(--gold)}
+.write-picker-cats{
+  display:flex;flex-wrap:wrap;gap:.3rem;
+}
+.write-picker-cat{
+  font-size:.68rem;padding:.18rem .5rem;
+  border-radius:4px;
+  border:1px solid var(--border);
+  background:var(--card-bg);
+  color:var(--ink-light);
+  cursor:pointer;transition:all .15s;
+  font-family:'Noto Sans JP',sans-serif;
+}
+.write-picker-cat:hover,.write-picker-cat.on{background:var(--ink);color:var(--gold-light);border-color:var(--ink)}
+.write-picker-grid{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:2px;
+  padding:.5rem;
+  overflow-y:auto;
+  max-height:420px;
+}
+.write-picker-grid::-webkit-scrollbar{width:4px}
+.write-picker-grid::-webkit-scrollbar-thumb{background:var(--sepia);border-radius:2px}
+.write-pick-btn{
+  font-family:'Noto Serif JP',serif;
+  font-size:1.3rem;
+  background:none;
+  border:1.5px solid transparent;
+  border-radius:5px;
+  padding:.3rem .1rem;
+  cursor:pointer;
+  color:var(--ink);
+  transition:all .15s;
+  line-height:1.2;
+  text-align:center;
+}
+.write-pick-btn:hover{background:var(--aged);border-color:var(--sepia)}
+.write-pick-btn.active{background:var(--vermillion);color:#fff;border-color:var(--vermillion)}
+.write-pick-count{
+  font-size:.7rem;color:var(--sepia);
+  padding:.3rem .5rem .2rem;
+  border-top:1px solid var(--border);
+  text-align:right;
+  font-family:'IBM Plex Mono',monospace;
+}
+/* right side: target + canvas stacked */
+.write-right{display:flex;flex-direction:column;gap:1rem}
+.write-wrap{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+@media(max-width:600px){.write-wrap{grid-template-columns:1fr}}
+.write-target{
+  background:var(--card-bg);
+  border:2px solid var(--border);
+  border-radius:10px;
+  padding:1.5rem;
+  text-align:center;
+}
+.write-kanji-show{
+  font-family:'Noto Serif JP',serif;
+  font-size:7rem;color:var(--ink);
+  line-height:1;display:block;
+  margin-bottom:.5rem;
+}
+.write-info{font-size:.88rem;color:var(--ink-light);line-height:1.6}
+.canvas-wrap{
+  background:var(--card-bg);
+  border:2px solid var(--border);
+  border-radius:10px;
+  padding:1rem;
+  text-align:center;
+}
+.canvas-wrap canvas{
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:6px;
+  cursor:crosshair;
+  touch-action:none;
+  display:block;
+  margin:0 auto;
+}
+.canvas-actions{
+  display:flex;gap:.5rem;margin-top:.8rem;justify-content:center;flex-wrap:wrap;
+}
+.canvas-btn{
+  padding:.45rem 1rem;
+  background:var(--aged);
+  border:1.5px solid var(--border);
+  border-radius:6px;
+  cursor:pointer;font-size:.8rem;
+  color:var(--ink);
+  transition:all .2s;
+  font-family:'Noto Sans JP',sans-serif;
+}
+.canvas-btn:hover{background:var(--ink);color:var(--gold-light)}
+.write-nav{display:flex;gap:.8rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap}
+.write-nav button{
+  padding:.4rem .8rem;
+  background:var(--card-bg);
+  border:1.5px solid var(--border);
+  border-radius:6px;
+  cursor:pointer;font-size:.85rem;
+  color:var(--ink);transition:all .2s;
+  font-family:'Noto Sans JP',sans-serif;
+}
+.write-nav button:hover{background:var(--ink);color:var(--gold-light)}
+.write-nav span{flex:1;text-align:center;color:var(--sepia);font-size:.85rem;min-width:80px}
+
+/* ── DASHBOARD ────────────────────────────────────────── */
+.dashboard-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:1rem;margin-bottom:2rem;
+}
+.dash-card{
+  background:var(--card-bg);
+  border:1.5px solid var(--border);
+  border-radius:10px;
+  padding:1.4rem;
+  text-align:center;
+  position:relative;overflow:hidden;
+}
+.dash-card::after{
+  content:'';position:absolute;
+  bottom:-20px;right:-20px;
+  width:80px;height:80px;
+  background:rgba(184,134,11,.06);
+  border-radius:50%;
+}
+.dash-num{
+  font-family:'DM Serif Display',serif;
+  font-size:3rem;color:var(--vermillion);
+  line-height:1;
+}
+.dash-label{font-size:.78rem;color:var(--sepia);text-transform:uppercase;letter-spacing:.1em;margin-top:.3rem}
+.dash-sub{font-size:.82rem;color:var(--ink-light);margin-top:.4rem}
+.level-bars{margin-top:1rem}
+.level-bar-row{display:flex;align-items:center;gap:.8rem;margin-bottom:.5rem;font-size:.8rem}
+.level-bar-label{width:28px;color:var(--sepia);font-family:'IBM Plex Mono',monospace}
+.level-bar-bg{flex:1;height:8px;background:var(--aged);border-radius:4px;overflow:hidden}
+.level-bar-fill{height:100%;border-radius:4px;transition:width .8s ease}
+.recent-activity{
+  background:var(--card-bg);
+  border:1.5px solid var(--border);
+  border-radius:10px;
+  padding:1.4rem;
+}
+.recent-activity h3{
+  font-family:'DM Serif Display',serif;
+  font-size:1.2rem;margin-bottom:1rem;color:var(--ink);
+}
+.activity-row{
+  display:flex;gap:1rem;align-items:center;
+  padding:.5rem 0;border-bottom:1px solid var(--aged);
+  font-size:.85rem;
+}
+.activity-row:last-child{border-bottom:none}
+.act-kanji{font-family:'Noto Serif JP',serif;font-size:1.5rem;color:var(--ink);width:36px}
+.act-info{flex:1;color:var(--ink-light)}
+.act-result{font-weight:bold;font-size:.8rem}
+.act-result.c{color:var(--correct)}
+.act-result.w{color:var(--wrong)}
+
+/* ── PROGRESS TRACKING ───────────────────────────────── */
+.mastered-badge{
+  position:absolute;top:.4rem;right:.4rem;
+  background:var(--gold);
+  color:#fff;
+  font-size:.62rem;
+  padding:.1rem .35rem;
+  border-radius:3px;
+  font-family:'IBM Plex Mono',monospace;
+}
+
+/* ── TOAST ────────────────────────────────────────────── */
+.toast{
+  position:fixed;bottom:2rem;right:2rem;
+  background:var(--ink);color:var(--gold-light);
+  padding:.8rem 1.4rem;
+  border-radius:8px;
+  font-size:.88rem;
+  z-index:1000;
+  transform:translateY(80px);
+  opacity:0;
+  transition:all .35s ease;
+  pointer-events:none;
+}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* ── RESPONSIVE ──────────────────────────────────────── */
+@media(max-width:700px){
+  nav button{padding:.5rem .55rem;font-size:.72rem}
+  .logo{font-size:1.2rem}
+  .kanji-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+  .vocab-item{grid-template-columns:1fr;gap:.3rem}
+  .quiz-options{grid-template-columns:1fr}
+  main{padding:1rem}
+}
+
+/* ── STROKE ORDER ─────────────────────────────────────── */
+.stroke-note{
+  font-size:.75rem;color:var(--sepia);
+  text-align:center;margin-top:.6rem;
+  font-style:italic;
+}
+.grid-overlay{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;opacity:.15;
+}
+
+/* Inline stroke diagram (writing panel & modal) */
+.stroke-diagram{
+  background:var(--card-bg);
+  border:2px solid var(--border);
+  border-radius:10px;
+  padding:1rem;
+  text-align:center;
+}
+.stroke-diagram h4{
+  font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;
+  color:var(--sepia);margin-bottom:.7rem;
+}
+.stroke-svg-wrap{
+  position:relative;
+  display:inline-block;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:6px;
+  overflow:hidden;
+}
+.stroke-svg-wrap svg{display:block}
+
+/* individual stroke paths */
+.kvg-stroke-done{
+  fill:none;
+  stroke:#1a1008;
+  stroke-width:3;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.kvg-stroke-active{
+  fill:none;
+  stroke:var(--vermillion);
+  stroke-width:3.5;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.kvg-stroke-future{
+  fill:none;
+  stroke:var(--border);
+  stroke-width:3;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.kvg-num{
+  font-size:7px;
+  fill:var(--indigo);
+  font-family:'IBM Plex Mono',monospace;
+  font-weight:600;
+  pointer-events:none;
+}
+.kvg-num-active{fill:var(--vermillion)}
+.kvg-num-future{fill:var(--border)}
+
+/* start-dot (red circle at stroke beginning) */
+.kvg-start-dot{
+  fill:var(--vermillion);
+  opacity:0;
+  transition:opacity .2s;
+}
+.kvg-start-dot.show{opacity:1}
+
+/* direction arrow */
+.kvg-arrow{
+  fill:var(--vermillion);
+  opacity:0;
+  transition:opacity .2s;
+}
+.kvg-arrow.show{opacity:.85}
+
+/* controls */
+.stroke-controls{
+  display:flex;align-items:center;justify-content:center;
+  gap:.4rem;margin-top:.7rem;flex-wrap:wrap;
+}
+.sc-btn{
+  padding:.3rem .65rem;
+  background:var(--aged);
+  border:1.5px solid var(--border);
+  border-radius:5px;
+  cursor:pointer;
+  font-size:.78rem;
+  color:var(--ink);
+  transition:all .15s;
+  font-family:'Noto Sans JP',sans-serif;
+  line-height:1.2;
+}
+.sc-btn:hover{background:var(--ink);color:var(--gold-light)}
+.sc-btn.play{background:var(--vermillion);color:#fff;border-color:var(--vermillion)}
+.sc-btn.play:hover{background:#a52d1e}
+.sc-step{
+  font-size:.75rem;color:var(--sepia);
+  font-family:'IBM Plex Mono',monospace;
+  min-width:3.5rem;text-align:center;
+}
+.stroke-speed{display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--sepia)}
+.stroke-speed input{width:70px;cursor:pointer;accent-color:var(--vermillion)}
+
+/* modal stroke section */
+.modal-stroke-section{
+  margin-top:1.2rem;
+  padding-top:1rem;
+  border-top:1.5px solid var(--border);
+}
+.modal-stroke-section h4{
+  font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;
+  color:var(--sepia);margin-bottom:.8rem;
+}
+
+/* writing panel: 3-col layout with stroke diagram */
+.write-right{display:flex;flex-direction:column;gap:1rem}
+.write-panels{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;align-items:start}
+@media(max-width:860px){.write-panels{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.write-panels{grid-template-columns:1fr}}
+
+/* kanji card mini stroke button */
+.kanji-stroke-btn{
+  display:inline-flex;align-items:center;gap:.25rem;
+  font-size:.68rem;padding:.18rem .5rem;
+  border-radius:4px;
+  border:1px solid var(--border);
+  background:var(--card-bg);
+  color:var(--sepia);
+  cursor:pointer;
+  transition:all .15s;
+  margin-top:.4rem;
+  font-family:'Noto Sans JP',sans-serif;
+}
+.kanji-stroke-btn:hover{background:var(--vermillion);color:#fff;border-color:var(--vermillion)}
+
+/* fullscreen stroke overlay */
+.stroke-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(26,16,8,.6);
+  z-index:300;align-items:center;justify-content:center;
+  backdrop-filter:blur(4px);
+}
+.stroke-overlay.open{display:flex}
+.stroke-popup{
+  background:var(--card-bg);
+  border:2px solid var(--border);
+  border-radius:14px;
+  padding:1.8rem 2rem 1.5rem;
+  max-width:420px;width:92%;
+  position:relative;
+  animation:fadeUp .3s ease;
+  text-align:center;
+}
+.stroke-popup-close{
+  position:absolute;top:.8rem;right:1rem;
+  background:none;border:none;font-size:1.3rem;
+  cursor:pointer;color:var(--sepia);transition:color .2s;
+}
+.stroke-popup-close:hover{color:var(--vermillion)}
+.stroke-popup-char{
+  font-family:'Noto Serif JP',serif;
+  font-size:1.4rem;color:var(--ink);
+  margin-bottom:.3rem;
+}
+.stroke-popup-meta{
+  font-size:.78rem;color:var(--sepia);
+  font-family:'IBM Plex Mono',monospace;
+  margin-bottom:1rem;
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <span class="logo-kanji">漢</span>
+    <div>
+      <div style="font-size:1.3rem;line-height:1">Kanji Dojo</div>
+      <div style="font-size:.65rem;letter-spacing:.18em;color:var(--sepia);text-transform:uppercase">漢字道場</div>
+    </div>
+  </div>
+  <nav>
+    <button class="active" onclick="showPanel('dash')">📊 Home</button>
+    <button onclick="showPanel('kanji')">漢字 Kanji</button>
+    <button onclick="showPanel('vocab')">語 Vocab</button>
+    <button onclick="showPanel('phrases')">句 Phrases</button>
+    <button onclick="showPanel('sentences')">文 Sentences</button>
+    <button onclick="showPanel('quiz')">✏️ Quiz</button>
+    <button onclick="showPanel('write')">🖊 Write</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ── DASHBOARD ─────────────────────────────────────── -->
+<div id="panel-dash" class="panel active">
+  <h1 class="page-title"><span>漢字</span> Dojo</h1>
+  <p class="page-sub">Your complete offline toolkit for reading and writing Japanese Kanji</p>
+
+  <div class="dashboard-grid">
+    <div class="dash-card">
+      <div class="dash-num" id="stat-kanji">0</div>
+      <div class="dash-label">Kanji</div>
+      <div class="dash-sub">Characters to study</div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-num" id="stat-vocab">0</div>
+      <div class="dash-label">Vocabulary</div>
+      <div class="dash-sub">Words with examples</div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-num" id="stat-phrases">0</div>
+      <div class="dash-label">Phrases</div>
+      <div class="dash-sub">Daily-use expressions</div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-num" id="stat-quiz">0</div>
+      <div class="dash-label">Quiz Score</div>
+      <div class="dash-sub">Correct this session</div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-num" id="stat-mastered">0</div>
+      <div class="dash-label">Mastered</div>
+      <div class="dash-sub">Kanji you know well</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
+    <div class="dash-card" style="text-align:left">
+      <h3 style="font-family:'DM Serif Display',serif;margin-bottom:.8rem;font-size:1.15rem">JLPT Coverage</h3>
+      <div class="level-bars" id="level-bars"></div>
+    </div>
+    <div class="dash-card" style="text-align:left">
+      <h3 style="font-family:'DM Serif Display',serif;margin-bottom:.8rem;font-size:1.15rem">Quick Start</h3>
+      <p style="font-size:.82rem;color:var(--ink-light);line-height:1.7">
+        <strong>Kanji</strong> — browse all characters by category<br>
+        <strong>Vocab</strong> — words with example sentences<br>
+        <strong>Phrases</strong> — daily-use expressions<br>
+        <strong>Sentences</strong> — reveal readings & translations<br>
+        <strong>Quiz</strong> — test meaning or reading<br>
+        <strong>Write</strong> — practice writing with a canvas
+      </p>
+    </div>
+  </div>
+
+  <div class="recent-activity">
+    <h3>Recent Quiz Activity</h3>
+    <div id="activity-list"><div style="color:var(--sepia);font-size:.85rem">No activity yet — take a quiz!</div></div>
+  </div>
+</div>
+
+<!-- ── KANJI BROWSER ──────────────────────────────────── -->
+<div id="panel-kanji" class="panel">
+  <h1 class="page-title">漢字 <span>Library</span></h1>
+  <p class="page-sub">Browse characters • click any card for detail</p>
+  <div class="filter-bar">
+    <input type="text" id="kanji-search" placeholder="Search kanji or meaning…" oninput="renderKanji()" />
+    <select id="kanji-cat" onchange="renderKanji()" class="filter-btn" style="border:1.5px solid var(--border);padding:.48rem .7rem;border-radius:6px;background:var(--card-bg);color:var(--ink-light);font-family:'Noto Sans JP',sans-serif;font-size:.8rem;outline:none">
+      <option value="">All Categories</option>
+    </select>
+    <button class="filter-btn" id="btn-n5" onclick="toggleLevel('N5')" data-level="N5">N5</button>
+    <button class="filter-btn" id="btn-n4" onclick="toggleLevel('N4')" data-level="N4">N4</button>
+    <button class="filter-btn" id="btn-n3" onclick="toggleLevel('N3')" data-level="N3">N3</button>
+  </div>
+  <div class="kanji-grid" id="kanji-grid"></div>
+</div>
+
+<!-- ── VOCABULARY ──────────────────────────────────────── -->
+<div id="panel-vocab" class="panel">
+  <h1 class="page-title">語 <span>Vocabulary</span></h1>
+  <p class="page-sub">Words, compounds & example sentences</p>
+  <div class="filter-bar">
+    <input type="text" id="vocab-search" placeholder="Search words…" oninput="renderVocab()" />
+    <select id="vocab-cat" onchange="renderVocab()" class="filter-btn" style="border:1.5px solid var(--border);padding:.48rem .7rem;border-radius:6px;background:var(--card-bg);color:var(--ink-light);font-family:'Noto Sans JP',sans-serif;font-size:.8rem;outline:none">
+      <option value="">All Categories</option>
+    </select>
+  </div>
+  <div class="vocab-list" id="vocab-list"></div>
+</div>
+
+<!-- ── PHRASES ──────────────────────────────────────────── -->
+<div id="panel-phrases" class="panel">
+  <h1 class="page-title">句 <span>Phrases</span></h1>
+  <p class="page-sub">Essential daily expressions • click to expand usage notes</p>
+  <div class="filter-bar">
+    <input type="text" id="phrase-search" placeholder="Search phrases…" oninput="renderPhrases()" />
+    <select id="phrase-cat" onchange="renderPhrases()" class="filter-btn" style="border:1.5px solid var(--border);padding:.48rem .7rem;border-radius:6px;background:var(--card-bg);color:var(--ink-light);font-family:'Noto Sans JP',sans-serif;font-size:.8rem;outline:none">
+      <option value="">All Categories</option>
+    </select>
+  </div>
+  <div class="phrase-list" id="phrase-list"></div>
+</div>
+
+<!-- ── SENTENCES ──────────────────────────────────────── -->
+<div id="panel-sentences" class="panel">
+  <h1 class="page-title">文 <span>Sentences</span></h1>
+  <p class="page-sub">Natural Japanese — reveal readings and translations when ready</p>
+  <div class="filter-bar">
+    <input type="text" id="sentence-search" placeholder="Search sentences…" oninput="renderSentences()" />
+    <select id="sentence-level" onchange="renderSentences()" class="filter-btn" style="border:1.5px solid var(--border);padding:.48rem .7rem;border-radius:6px;background:var(--card-bg);color:var(--ink-light);font-family:'Noto Sans JP',sans-serif;font-size:.8rem;outline:none">
+      <option value="">All Levels</option>
+      <option>Beginner</option>
+      <option>Intermediate</option>
+      <option>Advanced</option>
+    </select>
+    <button class="filter-btn" onclick="revealAll()">Reveal All</button>
+    <button class="filter-btn" onclick="hideAll()">Hide All</button>
+  </div>
+  <div class="sentence-list" id="sentence-list"></div>
+</div>
+
+<!-- ── QUIZ ──────────────────────────────────────────────── -->
+<div id="panel-quiz" class="panel">
+  <h1 class="page-title">✏️ <span>Quiz</span></h1>
+  <p class="page-sub">Test your kanji and vocabulary knowledge</p>
+
+  <div class="quiz-score">
+    <div class="score-block"><div class="score-num" id="q-correct">0</div><div class="score-label">Correct</div></div>
+    <div class="score-block">
+      <div class="progress-wrap">
+        <svg class="prog-ring" width="60" height="60">
+          <circle class="prog-ring-bg" cx="30" cy="30" r="24"/>
+          <circle class="prog-ring-fill" id="ring-fill" cx="30" cy="30" r="24"
+            stroke-dasharray="150.8" stroke-dashoffset="150.8"/>
+        </svg>
+      </div>
+    </div>
+    <div class="score-block"><div class="score-num" id="q-total">0</div><div class="score-label">Total</div></div>
+  </div>
+
+  <div class="quiz-controls">
+    <button class="quiz-type-btn active" onclick="setQuizType('kanji')" id="qtype-kanji">漢字 Kanji</button>
+    <button class="quiz-type-btn" onclick="setQuizType('vocab')" id="qtype-vocab">語 Vocabulary</button>
+  </div>
+
+  <div class="quiz-box">
+    <div class="quiz-question-label" id="q-label">Loading…</div>
+    <div class="quiz-main-char" id="q-char"></div>
+    <div class="quiz-question" id="q-question"></div>
+    <div class="quiz-hint" id="q-hint" onclick="revealHint()">
+      <em>Show hint</em><span id="hint-text"></span>
+    </div>
+    <div class="quiz-options" id="q-options"></div>
+    <div class="quiz-result" id="q-result"></div>
+    <button class="quiz-next" id="q-next" onclick="nextQuestion()">Next →</button>
+  </div>
+</div>
+
+<!-- ── WRITING PRACTICE ──────────────────────────────── -->
+<div id="panel-write" class="panel">
+  <h1 class="page-title">🖊 <span>Writing Practice</span></h1>
+  <p class="page-sub">Search or browse kanji on the left — draw freehand on the canvas</p>
+
+  <div class="write-layout">
+
+    <!-- LEFT: picker -->
+    <div class="write-picker">
+      <div class="write-picker-head">
+        <input class="write-picker-search" id="write-search" type="text"
+          placeholder="Search kanji, meaning, reading…"
+          oninput="renderWritePicker()" />
+        <div class="write-picker-cats" id="write-cats"></div>
+      </div>
+      <div class="write-picker-grid" id="write-picker-grid"></div>
+      <div class="write-pick-count" id="write-pick-count">— kanji</div>
+    </div>
+
+    <!-- RIGHT: target + stroke order + canvas -->
+    <div class="write-right">
+      <div class="write-nav">
+        <button onclick="prevWriteKanji()">← Prev</button>
+        <span id="write-counter">1 / 1</span>
+        <button onclick="nextWriteKanji()">Next →</button>
+        <button onclick="randomWriteKanji()">🔀 Random</button>
+      </div>
+      <div class="write-panels">
+        <!-- Reference -->
+        <div class="write-target">
+          <span class="write-kanji-show" id="write-kanji-char">山</span>
+          <div class="write-info" id="write-kanji-info"></div>
+        </div>
+        <!-- Stroke Order -->
+        <div class="stroke-diagram" id="write-stroke-diagram">
+          <h4>Stroke Order</h4>
+          <div id="write-stroke-content" style="color:var(--sepia);font-size:.8rem;padding:1rem 0">Loading…</div>
+        </div>
+        <!-- Drawing Canvas -->
+        <div class="canvas-wrap">
+          <div class="stroke-note" style="margin-bottom:.4rem">Draw it yourself ↓</div>
+          <canvas id="draw-canvas" width="220" height="220"></canvas>
+          <svg class="grid-overlay" id="canvas-grid" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+            <line x1="110" y1="0" x2="110" y2="220" stroke="#888" stroke-width="1"/>
+            <line x1="0" y1="110" x2="220" y2="110" stroke="#888" stroke-width="1"/>
+            <line x1="0" y1="0" x2="220" y2="220" stroke="#888" stroke-width=".5" stroke-dasharray="4"/>
+            <line x1="220" y1="0" x2="0" y2="220" stroke="#888" stroke-width=".5" stroke-dasharray="4"/>
+            <rect x="1" y="1" width="218" height="218" stroke="#888" stroke-width="1" fill="none"/>
+          </svg>
+          <div class="canvas-actions">
+            <button class="canvas-btn" onclick="clearCanvas()">🗑 Clear</button>
+            <button class="canvas-btn" onclick="toggleGrid()">⊞ Grid</button>
+            <button class="canvas-btn" onclick="changeStroke(-1)">Thin</button>
+            <button class="canvas-btn" onclick="changeStroke(1)">Thick</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- STROKE ORDER POPUP -->
+<div class="stroke-overlay" id="stroke-overlay" onclick="closeStrokePopup(event)">
+  <div class="stroke-popup" id="stroke-popup">
+    <button class="stroke-popup-close" onclick="closeStrokeOverlay()">✕</button>
+    <div class="stroke-popup-char" id="sp-char"></div>
+    <div class="stroke-popup-meta" id="sp-meta"></div>
+    <div id="sp-diagram"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal-box">
+    <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    <div class="modal-kanji" id="modal-kanji-char"></div>
+    <div class="modal-info" id="modal-info"></div>
+    <div class="modal-examples" id="modal-examples"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- DATA + LOGIC -->
+<script src="kanji-data.js"></script>
+<script src="stroke-order.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
