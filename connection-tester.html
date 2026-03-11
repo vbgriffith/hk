@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NETPULSE — Connection Status Tester</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;800&family=Barlow:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10;
+    --panel: #0d1318;
+    --border: #1a2530;
+    --accent: #00e5ff;
+    --accent2: #ff3c6e;
+    --accent3: #39ff14;
+    --warn: #ffcc00;
+    --text: #c8d8e8;
+    --dim: #4a6070;
+    --mono: 'Share Tech Mono', monospace;
+    --sans: 'Barlow Condensed', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1600px; margin: 0 auto; padding: 0 24px 60px; }
+
+  /* HEADER */
+  header {
+    padding: 32px 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .logo {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 2.6rem;
+    letter-spacing: 0.12em;
+    color: #fff;
+    text-transform: uppercase;
+  }
+  .logo span { color: var(--accent); }
+  .tagline {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+    padding: 16px 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+  }
+  .stat { text-align: center; }
+  .stat-val {
+    font-family: var(--mono);
+    font-size: 1.6rem;
+    font-weight: 400;
+    color: #fff;
+    line-height: 1;
+  }
+  .stat-val.ok { color: var(--accent3); }
+  .stat-val.fail { color: var(--accent2); }
+  .stat-val.warn { color: var(--warn); }
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    color: var(--dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .stat-divider { width: 1px; background: var(--border); align-self: stretch; }
+
+  /* CONTROLS */
+  .controls {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+  .run-btn {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 1.1rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 14px 40px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    cursor: pointer;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .run-btn:hover { background: #33eeff; transform: translateY(-1px); }
+  .run-btn:active { transform: translateY(1px); }
+  .run-btn:disabled {
+    background: var(--dim);
+    cursor: not-allowed;
+    transform: none;
+  }
+  .run-btn .spinner {
+    display: none;
+    width: 14px; height: 14px;
+    border: 2px solid #000;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  .run-btn.running .spinner { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .filter-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .filter-btn {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    padding: 8px 16px;
+    background: transparent;
+    color: var(--dim);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover, .filter-btn.active { color: var(--accent); border-color: var(--accent); }
+
+  .progress-bar {
+    height: 3px;
+    background: var(--border);
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    width: 0%;
+    transition: width 0.3s;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  /* SECTION HEADERS */
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 32px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-title {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 1.4rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  .section-title span { color: var(--accent); }
+  .section-count {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+  }
+  .section-ok { font-family: var(--mono); font-size: 0.8rem; color: var(--accent3); margin-left: auto; }
+
+  /* GRID */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 8px;
+  }
+
+  /* CARD */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: border-color 0.2s, opacity 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--dim);
+    transition: background 0.3s;
+  }
+  .card.status-ok::before { background: var(--accent3); }
+  .card.status-fail::before { background: var(--accent2); }
+  .card.status-warn::before { background: var(--warn); }
+  .card.status-testing::before { background: var(--accent); animation: pulse-left 1s infinite; }
+  @keyframes pulse-left {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .card.hidden { display: none; }
+
+  .card-icon {
+    width: 32px; height: 32px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    opacity: 0.85;
+  }
+
+  .card-info { flex: 1; min-width: 0; }
+  .card-name {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #fff;
+  }
+  .card-url {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+
+  .card-status {
+    flex-shrink: 0;
+    text-align: right;
+  }
+  .status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--dim);
+    margin-left: auto;
+    margin-bottom: 4px;
+    transition: background 0.3s;
+  }
+  .card.status-ok .status-dot { background: var(--accent3); box-shadow: 0 0 6px var(--accent3); }
+  .card.status-fail .status-dot { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+  .card.status-warn .status-dot { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+  .card.status-testing .status-dot { background: var(--accent); animation: pulse-dot 1s infinite; }
+  @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+  .latency {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--dim);
+  }
+  .card.status-ok .latency { color: var(--accent3); }
+  .card.status-fail .latency { color: var(--accent2); }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 20px 0;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+
+  /* TOOLTIP */
+  .card:hover .card-url { color: var(--accent); }
+
+  /* Scanline effect */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.04) 2px,
+      rgba(0,0,0,0.04) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  @media (max-width: 600px) {
+    .logo { font-size: 1.8rem; }
+    .grid { grid-template-columns: 1fr; }
+    .stats-bar { gap: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="logo">NET<span>PULSE</span></div>
+      <div class="tagline">// Global Connection Status Monitor v2.0</div>
+    </div>
+    <div class="controls">
+      <button class="run-btn" id="runBtn" onclick="runAllTests()">
+        <span class="spinner"></span>
+        ▶ Run All Tests
+      </button>
+      <div class="filter-btns">
+        <button class="filter-btn active" onclick="filterCards('all', this)">ALL</button>
+        <button class="filter-btn" onclick="filterCards('ok', this)">ONLINE</button>
+        <button class="filter-btn" onclick="filterCards('fail', this)">FAILED</button>
+        <button class="filter-btn" onclick="filterCards('warn', this)">SLOW</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="stats-bar">
+    <div class="stat"><div class="stat-val" id="statTotal">0</div><div class="stat-label">Total</div></div>
+    <div class="stat-divider"></div>
+    <div class="stat"><div class="stat-val ok" id="statOk">0</div><div class="stat-label">Online</div></div>
+    <div class="stat-divider"></div>
+    <div class="stat"><div class="stat-val fail" id="statFail">0</div><div class="stat-label">Failed</div></div>
+    <div class="stat-divider"></div>
+    <div class="stat"><div class="stat-val warn" id="statWarn">0</div><div class="stat-label">Slow</div></div>
+    <div class="stat-divider"></div>
+    <div class="stat"><div class="stat-val" id="statTested">0</div><div class="stat-label">Tested</div></div>
+    <div class="stat-divider"></div>
+    <div class="stat"><div class="stat-val" id="statAvg">—</div><div class="stat-label">Avg ms</div></div>
+    <div class="stat-divider"></div>
+    <div class="stat"><div class="stat-val" id="statTime">—</div><div class="stat-label">Elapsed</div></div>
+  </div>
+
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+  <!-- CDNs -->
+  <div class="section-header">
+    <div class="section-title"><span>#</span> CDN Endpoints</div>
+    <div class="section-count" id="cdnCount">100 endpoints</div>
+    <div class="section-ok" id="cdnOk"></div>
+  </div>
+  <div class="grid" id="cdnGrid"></div>
+
+  <!-- Image Hosts -->
+  <div class="section-header">
+    <div class="section-title"><span>#</span> Image Hosting Services</div>
+    <div class="section-count" id="imgCount">50 services</div>
+    <div class="section-ok" id="imgOk"></div>
+  </div>
+  <div class="grid" id="imgGrid"></div>
+
+  <!-- API Endpoints -->
+  <div class="section-header">
+    <div class="section-title"><span>#</span> API Endpoints</div>
+    <div class="section-count" id="apiCount">50 endpoints</div>
+    <div class="section-ok" id="apiOk"></div>
+  </div>
+  <div class="grid" id="apiGrid"></div>
+
+  <footer>NETPULSE // Tests use no-cors fetch + img tag probing // Results indicate reachability from your browser // &copy; 2025</footer>
+</div>
+
+<script>
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+
+const CDNS = [
+  { name: "Cloudflare CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js", icon: "🌐" },
+  { name: "jsDelivr", url: "https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js", icon: "🌐" },
+  { name: "unpkg", url: "https://unpkg.com/react@18/umd/react.production.min.js", icon: "📦" },
+  { name: "Google CDN", url: "https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js", icon: "🔵" },
+  { name: "Bootstrap CDN", url: "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css", icon: "🅱" },
+  { name: "Fastly CDN", url: "https://www.fastly.com/favicon.ico", icon: "⚡" },
+  { name: "Akamai", url: "https://www.akamai.com/favicon.ico", icon: "🔷" },
+  { name: "AWS CloudFront", url: "https://d1.awsstatic.com/logos/aws-logo-lockups/poweredbyaws/PB_AWS_logo_RGB_REV_SQ.91cd4af40773cbfbd15af4a4220a5ada48fe38b8.png", icon: "🟡" },
+  { name: "Azure CDN", url: "https://azureedge.net/favicon.ico", icon: "🔵" },
+  { name: "StackPath", url: "https://www.stackpath.com/favicon.ico", icon: "📡" },
+  { name: "KeyCDN", url: "https://www.keycdn.com/favicon.ico", icon: "🔑" },
+  { name: "BunnyCDN", url: "https://bunny.net/favicon.ico", icon: "🐰" },
+  { name: "Limelight CDN", url: "https://www.limelight.com/favicon.ico", icon: "💚" },
+  { name: "CacheFly", url: "https://www.cachefly.com/favicon.ico", icon: "💨" },
+  { name: "MaxCDN (StackPath)", url: "https://www.stackpath.com/favicon.ico", icon: "🚀" },
+  { name: "Imperva Incapsula", url: "https://www.imperva.com/favicon.ico", icon: "🛡" },
+  { name: "Sucuri CDN", url: "https://sucuri.net/favicon.ico", icon: "🔐" },
+  { name: "Edgio (Limelight)", url: "https://edg.io/favicon.ico", icon: "📶" },
+  { name: "Section.io", url: "https://www.section.io/favicon.ico", icon: "📐" },
+  { name: "Verizon Edgecast", url: "https://edgio.com/favicon.ico", icon: "📡" },
+  { name: "Cloudinary CDN", url: "https://res.cloudinary.com/demo/image/upload/sample.jpg", icon: "☁" },
+  { name: "ImageKit CDN", url: "https://ik.imagekit.io/ikmedia/default-image.jpg", icon: "🖼" },
+  { name: "Statically", url: "https://cdn.statically.io/favicon.ico", icon: "📊" },
+  { name: "RawGit (CDN.RawGit)", url: "https://rawcdn.githack.com/favicon.ico", icon: "🐙" },
+  { name: "GitHub Pages", url: "https://pages.github.com/favicon.ico", icon: "🐙" },
+  { name: "Netlify CDN", url: "https://www.netlify.com/favicon.ico", icon: "💚" },
+  { name: "Vercel CDN", url: "https://vercel.com/favicon.ico", icon: "▲" },
+  { name: "Render CDN", url: "https://render.com/favicon.ico", icon: "🟣" },
+  { name: "Surge.sh", url: "https://surge.sh/favicon.ico", icon: "🌊" },
+  { name: "Firebase Hosting", url: "https://firebase.google.com/favicon.ico", icon: "🔥" },
+  { name: "Supabase CDN", url: "https://supabase.com/favicon.ico", icon: "💚" },
+  { name: "Fly.io", url: "https://fly.io/favicon.ico", icon: "✈" },
+  { name: "Tailscale CDN", url: "https://tailscale.com/favicon.ico", icon: "🔗" },
+  { name: "Twitch CDN", url: "https://static.twitchsites.com/favicon.ico", icon: "🟣" },
+  { name: "Imgur CDN", url: "https://s.imgur.com/images/favicon-32x32.png", icon: "📷" },
+  { name: "Reddit CDN", url: "https://www.redditstatic.com/desktop2x/img/favicon/apple-icon-57x57.png", icon: "🟠" },
+  { name: "Twitter/X CDN", url: "https://abs.twimg.com/favicons/twitter.2.ico", icon: "🐦" },
+  { name: "Facebook CDN", url: "https://static.xx.fbcdn.net/rsrc.php/yv/r/BTzqBrFNGlM.ico", icon: "🔵" },
+  { name: "LinkedIn CDN", url: "https://static.licdn.com/aero-v1/sc/h/al2o9zrvru7aqj8e1x2rzsrca", icon: "🔷" },
+  { name: "YouTube CDN", url: "https://www.youtube.com/favicon.ico", icon: "🔴" },
+  { name: "Google Fonts CDN", url: "https://fonts.googleapis.com/css2?family=Roboto", icon: "🔤" },
+  { name: "Font Awesome CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css", icon: "🅰" },
+  { name: "Tailwind CSS CDN", url: "https://cdn.tailwindcss.com", icon: "🌬" },
+  { name: "Vue.js CDN", url: "https://unpkg.com/vue@3/dist/vue.global.js", icon: "💚" },
+  { name: "React CDN", url: "https://unpkg.com/react@18/umd/react.production.min.js", icon: "⚛" },
+  { name: "Angular CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.8.3/angular.min.js", icon: "🔴" },
+  { name: "Lodash CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js", icon: "📦" },
+  { name: "D3.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js", icon: "📊" },
+  { name: "Three.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js", icon: "🎲" },
+  { name: "Axios CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js", icon: "📡" },
+  { name: "Moment.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js", icon: "⏰" },
+  { name: "Chart.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.umd.min.js", icon: "📈" },
+  { name: "Anime.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js", icon: "🎬" },
+  { name: "GSAP CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js", icon: "🎞" },
+  { name: "Swiper CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/Swiper/10.2.0/swiper-bundle.min.css", icon: "🔄" },
+  { name: "Leaflet.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css", icon: "🗺" },
+  { name: "Materialize CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css", icon: "🎨" },
+  { name: "Bulma CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.4/css/bulma.min.css", icon: "💪" },
+  { name: "Semantic UI CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.5.0/semantic.min.css", icon: "🎨" },
+  { name: "Foundation CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/foundation/6.7.5/css/foundation.min.css", icon: "🏗" },
+  { name: "SweetAlert2 CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.7.20/sweetalert2.min.css", icon: "🍭" },
+  { name: "Tippy.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/tippy.js/6.3.7/tippy.umd.min.js", icon: "💬" },
+  { name: "Popper.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.11.8/umd/popper.min.js", icon: "📌" },
+  { name: "Socket.io CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js", icon: "🔌" },
+  { name: "Normalize.css CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css", icon: "📄" },
+  { name: "Animate.css CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css", icon: "✨" },
+  { name: "Highlight.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js", icon: "🖊" },
+  { name: "Prism.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js", icon: "🌈" },
+  { name: "Marked.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/marked/7.0.4/marked.min.js", icon: "📝" },
+  { name: "DOMPurify CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.5/purify.min.js", icon: "🧹" },
+  { name: "Quill.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js", icon: "✒" },
+  { name: "TinyMCE CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.7.0/tinymce.min.js", icon: "📝" },
+  { name: "Plyr CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/plyr/3.7.8/plyr.min.css", icon: "▶" },
+  { name: "Video.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/video.js/8.5.2/video.min.css", icon: "🎥" },
+  { name: "Howler.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js", icon: "🔊" },
+  { name: "Tone.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js", icon: "🎵" },
+  { name: "Cropper.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css", icon: "✂" },
+  { name: "FilePond CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/filepond/4.30.4/filepond.min.css", icon: "📎" },
+  { name: "FullCalendar CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.8/index.global.min.js", icon: "📅" },
+  { name: "DataTables CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/css/jquery.dataTables.min.css", icon: "📊" },
+  { name: "Select2 CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css", icon: "🔽" },
+  { name: "Flatpickr CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css", icon: "📅" },
+  { name: "noUiSlider CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css", icon: "🎚" },
+  { name: "Fuse.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js", icon: "🔍" },
+  { name: "Alpine.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.0/cdn.min.js", icon: "🏔" },
+  { name: "htmx CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/htmx/1.9.6/htmx.min.js", icon: "⚡" },
+  { name: "Turbo CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/turbo/7.3.0/turbo.es2017.umd.js", icon: "🚂" },
+  { name: "Ember.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/ember.js/4.12.0/ember.min.js", icon: "🔥" },
+  { name: "Backbone.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.4.1/backbone-min.js", icon: "🦴" },
+  { name: "Underscore CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.6/underscore-min.js", icon: "📦" },
+  { name: "Immutable.js CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/immutable/4.3.4/immutable.min.js", icon: "🔒" },
+  { name: "RxJS CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/rxjs/7.8.1/rxjs.umd.min.js", icon: "🔄" },
+  { name: "MobX CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/mobx/6.10.0/mobx.umd.production.min.js", icon: "📦" },
+  { name: "Zustand CDN", url: "https://unpkg.com/zustand@4.4.1/dist/zustand.umd.js", icon: "🐻" },
+  { name: "Zod CDN", url: "https://unpkg.com/zod@3.22.2/lib/index.umd.js", icon: "🔷" },
+  { name: "Vite CDN (unpkg)", url: "https://unpkg.com/vite@4.4.9/dist/node/chunks/dep-0db3b696.js", icon: "⚡" },
+  { name: "Prettier CDN", url: "https://unpkg.com/prettier@3.0.3/standalone.js", icon: "💅" },
+  { name: "ESLint CDN", url: "https://unpkg.com/eslint@8.49.0/package.json", icon: "🔍" },
+  { name: "TypeScript CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/typescript/5.2.2/typescript.min.js", icon: "🔷" },
+  { name: "Babel Standalone CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.17/babel.min.js", icon: "🔄" },
+  { name: "WebPack CDN", url: "https://unpkg.com/webpack@5.88.2/package.json", icon: "📦" },
+];
+
+const IMAGE_HOSTS = [
+  { name: "Imgur", url: "https://i.imgur.com/ZOtkpbU.png", icon: "🖼" },
+  { name: "Flickr", url: "https://live.staticflickr.com/65535/53200695844_e0f8f33a97_m.jpg", icon: "📷" },
+  { name: "Pixabay", url: "https://cdn.pixabay.com/photo/2015/04/23/22/00/tree-736885_1280.jpg", icon: "🌿" },
+  { name: "Unsplash", url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400", icon: "📸" },
+  { name: "Pexels", url: "https://images.pexels.com/photos/2014422/pexels-photo-2014422.jpeg?w=400", icon: "📷" },
+  { name: "500px", url: "https://drscdn.500px.org/photo/1083501748/m%3D900/v2?webp=true&sig=test", icon: "📷" },
+  { name: "SmugMug", url: "https://www.smugmug.com/favicon.ico", icon: "😊" },
+  { name: "imgbb", url: "https://i.ibb.co/4pDNDk1/agueybana.png", icon: "📦" },
+  { name: "PostImages", url: "https://i.postimg.cc/T2PJJwfS/sample.jpg", icon: "📬" },
+  { name: "ImageShack", url: "https://imageshack.com/favicon.ico", icon: "🏹" },
+  { name: "IMGSRC.RU", url: "https://imgsrc.ru/favicon.ico", icon: "🇷🇺" },
+  { name: "TinyPic (archive)", url: "https://tinypic.com/favicon.ico", icon: "🖼" },
+  { name: "Photobucket", url: "https://bucket.photobucket.com/albums/favicon.ico", icon: "🪣" },
+  { name: "ImageVenue", url: "https://www.imagevenue.com/favicon.ico", icon: "🏟" },
+  { name: "Gyazo", url: "https://gyazo.com/favicon.ico", icon: "🌀" },
+  { name: "Prnt.sc (LightShot)", url: "https://prnt.sc/favicon.ico", icon: "📸" },
+  { name: "Snipboard", url: "https://snipboard.io/favicon.ico", icon: "✂" },
+  { name: "Cloudinary", url: "https://res.cloudinary.com/demo/image/upload/w_400/sample.jpg", icon: "☁" },
+  { name: "imgix", url: "https://assets.imgix.net/examples/kingfisher.jpg?w=400", icon: "🖼" },
+  { name: "Cloudflare Images", url: "https://imagedelivery.net/favicon.ico", icon: "🌐" },
+  { name: "Twicpics", url: "https://www.twicpics.com/favicon.ico", icon: "✌" },
+  { name: "ImageKit", url: "https://ik.imagekit.io/ikmedia/default-image.jpg", icon: "🛠" },
+  { name: "Sirv CDN", url: "https://demo.sirv.com/example.jpg?w=400", icon: "🔄" },
+  { name: "Gumlet", url: "https://demo.gumlet.io/brain.jpeg?w=400", icon: "🧠" },
+  { name: "ImageOptim", url: "https://imageoptim.com/favicon.ico", icon: "⚡" },
+  { name: "ShortPixel", url: "https://shortpixel.com/favicon.ico", icon: "✂" },
+  { name: "Kraken.io", url: "https://kraken.io/favicon.ico", icon: "🦑" },
+  { name: "TinyPNG API", url: "https://tinypng.com/favicon.ico", icon: "🐼" },
+  { name: "Imgflip", url: "https://i.imgflip.com/1ur9b0.jpg", icon: "🎭" },
+  { name: "Giphy", url: "https://media.giphy.com/media/3o7btNa0RUYa5E7iiQ/giphy.gif", icon: "🎞" },
+  { name: "Tenor GIF", url: "https://c.tenor.com/favicon.ico", icon: "🎬" },
+  { name: "Gifer", url: "https://gifer.com/favicon.ico", icon: "🎞" },
+  { name: "Make a GIF", url: "https://makeagif.com/favicon.ico", icon: "🔄" },
+  { name: "EZGif", url: "https://ezgif.com/favicon.ico", icon: "🔄" },
+  { name: "Clyp.it (audio img)", url: "https://clyp.it/favicon.ico", icon: "🔊" },
+  { name: "Imgpile", url: "https://imgpile.com/favicon.ico", icon: "📚" },
+  { name: "Freeimage.host", url: "https://freeimage.host/favicon.ico", icon: "🆓" },
+  { name: "Uploadcare", url: "https://ucarecdn.com/c4b32a69-f817-48be-b918-7eb6718f7aca/photo.jpg", icon: "📤" },
+  { name: "Filestack", url: "https://www.filestack.com/favicon.ico", icon: "🗂" },
+  { name: "Transloadit", url: "https://transloadit.com/favicon.ico", icon: "⚙" },
+  { name: "Imagga", url: "https://imagga.com/favicon.ico", icon: "🏷" },
+  { name: "DeepAI (image)", url: "https://deepai.org/favicon.ico", icon: "🤖" },
+  { name: "Stable Diffusion (img)", url: "https://stablediffusionapi.com/favicon.ico", icon: "🎨" },
+  { name: "Replicate", url: "https://replicate.com/favicon.ico", icon: "🤖" },
+  { name: "PicHoster", url: "https://www.picdeer.com/favicon.ico", icon: "🦌" },
+  { name: "Pics.io", url: "https://pics.io/favicon.ico", icon: "📷" },
+  { name: "Zupimages", url: "https://zupimages.net/favicon.ico", icon: "🖼" },
+  { name: "Imageupper", url: "https://imageupper.com/favicon.ico", icon: "⬆" },
+  { name: "Piczel.tv", url: "https://piczel.tv/favicon.ico", icon: "🎨" },
+  { name: "Deviantart CDN", url: "https://www.deviantart.com/favicon.ico", icon: "🎨" },
+];
+
+const APIS = [
+  { name: "JSONPlaceholder", url: "https://jsonplaceholder.typicode.com/posts/1", icon: "📋" },
+  { name: "httpbin.org", url: "https://httpbin.org/get", icon: "🔬" },
+  { name: "Open Notify (ISS)", url: "http://api.open-notify.org/astros.json", icon: "🚀" },
+  { name: "REST Countries", url: "https://restcountries.com/v3.1/name/canada", icon: "🌍" },
+  { name: "ipify API", url: "https://api.ipify.org?format=json", icon: "🌐" },
+  { name: "ip-api.com", url: "https://ip-api.com/json", icon: "🌐" },
+  { name: "CoinGecko API", url: "https://api.coingecko.com/api/v3/ping", icon: "🪙" },
+  { name: "OpenWeather API", url: "https://api.openweathermap.org/data/2.5/weather?q=London&appid=test", icon: "🌤" },
+  { name: "GitHub API", url: "https://api.github.com", icon: "🐙" },
+  { name: "NASA APOD API", url: "https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY", icon: "🌌" },
+  { name: "PokeAPI", url: "https://pokeapi.co/api/v2/pokemon/pikachu", icon: "⚡" },
+  { name: "DummyJSON", url: "https://dummyjson.com/products/1", icon: "📦" },
+  { name: "Cat Facts API", url: "https://catfact.ninja/fact", icon: "🐱" },
+  { name: "Dog CEO API", url: "https://dog.ceo/api/breeds/list/all", icon: "🐶" },
+  { name: "RandomUser.me", url: "https://randomuser.me/api/", icon: "👤" },
+  { name: "Agify.io", url: "https://api.agify.io/?name=peter", icon: "🎂" },
+  { name: "Genderize.io", url: "https://api.genderize.io/?name=alex", icon: "👥" },
+  { name: "Nationalize.io", url: "https://api.nationalize.io/?name=smith", icon: "🏳" },
+  { name: "Chuck Norris API", url: "https://api.chucknorris.io/jokes/random", icon: "💪" },
+  { name: "JokeAPI", url: "https://v2.jokeapi.dev/joke/Any", icon: "😄" },
+  { name: "Open Library API", url: "https://openlibrary.org/api/books?bibkeys=ISBN:0451526538&format=json", icon: "📚" },
+  { name: "MusicBrainz API", url: "https://musicbrainz.org/ws/2/artist/1f9df192-a621-4f54-8850-2c5373b7eac9?fmt=json", icon: "🎵" },
+  { name: "TheMealDB", url: "https://www.themealdb.com/api/json/v1/1/random.php", icon: "🍽" },
+  { name: "TheCocktailDB", url: "https://www.thecocktaildb.com/api/json/v1/1/random.php", icon: "🍹" },
+  { name: "ExchangeRate API", url: "https://open.er-api.com/v6/latest/USD", icon: "💱" },
+  { name: "Fixer.io (free)", url: "https://data.fixer.io/api/latest?access_key=test", icon: "💰" },
+  { name: "Words API", url: "https://api.datamuse.com/words?ml=ringing+in+the+ears", icon: "📖" },
+  { name: "Datamuse API", url: "https://api.datamuse.com/sug?s=hello", icon: "🔤" },
+  { name: "Dictionary API", url: "https://api.dictionaryapi.dev/api/v2/entries/en/hello", icon: "📖" },
+  { name: "NumbersAPI", url: "http://numbersapi.com/42/math?json", icon: "🔢" },
+  { name: "UUID Generator API", url: "https://www.uuidgenerator.net/api/version4", icon: "🔑" },
+  { name: "QR Code API", url: "https://api.qrserver.com/v1/create-qr-code/?data=hello&size=100x100", icon: "▦" },
+  { name: "Bacon Ipsum API", url: "https://baconipsum.com/api/?type=meat-and-filler", icon: "🥓" },
+  { name: "Lorem Picsum API", url: "https://picsum.photos/200/300", icon: "🖼" },
+  { name: "Fake Store API", url: "https://fakestoreapi.com/products/1", icon: "🛒" },
+  { name: "Zippopotam.us", url: "https://api.zippopotam.us/us/90210", icon: "🏠" },
+  { name: "Open Trivia DB", url: "https://opentdb.com/api.php?amount=1", icon: "❓" },
+  { name: "Jikan (MyAnimeList)", url: "https://api.jikan.moe/v4/anime/1", icon: "🎌" },
+  { name: "RAWG API", url: "https://api.rawg.io/api/games?key=test", icon: "🎮" },
+  { name: "Weather.gov API", url: "https://api.weather.gov/", icon: "🌦" },
+  { name: "Sunrise-Sunset API", url: "https://api.sunrise-sunset.org/json?lat=36.7201600&lng=-4.4203400", icon: "🌅" },
+  { name: "World Time API", url: "https://worldtimeapi.org/api/ip", icon: "🕐" },
+  { name: "Age of Empires API", url: "https://age-of-empires-units-api.herokuapp.com/api/v1/unit/man_at_arms", icon: "⚔" },
+  { name: "Star Wars API", url: "https://swapi.dev/api/people/1/", icon: "🌟" },
+  { name: "Marvel API (ping)", url: "https://gateway.marvel.com/v1/public/characters?apikey=test", icon: "🦸" },
+  { name: "Spotify API (ping)", url: "https://api.spotify.com/v1/search?q=test&type=track", icon: "🎵" },
+  { name: "Reddit API", url: "https://www.reddit.com/r/programming.json?limit=1", icon: "🟠" },
+  { name: "Hacker News API", url: "https://hacker-news.firebaseio.com/v0/topstories.json?limitToFirst=1&orderBy=%22$key%22", icon: "🔶" },
+  { name: "Dev.to API", url: "https://dev.to/api/articles?per_page=1", icon: "👩‍💻" },
+  { name: "Cloudflare Trace", url: "https://1.1.1.1/cdn-cgi/trace", icon: "🌐" },
+];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let allCards = [];
+let stats = { total: 0, ok: 0, fail: 0, warn: 0, tested: 0, latencies: [] };
+let startTime = null;
+let currentFilter = 'all';
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function buildCards(data, gridId, category) {
+  const grid = document.getElementById(gridId);
+  data.forEach((item, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.category = category;
+    card.dataset.status = 'pending';
+    card.dataset.index = allCards.length;
+    card.innerHTML = `
+      <div class="card-icon">${item.icon}</div>
+      <div class="card-info">
+        <div class="card-name">${item.name}</div>
+        <div class="card-url">${item.url.replace(/^https?:\/\//, '')}</div>
+      </div>
+      <div class="card-status">
+        <div class="status-dot"></div>
+        <div class="latency">—</div>
+      </div>
+    `;
+    grid.appendChild(card);
+    allCards.push({ el: card, ...item, category });
+  });
+}
+
+buildCards(CDNS, 'cdnGrid', 'cdn');
+buildCards(IMAGE_HOSTS, 'imgGrid', 'img');
+buildCards(APIS, 'apiGrid', 'api');
+
+document.getElementById('statTotal').textContent = allCards.length;
+
+// ─── TESTING ──────────────────────────────────────────────────────────────────
+function testEndpoint(url, timeout = 8000) {
+  return new Promise((resolve) => {
+    const start = performance.now();
+
+    // Use Image probe for image-like URLs, fetch no-cors for others
+    const isImage = /\.(jpg|jpeg|png|gif|webp|ico|svg)(\?.*)?$/i.test(url) ||
+                    url.includes('images.') || url.includes('/image') || url.includes('photo') || url.includes('favicon');
+
+    if (isImage) {
+      const img = new Image();
+      const timer = setTimeout(() => {
+        img.src = '';
+        resolve({ ok: false, latency: timeout, reason: 'timeout' });
+      }, timeout);
+      img.onload = () => {
+        clearTimeout(timer);
+        resolve({ ok: true, latency: Math.round(performance.now() - start) });
+      };
+      img.onerror = () => {
+        clearTimeout(timer);
+        const lat = Math.round(performance.now() - start);
+        // An onerror still means the server responded (CORS or 4xx), so it's often reachable
+        resolve({ ok: lat < timeout * 0.8, latency: lat, reason: 'cors-or-error' });
+      };
+      img.src = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+    } else {
+      const controller = new AbortController();
+      const timer = setTimeout(() => {
+        controller.abort();
+        resolve({ ok: false, latency: timeout, reason: 'timeout' });
+      }, timeout);
+
+      fetch(url, { mode: 'no-cors', signal: controller.signal, cache: 'no-store' })
+        .then(() => {
+          clearTimeout(timer);
+          resolve({ ok: true, latency: Math.round(performance.now() - start) });
+        })
+        .catch((e) => {
+          clearTimeout(timer);
+          const lat = Math.round(performance.now() - start);
+          if (e.name === 'AbortError') {
+            resolve({ ok: false, latency: timeout, reason: 'timeout' });
+          } else {
+            // no-cors often throws TypeError for opaque responses - server IS up
+            resolve({ ok: true, latency: lat, reason: 'opaque' });
+          }
+        });
+    }
+  });
+}
+
+function updateCard(cardObj, result) {
+  const el = cardObj.el;
+  const latEl = el.querySelector('.latency');
+  const dot = el.querySelector('.status-dot');
+
+  let status;
+  if (!result.ok) {
+    status = 'fail';
+  } else if (result.latency > 3000) {
+    status = 'warn';
+  } else {
+    status = 'ok';
+  }
+
+  el.classList.remove('status-testing');
+  el.classList.add('status-' + status);
+  el.dataset.status = status;
+
+  const lat = result.latency >= 8000 ? 'timeout' : result.latency + 'ms';
+  latEl.textContent = lat;
+
+  // Update stats
+  stats.tested++;
+  if (status === 'ok') stats.ok++;
+  else if (status === 'fail') stats.fail++;
+  else if (status === 'warn') { stats.ok++; stats.warn++; }
+  if (result.latency < 8000) stats.latencies.push(result.latency);
+
+  updateStats();
+  updateProgress();
+  applyFilter(currentFilter);
+}
+
+function updateStats() {
+  document.getElementById('statOk').textContent = stats.ok;
+  document.getElementById('statFail').textContent = stats.fail;
+  document.getElementById('statWarn').textContent = stats.warn;
+  document.getElementById('statTested').textContent = stats.tested;
+  if (stats.latencies.length > 0) {
+    const avg = Math.round(stats.latencies.reduce((a,b) => a+b, 0) / stats.latencies.length);
+    document.getElementById('statAvg').textContent = avg + 'ms';
+  }
+  if (startTime) {
+    const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+    document.getElementById('statTime').textContent = elapsed + 's';
+  }
+
+  // Section summaries
+  const cdnCards = allCards.filter(c => c.category === 'cdn');
+  const imgCards = allCards.filter(c => c.category === 'img');
+  const apiCards = allCards.filter(c => c.category === 'api');
+
+  const sectionOk = (cards) => cards.filter(c => c.el.dataset.status === 'ok' || c.el.dataset.status === 'warn').length;
+  const sectionTested = (cards) => cards.filter(c => c.el.dataset.status !== 'pending' && c.el.dataset.status !== 'testing').length;
+
+  if (sectionTested(cdnCards) > 0) document.getElementById('cdnOk').textContent = `${sectionOk(cdnCards)}/${cdnCards.length} online`;
+  if (sectionTested(imgCards) > 0) document.getElementById('imgOk').textContent = `${sectionOk(imgCards)}/${imgCards.length} online`;
+  if (sectionTested(apiCards) > 0) document.getElementById('apiOk').textContent = `${sectionOk(apiCards)}/${apiCards.length} online`;
+}
+
+function updateProgress() {
+  const pct = (stats.tested / allCards.length) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+// ─── RUN ALL ──────────────────────────────────────────────────────────────────
+async function runAllTests() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.classList.add('running');
+  btn.querySelector('.spinner').style.display = 'inline-block';
+
+  // Reset
+  stats = { total: allCards.length, ok: 0, fail: 0, warn: 0, tested: 0, latencies: [] };
+  startTime = performance.now();
+  document.getElementById('cdnOk').textContent = '';
+  document.getElementById('imgOk').textContent = '';
+  document.getElementById('apiOk').textContent = '';
+  document.getElementById('progressFill').style.width = '0%';
+
+  allCards.forEach(c => {
+    c.el.className = 'card status-testing';
+    c.el.dataset.status = 'testing';
+    c.el.querySelector('.latency').textContent = '…';
+    if (currentFilter !== 'all') c.el.classList.add('hidden');
+  });
+
+  updateStats();
+
+  // Batch concurrency: 15 at a time
+  const CONCURRENCY = 15;
+  const queue = [...allCards];
+  let active = 0;
+
+  await new Promise((done) => {
+    function runNext() {
+      while (active < CONCURRENCY && queue.length > 0) {
+        const item = queue.shift();
+        active++;
+        testEndpoint(item.url).then(result => {
+          updateCard(item, result);
+          active--;
+          if (queue.length > 0) {
+            runNext();
+          } else if (active === 0) {
+            done();
+          }
+        });
+      }
+    }
+    runNext();
+  });
+
+  // Final time
+  const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+  document.getElementById('statTime').textContent = elapsed + 's';
+
+  btn.disabled = false;
+  btn.classList.remove('running');
+  btn.innerHTML = '<span class="spinner"></span>▶ Run Again';
+}
+
+// ─── FILTER ───────────────────────────────────────────────────────────────────
+function filterCards(status, btnEl) {
+  currentFilter = status;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+  applyFilter(status);
+}
+
+function applyFilter(status) {
+  allCards.forEach(c => {
+    const cardStatus = c.el.dataset.status;
+    let show = true;
+    if (status === 'ok') show = cardStatus === 'ok' || cardStatus === 'warn';
+    else if (status === 'fail') show = cardStatus === 'fail';
+    else if (status === 'warn') show = cardStatus === 'warn';
+    c.el.classList.toggle('hidden', !show);
+  });
+}
+
+// Tick elapsed timer while running
+setInterval(() => {
+  if (startTime && stats.tested < allCards.length) {
+    const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+    document.getElementById('statTime').textContent = elapsed + 's';
+  }
+}, 500);
+</script>
+</body>
+</html>
