@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>jsDelivr Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f2ed;
+  --surface: #ffffff;
+  --surface2: #ede9e1;
+  --ink: #1a1208;
+  --ink2: #5c4f3a;
+  --ink3: #a0917c;
+  --accent: #e8500a;
+  --accent2: #2563eb;
+  --npm: #cc3534;
+  --gh: #24292f;
+  --border: #d4cdc2;
+  --font-display: 'Syne', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-display); min-height: 100vh; }
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 9999; opacity: 0.7;
+}
+.page { max-width: 1100px; margin: 0 auto; padding: 0 28px 80px; }
+
+header {
+  padding: 44px 0 32px;
+  display: flex; align-items: flex-end; justify-content: space-between;
+  border-bottom: 2px solid var(--ink); margin-bottom: 36px;
+  gap: 20px; flex-wrap: wrap;
+}
+.brand-name { font-size: 2.8rem; font-weight: 800; letter-spacing: -0.03em; }
+.brand-name em { color: var(--accent); font-style: normal; }
+.brand-sub { font-family: var(--font-mono); font-size: 0.65rem; color: var(--ink3); letter-spacing: 0.18em; text-transform: uppercase; margin-top: 6px; }
+.header-badges { display: flex; gap: 8px; }
+.badge { font-family: var(--font-mono); font-size: 0.62rem; font-weight: 500; padding: 5px 10px; border-radius: 2px; letter-spacing: 0.08em; text-transform: uppercase; }
+.badge-npm { background: var(--npm); color: #fff; }
+.badge-gh  { background: var(--gh);  color: #fff; }
+
+/* Search */
+.search-row {
+  display: flex; border: 2px solid var(--ink); background: var(--surface); transition: box-shadow 0.2s;
+}
+.search-row:focus-within { box-shadow: 4px 4px 0 var(--ink); }
+.search-input {
+  flex: 1; padding: 15px 20px; font-family: var(--font-display); font-size: 1.05rem; font-weight: 600;
+  border: none; outline: none; background: transparent; color: var(--ink);
+}
+.search-input::placeholder { color: var(--ink3); font-weight: 400; }
+.search-btn {
+  padding: 15px 26px; background: var(--accent); color: #fff; border: none;
+  border-left: 2px solid var(--ink); font-family: var(--font-display); font-weight: 700;
+  font-size: 0.9rem; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;
+  transition: background 0.15s; display: flex; align-items: center; gap: 8px; white-space: nowrap;
+}
+.search-btn:hover { background: #c94008; }
+.search-btn:disabled { background: var(--ink3); cursor: not-allowed; }
+.btn-spinner {
+  width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff; border-radius: 50%; animation: spin 0.65s linear infinite; display: none;
+}
+.search-btn.loading .btn-spinner { display: block; }
+.search-btn.loading .btn-text { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.search-opts { display: flex; gap: 16px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
+.opt-label { font-family: var(--font-mono); font-size: 0.63rem; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.1em; }
+.opt-group { display: flex; gap: 6px; align-items: center; }
+.chip {
+  font-family: var(--font-mono); font-size: 0.68rem; padding: 5px 12px;
+  border: 1.5px solid var(--border); background: var(--surface); color: var(--ink2);
+  cursor: pointer; border-radius: 20px; transition: all 0.15s; letter-spacing: 0.04em;
+}
+.chip:hover { border-color: var(--ink); color: var(--ink); }
+.chip.a-both { background: var(--ink); border-color: var(--ink); color: #fff; }
+.chip.a-npm  { background: var(--npm); border-color: var(--npm); color: #fff; }
+.chip.a-gh   { background: var(--gh);  border-color: var(--gh);  color: #fff; }
+.sort-sel {
+  font-family: var(--font-mono); font-size: 0.68rem; padding: 5px 10px;
+  border: 1.5px solid var(--border); background: var(--surface); color: var(--ink);
+  border-radius: 20px; cursor: pointer; outline: none;
+}
+
+/* Status bar */
+.status-bar {
+  display: none; align-items: center; justify-content: space-between;
+  padding: 9px 14px; background: var(--surface2); border: 1.5px solid var(--border);
+  margin: 20px 0 20px; font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink2);
+  flex-wrap: wrap; gap: 8px;
+}
+.status-bar.vis { display: flex; }
+.s-counts { display: flex; gap: 14px; }
+.s-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+.s-dot.npm { background: var(--npm); }
+.s-dot.gh  { background: var(--gh);  }
+
+/* State messages */
+.state-msg { text-align: center; padding: 80px 20px; color: var(--ink3); }
+.state-icon { font-size: 2.8rem; margin-bottom: 10px; }
+.state-title { font-size: 1.2rem; font-weight: 700; color: var(--ink2); }
+.state-sub { font-family: var(--font-mono); font-size: 0.7rem; margin-top: 6px; }
+
+/* Cards */
+.results-grid { display: flex; flex-direction: column; gap: 9px; }
+.result-card {
+  background: var(--surface); border: 1.5px solid var(--border);
+  overflow: hidden; transition: box-shadow 0.15s, border-color 0.15s;
+  animation: fadeUp 0.18s ease both;
+}
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.result-card:hover { border-color: var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+
+.card-main { display: flex; }
+.type-stripe { width: 5px; flex-shrink: 0; }
+.type-stripe.npm { background: var(--npm); }
+.type-stripe.gh  { background: var(--gh);  }
+
+.card-body { flex: 1; padding: 13px 16px; min-width: 0; }
+
+.card-top {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+}
+.card-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tbadge {
+  flex-shrink: 0; font-family: var(--font-mono); font-size: 0.58rem; font-weight: 500;
+  padding: 3px 7px; border-radius: 2px; text-transform: uppercase; letter-spacing: 0.08em;
+}
+.tbadge.npm { background: #fde8e8; color: var(--npm); }
+.tbadge.gh  { background: #e8eaed; color: var(--gh);  }
+
+.card-name { font-size: 0.97rem; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-name mark { background: #fff3b0; color: var(--ink); border-radius: 2px; padding: 0 2px; }
+
+.card-actions { display: flex; gap: 5px; flex-shrink: 0; flex-wrap: wrap; }
+.abtn {
+  font-family: var(--font-mono); font-size: 0.6rem; padding: 4px 9px;
+  border: 1.5px solid var(--border); background: transparent; color: var(--ink2);
+  cursor: pointer; border-radius: 2px; letter-spacing: 0.04em; transition: all 0.12s;
+  text-decoration: none; white-space: nowrap;
+}
+.abtn:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+.abtn.pri { background: var(--accent2); color: #fff; border-color: var(--accent2); }
+.abtn.pri:hover { background: #1d4ed8; }
+
+.card-desc { font-size: 0.8rem; color: var(--ink2); margin-top: 4px; font-weight: 400; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+.card-meta { display: flex; gap: 14px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+.mitem { font-family: var(--font-mono); font-size: 0.63rem; color: var(--ink3); }
+.mitem strong { color: var(--ink2); font-weight: 500; }
+
+.cdn-url {
+  font-family: var(--font-mono); font-size: 0.62rem; color: var(--accent2);
+  margin-top: 6px; word-break: break-all; cursor: pointer; display: flex; align-items: center; gap: 5px;
+}
+.cdn-url:hover { text-decoration: underline; }
+
+/* Files panel */
+.files-panel { border-top: 1px solid var(--border); background: var(--bg); padding: 10px 16px; display: none; }
+.files-panel.open { display: block; }
+.f-label { font-family: var(--font-mono); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink3); margin-bottom: 8px; }
+.f-list { display: flex; flex-wrap: wrap; gap: 5px; max-height: 130px; overflow-y: auto; }
+.fchip {
+  font-family: var(--font-mono); font-size: 0.62rem; padding: 3px 8px;
+  background: var(--surface); border: 1px solid var(--border); color: var(--ink2);
+  border-radius: 2px; cursor: pointer; transition: all 0.1s;
+}
+.fchip:hover { background: var(--accent2); color: #fff; border-color: var(--accent2); }
+.fchip.hit { border-color: var(--accent); color: var(--accent); font-weight: 500; }
+.fchip.hit:hover { background: var(--accent); color: #fff; }
+.f-loading { font-family: var(--font-mono); font-size: 0.63rem; color: var(--ink3); }
+
+/* Pagination */
+.pagination { display: flex; justify-content: center; gap: 6px; margin-top: 28px; flex-wrap: wrap; }
+.pbtn {
+  font-family: var(--font-mono); font-size: 0.7rem; padding: 7px 13px;
+  border: 1.5px solid var(--border); background: var(--surface); color: var(--ink2);
+  cursor: pointer; border-radius: 2px; transition: all 0.12s;
+}
+.pbtn:hover, .pbtn.cur { background: var(--ink); color: #fff; border-color: var(--ink); }
+.pbtn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(16px);
+  background: var(--ink); color: #fff; font-family: var(--font-mono); font-size: 0.72rem;
+  padding: 10px 20px; border-radius: 4px; opacity: 0; transition: all 0.22s;
+  pointer-events: none; z-index: 10000; letter-spacing: 0.05em;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--surface2); }
+::-webkit-scrollbar-thumb { background: var(--ink3); border-radius: 3px; }
+
+@media (max-width: 620px) {
+  .brand-name { font-size: 1.9rem; }
+  .card-top { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <div>
+    <div class="brand-name">js<em>Delivr</em> Explorer</div>
+    <div class="brand-sub">// Search npm and GitHub repositories on cdn.jsdelivr.net</div>
+  </div>
+  <div class="header-badges">
+    <span class="badge badge-npm">npm</span>
+    <span class="badge badge-gh">GitHub</span>
+  </div>
+</header>
+
+<div style="margin-bottom:28px">
+  <div class="search-row">
+    <input class="search-input" id="searchInput" type="text"
+      placeholder="Search packages, repos, or file names…"
+      autocomplete="off" spellcheck="false" />
+    <button class="search-btn" id="searchBtn" onclick="doSearch()">
+      <span class="btn-spinner"></span>
+      <span class="btn-text">Search →</span>
+    </button>
+  </div>
+  <div class="search-opts">
+    <div class="opt-group">
+      <span class="opt-label">Source:</span>
+      <button class="chip a-both" id="cBoth" onclick="setSource('both')">npm + GitHub</button>
+      <button class="chip"        id="cNpm"  onclick="setSource('npm')">npm</button>
+      <button class="chip"        id="cGh"   onclick="setSource('gh')">GitHub</button>
+    </div>
+    <div class="opt-group">
+      <span class="opt-label">Sort:</span>
+      <select class="sort-sel" id="sortSel">
+        <option value="hits">Downloads / Stars</option>
+        <option value="name">Name A–Z</option>
+      </select>
+    </div>
+    <div class="opt-group">
+      <span class="opt-label">Per page:</span>
+      <select class="sort-sel" id="perPage">
+        <option value="20">20</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="status-bar" id="statusBar">
+  <div class="s-counts">
+    <span><span class="s-dot npm"></span><span id="npmCount">0 npm</span></span>
+    <span><span class="s-dot gh"></span><span id="ghCount">0 GitHub</span></span>
+  </div>
+  <span id="statusMsg"></span>
+</div>
+
+<div id="resultsContainer">
+  <div class="state-msg">
+    <div class="state-icon">📦</div>
+    <div class="state-title">Search jsDelivr</div>
+    <div class="state-sub">Type a package name, repo, or file name and press Search</div>
+  </div>
+</div>
+
+<div class="pagination" id="pagination"></div>
+</div>
+
+<div class="toast" id="toast">Copied!</div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let src = 'both', query = '', pageNum = 1;
+let allResults = [];
+let fileCache  = {};
+
+// ── SOURCE TOGGLE ─────────────────────────────────────────────────────────────
+function setSource(s) {
+  src = s;
+  ['Both','Npm','Gh'].forEach(x => document.getElementById('c'+x).className = 'chip');
+  document.getElementById('c' + s.charAt(0).toUpperCase() + s.slice(1)).className =
+    'chip a-' + s;
+  if (query) doSearch();
+}
+
+// ── SEARCH ────────────────────────────────────────────────────────────────────
+async function doSearch(page) {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  query   = q;
+  pageNum = page || 1;
+
+  const btn = document.getElementById('searchBtn');
+  btn.disabled = true; btn.classList.add('loading');
+  document.getElementById('resultsContainer').innerHTML = stateHtml('⏳','Searching…','Querying npm registry and GitHub API…');
+  document.getElementById('pagination').innerHTML = '';
+  document.getElementById('statusBar').classList.remove('vis');
+
+  try {
+    const [npmRes, ghRes] = await Promise.all([
+      (src === 'npm' || src === 'both') ? fetchNpm(q) : [],
+      (src === 'gh'  || src === 'both') ? fetchGh(q)  : [],
+    ]);
+
+    allResults = [
+      ...npmRes.map(r => ({ ...r, _t: 'npm' })),
+      ...ghRes.map(r  => ({ ...r, _t: 'gh'  })),
+    ];
+
+    // Sort
+    const sortBy = document.getElementById('sortSel').value;
+    allResults.sort((a, b) => sortBy === 'name'
+      ? a.name.localeCompare(b.name)
+      : (b.hits || 0) - (a.hits || 0));
+
+    renderPage(q);
+
+    document.getElementById('npmCount').textContent = npmRes.length + ' npm';
+    document.getElementById('ghCount').textContent  = ghRes.length  + ' GitHub';
+    const lim = parseInt(document.getElementById('perPage').value);
+    document.getElementById('statusMsg').textContent =
+      `${allResults.length} results — page ${pageNum} of ${Math.ceil(allResults.length / lim)}`;
+    document.getElementById('statusBar').classList.add('vis');
+
+  } catch(e) {
+    document.getElementById('resultsContainer').innerHTML =
+      stateHtml('⚠️','Error',esc(e.message));
+  }
+
+  btn.disabled = false; btn.classList.remove('loading');
+}
+
+// ── NPM ───────────────────────────────────────────────────────────────────────
+async function fetchNpm(q) {
+  const r = await fetch(`https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(q)}&size=250`);
+  if (!r.ok) throw new Error('npm registry returned ' + r.status);
+  const d = await r.json();
+  return (d.objects || []).map(o => ({
+    name:     o.package.name,
+    desc:     o.package.description || '',
+    version:  o.package.version || 'latest',
+    keywords: o.package.keywords || [],
+    hits:     Math.round((o.score?.detail?.popularity || 0) * 1e6),
+    npmUrl:   'https://www.npmjs.com/package/' + o.package.name,
+    cdnUrl:   `https://cdn.jsdelivr.net/npm/${o.package.name}@${o.package.version}/`,
+  }));
+}
+
+// ── GITHUB ────────────────────────────────────────────────────────────────────
+async function fetchGh(q) {
+  const r = await fetch(
+    `https://api.github.com/search/repositories?q=${encodeURIComponent(q)}+in:name,description&sort=stars&per_page=100`,
+    { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+  );
+  if (!r.ok) {
+    if (r.status === 403) throw new Error('GitHub API rate limit — wait a moment and try again.');
+    throw new Error('GitHub API returned ' + r.status);
+  }
+  const d = await r.json();
+  return (d.items || []).map(repo => ({
+    name:    repo.full_name,
+    desc:    repo.description || '',
+    version: repo.default_branch || 'main',
+    hits:    repo.stargazers_count || 0,
+    stars:   repo.stargazers_count || 0,
+    ghUrl:   repo.html_url,
+    cdnUrl:  `https://cdn.jsdelivr.net/gh/${repo.full_name}@${repo.default_branch}/`,
+  }));
+}
+
+// ── RENDER PAGE ───────────────────────────────────────────────────────────────
+function renderPage(q) {
+  const lim   = parseInt(document.getElementById('perPage').value);
+  const total = allResults.length;
+  const start = (pageNum - 1) * lim;
+  const slice = allResults.slice(start, start + lim);
+  const con   = document.getElementById('resultsContainer');
+
+  if (!slice.length) {
+    con.innerHTML = stateHtml('🔍','No results','Try different terms or switch source');
+    return;
+  }
+
+  con.innerHTML = `<div class="results-grid">${slice.map((r,i) => card(r, q, i)).join('')}</div>`;
+
+  // Pagination
+  const pages = Math.ceil(total / lim);
+  const pag   = document.getElementById('pagination');
+  if (pages <= 1) { pag.innerHTML = ''; return; }
+
+  let h = '';
+  if (pageNum > 1) h += btn(pageNum-1, '← Prev');
+  const s = Math.max(1, pageNum-3), e = Math.min(pages, pageNum+3);
+  if (s > 1) h += btn(1,'1') + '<span style="align-self:center;color:var(--ink3);font-size:.8rem">…</span>';
+  for (let p = s; p <= e; p++) h += btn(p, p, p === pageNum);
+  if (e < pages) h += '<span style="align-self:center;color:var(--ink3);font-size:.8rem">…</span>' + btn(pages, pages);
+  if (pageNum < pages) h += btn(pageNum+1,'Next →');
+  pag.innerHTML = h;
+}
+
+function btn(p, label, cur=false) {
+  return `<button class="pbtn${cur?' cur':''}" onclick="doSearch(${p})">${label}</button>`;
+}
+
+// ── CARD ──────────────────────────────────────────────────────────────────────
+function card(r, q, idx) {
+  const t  = r._t;
+  const id = 'c' + idx;
+  const nm = hi(esc(r.name), q);
+  const ds = r.desc ? esc(r.desc).slice(0,150) + (r.desc.length>150?'…':'') : '';
+
+  let meta = '';
+  if (t === 'npm' && r.version) meta += `<span class="mitem">📦 <strong>v${esc(r.version)}</strong></span>`;
+  if (r.stars) meta += `<span class="mitem">⭐ <strong>${fmt(r.stars)}</strong></span>`;
+  if (t === 'npm' && r.keywords?.length) meta += `<span class="mitem">🏷 ${r.keywords.slice(0,4).map(esc).join(', ')}</span>`;
+
+  const extUrl   = t === 'npm' ? r.npmUrl : r.ghUrl;
+  const extLabel = t === 'npm' ? 'npm ↗'  : 'GitHub ↗';
+
+  return `<div class="result-card" id="${id}">
+  <div class="card-main">
+    <div class="type-stripe ${t}"></div>
+    <div class="card-body">
+      <div class="card-top">
+        <div class="card-left">
+          <span class="tbadge ${t}">${t}</span>
+          <span class="card-name">${nm}</span>
+        </div>
+        <div class="card-actions">
+          <button class="abtn" onclick="copyTxt('${esc(r.cdnUrl)}')">Copy URL</button>
+          <button class="abtn" onclick="toggleFiles('${id}','${t}','${esc(r.name)}','${esc(r.version)}')">Files ▾</button>
+          <a class="abtn pri" href="${esc(extUrl)}" target="_blank" rel="noopener">${extLabel}</a>
+        </div>
+      </div>
+      ${ds ? `<div class="card-desc">${ds}</div>` : ''}
+      <div class="card-meta">${meta}</div>
+      <div class="cdn-url" onclick="copyTxt('${esc(r.cdnUrl)}')">
+        <span style="color:var(--ink3);font-size:.85rem">📋</span>${esc(r.cdnUrl)}
+      </div>
+    </div>
+  </div>
+  <div class="files-panel" id="${id}-fp">
+    <div class="f-label">Package files</div>
+    <div class="f-list" id="${id}-fl"><span class="f-loading">Loading…</span></div>
+  </div>
+</div>`;
+}
+
+// ── FILE BROWSER ──────────────────────────────────────────────────────────────
+async function toggleFiles(id, type, name, version) {
+  const fp = document.getElementById(id+'-fp');
+  const fl = document.getElementById(id+'-fl');
+  if (fp.classList.contains('open')) { fp.classList.remove('open'); return; }
+  fp.classList.add('open');
+  const key = `${type}:${name}@${version}`;
+  if (fileCache[key]) { renderFiles(fl, fileCache[key]); return; }
+  fl.innerHTML = '<span class="f-loading">⏳ Fetching file tree…</span>';
+  try {
+    const endpoint = type === 'npm'
+      ? `https://data.jsdelivr.com/v1/packages/npm/${encodeURIComponent(name)}@${encodeURIComponent(version)}/flat`
+      : `https://data.jsdelivr.com/v1/packages/gh/${encodeURIComponent(name)}@${encodeURIComponent(version)}/flat`;
+    const r = await fetch(endpoint);
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    const files = (d.files || []).map(f => typeof f === 'string' ? f : (f.name || ''));
+    fileCache[key] = files;
+    renderFiles(fl, files);
+  } catch {
+    fl.innerHTML = '<span class="f-loading" style="color:var(--accent)">Could not load file list</span>';
+  }
+}
+
+function renderFiles(el, files) {
+  if (!files.length) { el.innerHTML = '<span class="f-loading">No files found</span>'; return; }
+  const q = query.toLowerCase();
+  const sorted = [...files].sort((a, b) => {
+    const am = a.toLowerCase().includes(q);
+    const bm = b.toLowerCase().includes(q);
+    return (bm - am) || a.localeCompare(b);
+  });
+  el.innerHTML = sorted.slice(0, 300).map(f => {
+    const hit   = f.toLowerCase().includes(q);
+    const label = f.length > 52 ? '…' + f.slice(-49) : f;
+    return `<span class="fchip${hit?' hit':''}" title="${esc(f)}" onclick="copyTxt('${esc(f)}')">${esc(label)}</span>`;
+  }).join('') + (files.length > 300 ? `<span class="f-loading">+ ${files.length - 300} more</span>` : '');
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function hi(html, q) {
+  if (!q) return html;
+  const parts = q.trim().split(/\s+/).map(p => p.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+  let out = html;
+  parts.forEach(p => { out = out.replace(new RegExp(`(${p})`,'gi'),'<mark>$1</mark>'); });
+  return out;
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function fmt(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return String(n);
+}
+function stateHtml(icon, title, sub) {
+  return `<div class="state-msg"><div class="state-icon">${icon}</div><div class="state-title">${title}</div><div class="state-sub">${sub}</div></div>`;
+}
+function copyTxt(txt) {
+  navigator.clipboard.writeText(txt).then(() => {
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1800);
+  });
+}
+
+// Enter key + change listeners
+document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+document.getElementById('sortSel').addEventListener('change', () => { if (query) doSearch(); });
+document.getElementById('perPage').addEventListener('change', () => { if (query) doSearch(); });
+</script>
+</body>
+</html>
