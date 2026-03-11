@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PixelDevs — I Love WordPress</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,300&family=Syne:wght@400;600;700;800&family=Lora:ital,wght@0,400;1,400&display=swap" rel="stylesheet"/>
+<style>
+/* ─────────────────────────────────────────
+   ROOT
+───────────────────────────────────────── */
+:root {
+  --bg:       #0d0f14;
+  --surface:  #13161d;
+  --card:     #191d27;
+  --border:   #252a38;
+  --accent:   #21759b;   /* WordPress blue */
+  --green:    #4caf7d;
+  --amber:    #f0a500;
+  --text:     #d8dce8;
+  --muted:    #6b7390;
+  --white:    #f0f2f8;
+  --mono:     'JetBrains Mono', monospace;
+  --sans:     'Syne', sans-serif;
+  --serif:    'Lora', serif;
+  --radius:   6px;
+  --glow:     0 0 0 1px rgba(33,117,155,.35), 0 8px 32px rgba(33,117,155,.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ─────────────────────────────────────────
+   SCROLLBAR
+───────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ─────────────────────────────────────────
+   NOISE OVERLAY
+───────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  background-size: 200px;
+  opacity: 1;
+}
+
+/* ─────────────────────────────────────────
+   NAVIGATION
+───────────────────────────────────────── */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 clamp(1.5rem, 5vw, 4rem);
+  height: 64px;
+  background: rgba(13,15,20,.88);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-logo {
+  display: flex; align-items: center; gap: .7rem;
+  text-decoration: none;
+}
+
+.nav-logo-icon {
+  width: 34px; height: 34px;
+  background: var(--accent);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-size: .72rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -.03em;
+  flex-shrink: 0;
+}
+
+.nav-logo-text {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: .9rem;
+  color: var(--white);
+  letter-spacing: .02em;
+}
+
+.nav-logo-text span { color: var(--accent); }
+
+.nav-links {
+  display: flex; align-items: center; gap: .2rem;
+  list-style: none;
+}
+
+.nav-links a {
+  font-family: var(--mono);
+  font-size: .78rem;
+  color: var(--muted);
+  text-decoration: none;
+  padding: .4rem .75rem;
+  border-radius: var(--radius);
+  transition: color .2s, background .2s;
+  letter-spacing: .04em;
+}
+
+.nav-links a:hover { color: var(--white); background: var(--border); }
+
+.nav-cta {
+  background: var(--accent) !important;
+  color: #fff !important;
+  padding: .4rem 1rem !important;
+  border-radius: var(--radius) !important;
+}
+
+.nav-cta:hover { background: #1a6080 !important; }
+
+/* ─────────────────────────────────────────
+   HERO
+───────────────────────────────────────── */
+.hero {
+  position: relative;
+  min-height: 92vh;
+  display: flex; align-items: center;
+  padding: 5rem clamp(1.5rem, 5vw, 4rem) 4rem;
+  overflow: hidden;
+}
+
+/* animated grid background */
+.hero-grid {
+  position: absolute; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(33,117,155,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(33,117,155,.07) 1px, transparent 1px);
+  background-size: 48px 48px;
+  animation: gridDrift 40s linear infinite;
+}
+
+@keyframes gridDrift {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(48px, 48px); }
+}
+
+/* glow blobs */
+.hero::after {
+  content: '';
+  position: absolute;
+  top: -120px; left: -80px;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(33,117,155,.18) 0%, transparent 70%);
+  pointer-events: none; z-index: 0;
+  animation: blobPulse 8s ease-in-out infinite alternate;
+}
+
+@keyframes blobPulse {
+  from { transform: scale(1) translate(0, 0); }
+  to   { transform: scale(1.1) translate(30px, 20px); }
+}
+
+.hero-content {
+  position: relative; z-index: 1;
+  max-width: 720px;
+}
+
+.hero-eyebrow {
+  font-family: var(--mono);
+  font-size: .75rem;
+  color: var(--accent);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  margin-bottom: 1.4rem;
+  display: flex; align-items: center; gap: .6rem;
+}
+
+.hero-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 28px; height: 1px;
+  background: var(--accent);
+}
+
+.hero-name {
+  font-family: var(--sans);
+  font-weight: 800;
+  font-size: clamp(2.8rem, 7vw, 5.5rem);
+  line-height: .95;
+  color: var(--white);
+  letter-spacing: -.03em;
+  margin-bottom: 1rem;
+}
+
+.hero-name em {
+  font-style: normal;
+  color: var(--accent);
+  display: block;
+}
+
+.hero-tagline {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(1.1rem, 2.5vw, 1.35rem);
+  color: var(--muted);
+  margin-bottom: 1.6rem;
+  line-height: 1.5;
+}
+
+.hero-desc {
+  font-size: .95rem;
+  color: var(--text);
+  max-width: 520px;
+  line-height: 1.7;
+  margin-bottom: 2.4rem;
+}
+
+.hero-ctas {
+  display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: .45rem;
+  font-family: var(--mono);
+  font-size: .82rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  padding: .72rem 1.5rem;
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: all .22s;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 0 rgba(33,117,155,0);
+}
+
+.btn-primary:hover {
+  background: #1a6080;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(33,117,155,.4);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-ghost:hover {
+  border-color: var(--accent);
+  color: var(--white);
+  background: rgba(33,117,155,.08);
+}
+
+/* terminal badge */
+.hero-terminal {
+  display: inline-flex; align-items: center; gap: .5rem;
+  margin-top: 2.5rem;
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--green);
+  background: rgba(76,175,125,.07);
+  border: 1px solid rgba(76,175,125,.2);
+  border-radius: var(--radius);
+  padding: .45rem .9rem;
+}
+
+.terminal-dot {
+  width: 7px; height: 7px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: blink 1.6s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .2; }
+}
+
+/* hero floating card */
+.hero-right {
+  position: absolute;
+  right: clamp(2rem, 6vw, 8rem);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  display: none;
+}
+
+@media (min-width: 900px) { .hero-right { display: block; } }
+
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.4rem 1.6rem;
+  width: 220px;
+  margin-bottom: .8rem;
+  position: relative;
+  animation: floatCard 6s ease-in-out infinite;
+}
+
+.stat-card:nth-child(2) { animation-delay: -2s; transform: translateX(24px); }
+.stat-card:nth-child(3) { animation-delay: -4s; transform: translateX(8px); }
+
+@keyframes floatCard {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.stat-card:nth-child(2) { animation-name: floatCard2; }
+@keyframes floatCard2 {
+  0%, 100% { transform: translateX(24px) translateY(0); }
+  50% { transform: translateX(24px) translateY(-6px); }
+}
+
+.stat-num {
+  font-family: var(--sans);
+  font-weight: 800;
+  font-size: 2rem;
+  color: var(--white);
+  line-height: 1;
+}
+
+.stat-num span { color: var(--accent); }
+.stat-label { font-size: .76rem; color: var(--muted); font-family: var(--mono); margin-top: .2rem; }
+.stat-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-top: .7rem;
+  overflow: hidden;
+}
+.stat-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--green));
+  border-radius: 2px;
+  animation: fillBar 2s ease-out 1s both;
+}
+@keyframes fillBar { from { width: 0; } }
+
+/* ─────────────────────────────────────────
+   SECTION WRAPPER
+───────────────────────────────────────── */
+section { padding: 5rem clamp(1.5rem, 5vw, 4rem); }
+
+.section-label {
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: var(--accent);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  margin-bottom: .8rem;
+  display: flex; align-items: center; gap: .5rem;
+}
+
+.section-label::before {
+  content: '//';
+  color: var(--muted);
+}
+
+.section-title {
+  font-family: var(--sans);
+  font-weight: 800;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  color: var(--white);
+  letter-spacing: -.025em;
+  line-height: 1.1;
+  margin-bottom: 1rem;
+}
+
+.section-sub {
+  font-size: .95rem;
+  color: var(--muted);
+  max-width: 520px;
+  line-height: 1.7;
+  margin-bottom: 3rem;
+}
+
+/* ─────────────────────────────────────────
+   ABOUT / SKILLS
+───────────────────────────────────────── */
+#about { background: var(--surface); }
+
+.about-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3.5rem;
+  align-items: start;
+}
+
+@media (max-width: 768px) { .about-grid { grid-template-columns: 1fr; } }
+
+.about-text p {
+  font-size: .95rem;
+  color: var(--text);
+  line-height: 1.8;
+  margin-bottom: 1.1rem;
+}
+
+.about-text p strong { color: var(--white); font-weight: 600; }
+.about-quote {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1.05rem;
+  color: var(--accent);
+  border-left: 2px solid var(--accent);
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+}
+
+.skills-list { list-style: none; }
+
+.skill-item {
+  margin-bottom: 1.1rem;
+}
+
+.skill-header {
+  display: flex; justify-content: space-between;
+  font-family: var(--mono);
+  font-size: .78rem;
+  margin-bottom: .4rem;
+}
+
+.skill-name { color: var(--text); }
+.skill-pct { color: var(--accent); }
+
+.skill-track {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.skill-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--green));
+  width: 0;
+  transition: width 1.2s cubic-bezier(.17,.67,.35,.99);
+}
+
+.pill-group {
+  display: flex; flex-wrap: wrap; gap: .5rem;
+  margin-top: 1.5rem;
+}
+
+.pill {
+  font-family: var(--mono);
+  font-size: .7rem;
+  padding: .3rem .75rem;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  transition: all .2s;
+}
+
+.pill:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ─────────────────────────────────────────
+   SERVICES
+───────────────────────────────────────── */
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.2rem;
+}
+
+.service-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.8rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform .25s, box-shadow .25s, border-color .25s;
+}
+
+.service-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--green));
+  transform: scaleX(0); transform-origin: left;
+  transition: transform .35s ease;
+}
+
+.service-card:hover { transform: translateY(-4px); box-shadow: var(--glow); border-color: rgba(33,117,155,.4); }
+.service-card:hover::before { transform: scaleX(1); }
+
+.service-icon {
+  width: 44px; height: 44px;
+  background: rgba(33,117,155,.1);
+  border: 1px solid rgba(33,117,155,.2);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 1.1rem;
+  font-size: 1.25rem;
+}
+
+.service-title {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--white);
+  margin-bottom: .5rem;
+}
+
+.service-desc {
+  font-size: .85rem;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+/* ─────────────────────────────────────────
+   PORTFOLIO
+───────────────────────────────────────── */
+#portfolio { background: var(--surface); }
+
+.portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.4rem;
+}
+
+.project-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: transform .25s, box-shadow .25s;
+  display: flex; flex-direction: column;
+}
+
+.project-card:hover { transform: translateY(-3px); box-shadow: var(--glow); }
+
+.project-thumb {
+  height: 180px;
+  position: relative;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-size: 2.5rem;
+  background: var(--surface);
+}
+
+.project-thumb-bg {
+  position: absolute; inset: 0;
+  opacity: .08;
+  background-image:
+    repeating-linear-gradient(45deg, var(--accent) 0, var(--accent) 1px, transparent 0, transparent 50%);
+  background-size: 12px 12px;
+}
+
+.project-tag-overlay {
+  position: absolute; top: .8rem; right: .8rem;
+  font-family: var(--mono);
+  font-size: .64rem;
+  padding: .2rem .6rem;
+  border-radius: 4px;
+  background: rgba(13,15,20,.8);
+  color: var(--accent);
+  border: 1px solid rgba(33,117,155,.3);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.project-body { padding: 1.3rem; flex: 1; display: flex; flex-direction: column; }
+
+.project-client {
+  font-family: var(--mono);
+  font-size: .68rem;
+  color: var(--muted);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: .4rem;
+}
+
+.project-title {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--white);
+  margin-bottom: .5rem;
+  line-height: 1.2;
+}
+
+.project-desc {
+  font-size: .83rem;
+  color: var(--muted);
+  line-height: 1.65;
+  flex: 1;
+}
+
+.project-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 1rem;
+  padding-top: .8rem;
+  border-top: 1px solid var(--border);
+}
+
+.project-stack {
+  display: flex; gap: .35rem; flex-wrap: wrap;
+}
+
+.stack-pill {
+  font-family: var(--mono);
+  font-size: .62rem;
+  padding: .15rem .5rem;
+  border-radius: 3px;
+  background: rgba(33,117,155,.1);
+  color: var(--accent);
+  border: 1px solid rgba(33,117,155,.2);
+}
+
+.project-link {
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--accent);
+  text-decoration: none;
+  transition: color .2s;
+  display: flex; align-items: center; gap: .25rem;
+}
+
+.project-link:hover { color: var(--green); }
+
+/* ─────────────────────────────────────────
+   PROCESS
+───────────────────────────────────────── */
+.process-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0;
+  position: relative;
+  counter-reset: step;
+}
+
+.process-steps::before {
+  content: '';
+  position: absolute;
+  top: 28px; left: 28px; right: 28px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent), var(--green), var(--accent));
+  opacity: .3;
+  z-index: 0;
+}
+
+.step {
+  padding: 0 1.5rem 0 0;
+  position: relative;
+  z-index: 1;
+  counter-increment: step;
+}
+
+.step-num {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: .8rem;
+  color: var(--accent);
+  margin-bottom: 1rem;
+  transition: all .25s;
+}
+
+.step:hover .step-num { border-color: var(--accent); background: rgba(33,117,155,.1); }
+
+.step-title {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: .95rem;
+  color: var(--white);
+  margin-bottom: .4rem;
+}
+
+.step-desc { font-size: .82rem; color: var(--muted); line-height: 1.6; }
+
+/* ─────────────────────────────────────────
+   TESTIMONIALS
+───────────────────────────────────────── */
+#testimonials { background: var(--surface); }
+
+.testimonial-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.2rem;
+}
+
+.testimonial-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.6rem;
+  position: relative;
+}
+
+.testimonial-quote {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: .92rem;
+  color: var(--text);
+  line-height: 1.75;
+  margin-bottom: 1.2rem;
+}
+
+.testimonial-quote::before {
+  content: '"';
+  font-size: 2.5rem;
+  color: var(--accent);
+  font-family: var(--sans);
+  line-height: .7;
+  display: block;
+  margin-bottom: .4rem;
+  font-style: normal;
+}
+
+.testimonial-author {
+  display: flex; align-items: center; gap: .75rem;
+}
+
+.author-avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: .82rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.author-name {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: .88rem;
+  color: var(--white);
+}
+
+.author-role { font-size: .74rem; color: var(--muted); font-family: var(--mono); }
+
+/* ─────────────────────────────────────────
+   CONTACT
+───────────────────────────────────────── */
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 4rem;
+  align-items: start;
+}
+
+@media (max-width: 768px) { .contact-grid { grid-template-columns: 1fr; } }
+
+.contact-info p {
+  font-size: .9rem;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 1.5rem;
+}
+
+.contact-methods { list-style: none; }
+
+.contact-method {
+  display: flex; align-items: center; gap: .9rem;
+  padding: .8rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.method-icon {
+  width: 36px; height: 36px;
+  background: rgba(33,117,155,.1);
+  border: 1px solid rgba(33,117,155,.2);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .95rem;
+  flex-shrink: 0;
+}
+
+.method-label {
+  font-family: var(--mono);
+  font-size: .68rem;
+  color: var(--muted);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.method-value {
+  font-size: .88rem;
+  color: var(--text);
+}
+
+.contact-form { display: flex; flex-direction: column; gap: 1rem; }
+
+.form-group { display: flex; flex-direction: column; gap: .4rem; }
+
+.form-group label {
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--muted);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .72rem 1rem;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: .9rem;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  resize: none;
+  appearance: none;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(33,117,155,.12);
+}
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+@media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
+
+/* ─────────────────────────────────────────
+   FOOTER
+───────────────────────────────────────── */
+footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 3rem clamp(1.5rem, 5vw, 4rem);
+}
+
+.footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.footer-copy {
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--muted);
+}
+
+.footer-copy a { color: var(--accent); text-decoration: none; }
+
+.footer-links {
+  display: flex; gap: 1.2rem; list-style: none;
+}
+
+.footer-links a {
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color .2s;
+}
+
+.footer-links a:hover { color: var(--accent); }
+
+.wp-heart {
+  color: var(--accent);
+  animation: heartbeat 1.6s ease-in-out infinite;
+  display: inline-block;
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.25); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.15); }
+}
+
+/* ─────────────────────────────────────────
+   UTILITY & ANIMATION
+───────────────────────────────────────── */
+.divider {
+  width: 48px; height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--green));
+  border-radius: 2px;
+  margin-bottom: 1.2rem;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity .6s ease, transform .6s ease;
+}
+
+.reveal.in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* stagger children */
+.reveal-stagger > * {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity .5s ease, transform .5s ease;
+}
+
+.reveal-stagger.in > *:nth-child(1) { opacity: 1; transform: none; transition-delay: 0s; }
+.reveal-stagger.in > *:nth-child(2) { opacity: 1; transform: none; transition-delay: .1s; }
+.reveal-stagger.in > *:nth-child(3) { opacity: 1; transform: none; transition-delay: .2s; }
+.reveal-stagger.in > *:nth-child(4) { opacity: 1; transform: none; transition-delay: .3s; }
+.reveal-stagger.in > *:nth-child(5) { opacity: 1; transform: none; transition-delay: .4s; }
+.reveal-stagger.in > *:nth-child(6) { opacity: 1; transform: none; transition-delay: .5s; }
+.reveal-stagger.in > *:nth-child(7) { opacity: 1; transform: none; transition-delay: .6s; }
+.reveal-stagger.in > *:nth-child(8) { opacity: 1; transform: none; transition-delay: .7s; }
+
+@media (max-width: 640px) {
+  .nav-links { display: none; }
+  .hero { min-height: auto; padding-top: 4rem; }
+  .process-steps::before { display: none; }
+  .step { margin-bottom: 1.5rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── NAV ─────────────────────────────────── -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon">PD</div>
+    <span class="nav-logo-text">pixel<span>devs</span>.io</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#about">About</a></li>
+    <li><a href="#services">Services</a></li>
+    <li><a href="#portfolio">Portfolio</a></li>
+    <li><a href="#process">Process</a></li>
+    <li><a href="#contact" class="nav-cta">Hire Me</a></li>
+  </ul>
+</nav>
+
+<!-- ── HERO ────────────────────────────────── -->
+<section class="hero" id="hero">
+  <div class="hero-grid"></div>
+
+  <div class="hero-content">
+    <p class="hero-eyebrow">Web & Mobile Developer</p>
+    <h1 class="hero-name">
+      I Build Things<br>
+      <em>for the Web.</em>
+    </h1>
+    <p class="hero-tagline">I love WordPress. I love clean code. I fix broken things.</p>
+    <p class="hero-desc">
+      Freelance web developer and mobile app developer based in the US. I specialize in custom WordPress solutions — from theme development and custom plugins to full site migrations and performance tuning.
+    </p>
+    <div class="hero-ctas">
+      <a href="#portfolio" class="btn btn-primary">View My Work →</a>
+      <a href="#contact" class="btn btn-ghost">Get In Touch</a>
+    </div>
+    <div class="hero-terminal">
+      <span class="terminal-dot"></span>
+      <span>Available for freelance projects&nbsp;·&nbsp;2021</span>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="stat-card">
+      <div class="stat-num">50<span>+</span></div>
+      <div class="stat-label">projects delivered</div>
+      <div class="stat-bar"><div class="stat-bar-fill" style="width:84%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">8<span>yr</span></div>
+      <div class="stat-label">WordPress experience</div>
+      <div class="stat-bar"><div class="stat-bar-fill" style="width:92%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">100<span>%</span></div>
+      <div class="stat-label">client satisfaction</div>
+      <div class="stat-bar"><div class="stat-bar-fill" style="width:100%"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── ABOUT ───────────────────────────────── -->
+<section id="about">
+  <div class="about-grid">
+    <div class="about-text reveal">
+      <p class="section-label">About Me</p>
+      <h2 class="section-title">Programmer.<br>Problem Solver.</h2>
+      <div class="divider"></div>
+
+      <p>
+        Hi, I'm a freelance web developer with a deep passion for <strong>WordPress</strong> and building clean, functional things on the web. Whether it's building a site from scratch, rescuing a hacked install, or developing custom plugins, I genuinely enjoy the craft.
+      </p>
+      <p>
+        My forte is <strong>fixing broken things</strong>. Whether they're broken because of other developers or just need a bit more attention, I will fix it. I love to write clean, readable code that the next developer — or future me — will actually understand.
+      </p>
+      <blockquote class="about-quote">
+        "Clean code always looks like it was written by someone who cares."
+      </blockquote>
+      <p>
+        Beyond WordPress, I develop <strong>mobile applications</strong> for iOS and Android and build custom web apps for clients who need more than a theme can offer. Every project, regardless of size, gets my full attention.
+      </p>
+
+      <div class="pill-group">
+        <span class="pill">WordPress</span>
+        <span class="pill">PHP</span>
+        <span class="pill">JavaScript</span>
+        <span class="pill">React Native</span>
+        <span class="pill">MySQL</span>
+        <span class="pill">TailwindCSS</span>
+        <span class="pill">REST API</span>
+        <span class="pill">WooCommerce</span>
+        <span class="pill">Git</span>
+        <span class="pill">Linux / cPanel</span>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <p class="section-label" style="margin-bottom:1.4rem">Skill Levels</p>
+      <ul class="skills-list">
+        <li class="skill-item">
+          <div class="skill-header"><span class="skill-name">WordPress Development</span><span class="skill-pct">97%</span></div>
+          <div class="skill-track"><div class="skill-fill" data-w="97"></div></div>
+        </li>
+        <li class="skill-item">
+          <div class="skill-header"><span class="skill-name">PHP / Plugin Development</span><span class="skill-pct">88%</span></div>
+          <div class="skill-track"><div class="skill-fill" data-w="88"></div></div>
+        </li>
+        <li class="skill-item">
+          <div class="skill-header"><span class="skill-name">JavaScript / jQuery</span><span class="skill-pct">82%</span></div>
+          <div class="skill-track"><div class="skill-fill" data-w="82"></div></div>
+        </li>
+        <li class="skill-item">
+          <div class="skill-header"><span class="skill-name">CSS / TailwindCSS</span><span class="skill-pct">90%</span></div>
+          <div class="skill-track"><div class="skill-fill" data-w="90"></div></div>
+        </li>
+        <li class="skill-item">
+          <div class="skill-header"><span class="skill-name">Mobile App Development</span><span class="skill-pct">70%</span></div>
+          <div class="skill-track"><div class="skill-fill" data-w="70"></div></div>
+        </li>
+        <li class="skill-item">
+          <div class="skill-header"><span class="skill-name">WooCommerce / E-Commerce</span><span class="skill-pct">85%</span></div>
+          <div class="skill-track"><div class="skill-fill" data-w="85"></div></div>
+        </li>
+        <li class="skill-item">
+          <div class="skill-header"><span class="skill-name">Server / Hosting / Migration</span><span class="skill-pct">80%</span></div>
+          <div class="skill-track"><div class="skill-fill" data-w="80"></div></div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ── SERVICES ─────────────────────────────── -->
+<section id="services">
+  <p class="section-label">What I Do</p>
+  <h2 class="section-title">Services</h2>
+  <p class="section-sub">End-to-end web and mobile development. From a quick fix to a full custom build — I've got you covered.</p>
+
+  <div class="services-grid reveal-stagger">
+    <div class="service-card">
+      <div class="service-icon">🔧</div>
+      <h3 class="service-title">Custom WordPress Development</h3>
+      <p class="service-desc">Custom themes, child themes, and plugin development tailored to your exact requirements. No bloated builders — clean, maintainable code.</p>
+    </div>
+    <div class="service-card">
+      <div class="service-icon">🔌</div>
+      <h3 class="service-title">Plugin Development</h3>
+      <p class="service-desc">Need functionality that no existing plugin provides? I'll build it from scratch — custom post types, admin panels, API integrations, and more.</p>
+    </div>
+    <div class="service-card">
+      <div class="service-icon">📱</div>
+      <h3 class="service-title">Mobile App Development</h3>
+      <p class="service-desc">iOS and Android applications built to complement your web presence. From utility apps to complex approval workflows and data-driven tools.</p>
+    </div>
+    <div class="service-card">
+      <div class="service-icon">🚀</div>
+      <h3 class="service-title">Site Migrations</h3>
+      <p class="service-desc">Moving hosts, consolidating sites, or upgrading to multisite? I've migrated thousands of posts and media files without losing a byte.</p>
+    </div>
+    <div class="service-card">
+      <div class="service-icon">🛡️</div>
+      <h3 class="service-title">Security & Cleanup</h3>
+      <p class="service-desc">Hacked site? I clean infections, close vulnerabilities, and harden your WordPress install so it doesn't happen again.</p>
+    </div>
+    <div class="service-card">
+      <div class="service-icon">⚡</div>
+      <h3 class="service-title">Performance Optimization</h3>
+      <p class="service-desc">Slow site killing your conversions? I diagnose bottlenecks and optimize everything from database queries to image delivery and caching.</p>
+    </div>
+    <div class="service-card">
+      <div class="service-icon">🌐</div>
+      <h3 class="service-title">Web Application Development</h3>
+      <p class="service-desc">Beyond WordPress, I build fully custom web applications — SaaS tools, member portals, booking systems, and data management platforms.</p>
+    </div>
+    <div class="service-card">
+      <div class="service-icon">🛒</div>
+      <h3 class="service-title">WooCommerce & E-Commerce</h3>
+      <p class="service-desc">Full WooCommerce setup, custom product templates, payment gateways, subscriptions, and complex pricing rules.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── PORTFOLIO ─────────────────────────────── -->
+<section id="portfolio">
+  <p class="section-label">Selected Work</p>
+  <h2 class="section-title">Portfolio</h2>
+  <p class="section-sub">A selection of client projects. Each one started with a problem — and ended with a solution.</p>
+
+  <div class="portfolio-grid reveal-stagger">
+
+    <div class="project-card">
+      <div class="project-thumb" style="background:linear-gradient(135deg,#0d2b1a,#1a4a2e)">
+        <div class="project-thumb-bg"></div>
+        <span>🐾</span>
+        <span class="project-tag-overlay">Multisite</span>
+      </div>
+      <div class="project-body">
+        <p class="project-client">AAAC Wildlife Removal</p>
+        <h3 class="project-title">Wildlife Removal Network — Multisite Platform</h3>
+        <p class="project-desc">Built a custom WordPress multisite theme to support a main site and a network of regional sub-sites, all sharing a unified codebase. Styled with TailwindCSS for rapid, consistent UI development.</p>
+        <div class="project-footer">
+          <div class="project-stack">
+            <span class="stack-pill">WordPress Multisite</span>
+            <span class="stack-pill">TailwindCSS</span>
+            <span class="stack-pill">PHP</span>
+          </div>
+          <a href="#portfolio" class="project-link">View ↗</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="project-card">
+      <div class="project-thumb" style="background:linear-gradient(135deg,#0d1a2b,#1a2e4a)">
+        <div class="project-thumb-bg"></div>
+        <span>📋</span>
+        <span class="project-tag-overlay">Web App</span>
+      </div>
+      <div class="project-body">
+        <p class="project-client">Subscription Tracker</p>
+        <h3 class="project-title">Custom Subscription Management Platform</h3>
+        <p class="project-desc">Worked with the client to develop a custom solution for users to track their subscriptions and discover new ones. Heavily customized WordPress core and wrote several custom plugins to power the app.</p>
+        <div class="project-footer">
+          <div class="project-stack">
+            <span class="stack-pill">WordPress</span>
+            <span class="stack-pill">Custom Plugin</span>
+            <span class="stack-pill">MySQL</span>
+          </div>
+          <a href="#portfolio" class="project-link">View ↗</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="project-card">
+      <div class="project-thumb" style="background:linear-gradient(135deg,#1a0d2b,#2e1a4a)">
+        <div class="project-thumb-bg"></div>
+        <span>🏛️</span>
+        <span class="project-tag-overlay">Migration</span>
+      </div>
+      <div class="project-body">
+        <p class="project-client">SBOC</p>
+        <h3 class="project-title">Full Site Redesign & Large-Scale Migration</h3>
+        <p class="project-desc">Migrated over 5,000 posts and all associated media to a new server, designed a completely new site, and installed a page builder for the static content so the team could manage updates independently.</p>
+        <div class="project-footer">
+          <div class="project-stack">
+            <span class="stack-pill">WordPress</span>
+            <span class="stack-pill">Migration</span>
+            <span class="stack-pill">Page Builder</span>
+          </div>
+          <a href="#portfolio" class="project-link">View ↗</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="project-card">
+      <div class="project-thumb" style="background:linear-gradient(135deg,#1a1a0d,#2e2e1a)">
+        <div class="project-thumb-bg"></div>
+        <span>⛪</span>
+        <span class="project-tag-overlay">Media Streaming</span>
+      </div>
+      <div class="project-body">
+        <p class="project-client">Ethos Church</p>
+        <h3 class="project-title">Modern Church Site with Sermon Streaming</h3>
+        <p class="project-desc">Provided a modern site rebuild with the ability to post, archive, download, and stream both audio and video sermons. Brought an aging web presence up to current standards.</p>
+        <div class="project-footer">
+          <div class="project-stack">
+            <span class="stack-pill">WordPress</span>
+            <span class="stack-pill">Audio / Video</span>
+            <span class="stack-pill">Custom Theme</span>
+          </div>
+          <a href="#portfolio" class="project-link">View ↗</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="project-card">
+      <div class="project-thumb" style="background:linear-gradient(135deg,#1a0d0d,#4a1a1a)">
+        <div class="project-thumb-bg"></div>
+        <span>🎸</span>
+        <span class="project-tag-overlay">Web App</span>
+      </div>
+      <div class="project-body">
+        <p class="project-client">RYFO</p>
+        <h3 class="project-title">Band Host Home Network — Custom Approval App</h3>
+        <p class="project-desc">Built a web application for RYFO, an organization that provides places for touring bands to stay on the road. Required a heavily custom multi-step approval process for host homes.</p>
+        <div class="project-footer">
+          <div class="project-stack">
+            <span class="stack-pill">WordPress</span>
+            <span class="stack-pill">Custom Workflow</span>
+            <span class="stack-pill">PHP</span>
+          </div>
+          <a href="#portfolio" class="project-link">View ↗</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="project-card">
+      <div class="project-thumb" style="background:linear-gradient(135deg,#1a1008,#3d2a0f)">
+        <div class="project-thumb-bg"></div>
+        <span>🔥</span>
+        <span class="project-tag-overlay">Marketing Site</span>
+      </div>
+      <div class="project-body">
+        <p class="project-client">Man-B-Que</p>
+        <h3 class="project-title">BBQ Events & Recipe Showcase Site</h3>
+        <p class="project-desc">Man-B-Que wanted to attract more clients to their monthly bar-b-que events. Built a killer site to show off their photos, seasonal recipes, and upcoming event calendar.</p>
+        <div class="project-footer">
+          <div class="project-stack">
+            <span class="stack-pill">WordPress</span>
+            <span class="stack-pill">Events</span>
+            <span class="stack-pill">Gallery</span>
+          </div>
+          <a href="#portfolio" class="project-link">View ↗</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="project-card">
+      <div class="project-thumb" style="background:linear-gradient(135deg,#0a0f1a,#1a2840)">
+        <div class="project-thumb-bg"></div>
+        <span>🌐</span>
+        <span class="project-tag-overlay">Geo-Targeting</span>
+      </div>
+      <div class="project-body">
+        <p class="project-client">International Client</p>
+        <h3 class="project-title">Geo-Redirected Splash & Landing Page</h3>
+        <p class="project-desc">Designed and developed a splash page and landing page with a unique challenge: visitors from China were served an entirely different website. Required custom server-side geo-detection logic.</p>
+        <div class="project-footer">
+          <div class="project-stack">
+            <span class="stack-pill">WordPress</span>
+            <span class="stack-pill">Geo-Detection</span>
+            <span class="stack-pill">PHP</span>
+          </div>
+          <a href="#portfolio" class="project-link">View ↗</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="project-card">
+      <div class="project-thumb" style="background:linear-gradient(135deg,#0f1a0f,#1a2e1a)">
+        <div class="project-thumb-bg"></div>
+        <span>🏗️</span>
+        <span class="project-tag-overlay">Business Site</span>
+      </div>
+      <div class="project-body">
+        <p class="project-client">Chicago Paving Co.</p>
+        <h3 class="project-title">Paving Company — Full Site Build</h3>
+        <p class="project-desc">Designed and developed a complete business website for a paving company in Chicago. Clean, professional, and optimized for local search visibility.</p>
+        <div class="project-footer">
+          <div class="project-stack">
+            <span class="stack-pill">WordPress</span>
+            <span class="stack-pill">Local SEO</span>
+            <span class="stack-pill">Responsive</span>
+          </div>
+          <a href="#portfolio" class="project-link">View ↗</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── PROCESS ───────────────────────────────── -->
+<section id="process" style="background:var(--surface)">
+  <p class="section-label">How It Works</p>
+  <h2 class="section-title">My Process</h2>
+  <p class="section-sub">A straightforward, transparent workflow built for clear communication and on-time delivery.</p>
+
+  <div class="process-steps reveal-stagger">
+    <div class="step">
+      <div class="step-num">01</div>
+      <h3 class="step-title">Discovery</h3>
+      <p class="step-desc">We talk through your goals, existing setup, and requirements. I ask the right questions so there are no surprises later.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <h3 class="step-title">Scope & Quote</h3>
+      <p class="step-desc">I provide a clear, detailed proposal with timeline and cost. No hidden fees, no vague estimates.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <h3 class="step-title">Build</h3>
+      <p class="step-desc">Clean, well-documented code. I keep you updated throughout and deliver on staging before touching production.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">04</div>
+      <h3 class="step-title">Review & Launch</h3>
+      <p class="step-desc">You test. We revise. Once you're happy, we launch — with a checklist for security, performance, and backups.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">05</div>
+      <h3 class="step-title">Ongoing Support</h3>
+      <p class="step-desc">I don't disappear after launch. Updates, fixes, new features — I'm here for the long haul if you need me.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── TESTIMONIALS ──────────────────────────── -->
+<section id="testimonials">
+  <p class="section-label">Client Feedback</p>
+  <h2 class="section-title">What Clients Say</h2>
+  <p class="section-sub">I take client satisfaction seriously. Here's what a few of them have to say.</p>
+
+  <div class="testimonial-grid reveal-stagger">
+    <div class="testimonial-card">
+      <p class="testimonial-quote">He took our broken, hacked WordPress site and not only cleaned it up but rebuilt it stronger than before. Couldn't be happier with the result.</p>
+      <div class="testimonial-author">
+        <div class="author-avatar" style="background:#21759b">JM</div>
+        <div>
+          <p class="author-name">James M.</p>
+          <p class="author-role">Small Business Owner</p>
+        </div>
+      </div>
+    </div>
+    <div class="testimonial-card">
+      <p class="testimonial-quote">The custom plugin he wrote for our subscription platform saved us thousands versus an off-the-shelf SaaS. It does exactly what we need and nothing we don't.</p>
+      <div class="testimonial-author">
+        <div class="author-avatar" style="background:#4caf7d">SK</div>
+        <div>
+          <p class="author-name">Sarah K.</p>
+          <p class="author-role">Product Manager</p>
+        </div>
+      </div>
+    </div>
+    <div class="testimonial-card">
+      <p class="testimonial-quote">Migrating 5,000+ posts felt impossible to us. He handled the whole thing seamlessly — not a single post lost, and the new site looks fantastic.</p>
+      <div class="testimonial-author">
+        <div class="author-avatar" style="background:#f0a500">RT</div>
+        <div>
+          <p class="author-name">Rachel T.</p>
+          <p class="author-role">Content Director, SBOC</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CONTACT ───────────────────────────────── -->
+<section id="contact" style="background:var(--surface)">
+  <div class="contact-grid">
+    <div class="reveal">
+      <p class="section-label">Get In Touch</p>
+      <h2 class="section-title">Let's Build<br>Something.</h2>
+      <div class="divider"></div>
+      <p class="contact-info" style="margin-top:1rem">Have a project in mind, a site that's broken, or just want to explore working together? Fill out the form or reach out directly.</p>
+
+      <ul class="contact-methods">
+        <li class="contact-method">
+          <div class="method-icon">📧</div>
+          <div>
+            <p class="method-label">Email</p>
+            <p class="method-value">hello@pixeldevs.io</p>
+          </div>
+        </li>
+        <li class="contact-method">
+          <div class="method-icon">💼</div>
+          <div>
+            <p class="method-label">Freelance Status</p>
+            <p class="method-value">Available for new projects</p>
+          </div>
+        </li>
+        <li class="contact-method">
+          <div class="method-icon">⏱️</div>
+          <div>
+            <p class="method-label">Response Time</p>
+            <p class="method-value">Usually within 24 hours</p>
+          </div>
+        </li>
+        <li class="contact-method">
+          <div class="method-icon">🌍</div>
+          <div>
+            <p class="method-label">Location</p>
+            <p class="method-value">United States (Remote-friendly)</p>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="reveal">
+      <div class="contact-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="name">Your Name</label>
+            <input type="text" id="name" placeholder="John Smith"/>
+          </div>
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" placeholder="john@example.com"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="project-type">Project Type</label>
+          <select id="project-type">
+            <option value="">— Select a service —</option>
+            <option>Custom WordPress Development</option>
+            <option>Plugin Development</option>
+            <option>Mobile App</option>
+            <option>Site Migration</option>
+            <option>Security / Cleanup</option>
+            <option>Performance Optimization</option>
+            <option>WooCommerce / E-Commerce</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="budget">Approximate Budget</label>
+          <select id="budget">
+            <option value="">— Select a range —</option>
+            <option>Under $500</option>
+            <option>$500 – $1,500</option>
+            <option>$1,500 – $5,000</option>
+            <option>$5,000 – $10,000</option>
+            <option>$10,000+</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="message">Project Description</label>
+          <textarea id="message" rows="5" placeholder="Tell me about your project. What does success look like?"></textarea>
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="handleSubmit(this)">
+          Send Message →
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ─────────────────────────────────── -->
+<footer>
+  <div class="footer-inner">
+    <p class="footer-copy">
+      © 2021 <a href="#">PixelDevs.io</a> — Made with <span class="wp-heart">♥</span> and WordPress
+    </p>
+    <ul class="footer-links">
+      <li><a href="#about">About</a></li>
+      <li><a href="#services">Services</a></li>
+      <li><a href="#portfolio">Portfolio</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+  </div>
+</footer>
+
+<script>
+/* ── Scroll reveal ──────────────────────────── */
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('in');
+      // animate skill bars when about section reveals
+      e.target.querySelectorAll('.skill-fill').forEach(bar => {
+        bar.style.width = bar.dataset.w + '%';
+      });
+    }
+  });
+}, { threshold: 0.12 });
+
+document.querySelectorAll('.reveal, .reveal-stagger').forEach(el => observer.observe(el));
+
+/* Trigger skill bars if already in view on load */
+setTimeout(() => {
+  document.querySelectorAll('.skill-fill').forEach(bar => {
+    const rect = bar.getBoundingClientRect();
+    if (rect.top < window.innerHeight) bar.style.width = bar.dataset.w + '%';
+  });
+}, 300);
+
+/* ── Form submit ───────────────────────────── */
+function handleSubmit(btn) {
+  const name  = document.getElementById('name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const msg   = document.getElementById('message').value.trim();
+  if (!name || !email || !msg) {
+    btn.textContent = '⚠ Please fill required fields';
+    btn.style.background = '#8a4a00';
+    setTimeout(() => { btn.textContent = 'Send Message →'; btn.style.background = ''; }, 2500);
+    return;
+  }
+  btn.textContent = '✓ Message Sent!';
+  btn.style.background = '#2d7a4f';
+  btn.disabled = true;
+}
+
+/* ── Smooth active nav highlight ─────────────── */
+const sections = document.querySelectorAll('section[id]');
+const navLinks  = document.querySelectorAll('.nav-links a[href^="#"]');
+
+const sectionObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(a => {
+        a.style.color = '';
+        if (a.getAttribute('href') === '#' + e.target.id) a.style.color = 'var(--white)';
+      });
+    }
+  });
+}, { rootMargin: '-40% 0px -55% 0px' });
+
+sections.forEach(s => sectionObserver.observe(s));
+</script>
+</body>
+</html>
