@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phantom DevTools — Demo</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f0f2f5; color: #1a1a2e; padding-bottom: 340px; }
+  header { background: linear-gradient(135deg,#1a1a2e,#16213e); color: white; padding: 28px 40px; }
+  header h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+  header p  { opacity: 0.65; font-size: 14px; }
+  nav { background: #fff; border-bottom: 1px solid #ddd; padding: 0 40px; display: flex; }
+  nav a { display: block; padding: 12px 16px; color: #555; text-decoration: none; font-size: 14px; border-bottom: 2px solid transparent; }
+  nav a.active, nav a:hover { color: #0060df; border-bottom-color: #0060df; }
+  .container { max-width: 860px; margin: 0 auto; padding: 28px 40px; }
+  .card { background: white; border-radius: 10px; padding: 22px; margin-bottom: 18px; border: 1px solid #e4e4e4; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+  .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 14px; color: #16213e; }
+  .card p  { font-size: 14px; color: #555; line-height: 1.65; }
+  .grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 18px; }
+  .stat { background: white; border-radius: 10px; padding: 18px; text-align: center; border: 1px solid #e4e4e4; }
+  .stat .num   { font-size: 34px; font-weight: 700; color: #0060df; }
+  .stat .label { font-size: 12px; color: #888; margin-top: 4px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .btn  { background: #0060df; color: white; border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; font-size: 13px; transition: background 0.1s; }
+  .btn:hover { background: #004ecd; }
+  .btn.sec    { background: transparent; border: 1px solid #0060df; color: #0060df; }
+  .btn.sec:hover { background: #e8f0ff; }
+  .btn.danger { background: #d70022; }
+  .btn.danger:hover { background: #b8001b; }
+  form { display: flex; flex-direction: column; gap: 12px; }
+  label { font-size: 13px; font-weight: 500; color: #333; }
+  input[type=text], input[type=email], textarea, select {
+    border: 1px solid #ccc; border-radius: 5px; padding: 8px 10px; font-size: 13px;
+    font-family: inherit; width: 100%; outline: none; background: #fafafa;
+    transition: border-color 0.15s;
+  }
+  input:focus, textarea:focus, select:focus { border-color: #0060df; background: white; }
+  textarea { resize: vertical; min-height: 80px; }
+  .tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; margin: 2px; font-weight: 500; }
+  .tag.blue   { background: #dbeafe; color: #1e40af; }
+  .tag.green  { background: #dcfce7; color: #166534; }
+  .tag.red    { background: #fee2e2; color: #991b1b; }
+  .tag.orange { background: #fed7aa; color: #92400e; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 12px; background: #f8f9fa; border-bottom: 2px solid #e0e0e0; color: #555; font-weight: 500; }
+  td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; }
+  tr:hover td { background: #f5f8ff; }
+  footer { background: #1a1a2e; color: rgba(255,255,255,0.45); padding: 18px 40px; font-size: 12px; margin-top: 40px; }
+
+  #usage-box {
+    background: #1a1a2e; border-radius: 8px; padding: 16px 18px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 13px;
+    line-height: 1.7; color: #a5c261; margin-top: 12px;
+    border: 1px solid #2e2e48;
+  }
+  #usage-box .cm { color: #555; }
+  #usage-box .kw { color: #c678dd; }
+  #usage-box .st { color: #6fb3d2; }
+
+  #out { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 12px; font-family: monospace; font-size: 12px; min-height: 56px; white-space: pre-wrap; color: #333; max-height: 110px; overflow-y: auto; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="page-title">Phantom DevTools — Demo Page</h1>
+  <p id="subtitle">Press <strong>Alt + D</strong> or click the ⬡ button (bottom-right) to open the panel</p>
+</header>
+
+<nav>
+  <a href="#" class="active" id="nav-home">Home</a>
+  <a href="#" id="nav-docs">Docs</a>
+  <a href="#" id="nav-api">API</a>
+</nav>
+
+<div class="container">
+
+  <div class="grid">
+    <div class="stat" id="stat-els">  <div class="num" id="n1">42</div><div class="label">Elements</div></div>
+    <div class="stat" id="stat-css">  <div class="num" style="color:#0d9488" id="n2">17</div><div class="label">Stylesheets</div></div>
+    <div class="stat" id="stat-js">   <div class="num" style="color:#7c3aed" id="n3">8</div><div class="label">Scripts</div></div>
+  </div>
+
+  <!-- Usage snippet -->
+  <div class="card" id="usage-card">
+    <h2>How to use in your project</h2>
+    <div id="usage-box">
+<span class="cm">&lt;!-- 1. Drop the script into your page --&gt;</span>
+<span class="kw">&lt;script</span> <span class="st">src</span>="phantom-devtools.js"<span class="kw">&gt;&lt;/script&gt;</span>
+
+<span class="cm">&lt;!-- 2. Init with one line --&gt;</span>
+<span class="kw">&lt;script&gt;</span>
+  PhantomDevTools.init();
+<span class="kw">&lt;/script&gt;</span>
+
+<span class="cm">&lt;!-- Or use data-autoload for zero-config --&gt;</span>
+<span class="kw">&lt;script</span> <span class="st">src</span>="phantom-devtools.js"
+        <span class="st">data-autoload</span>
+        <span class="st">data-open</span>="true"
+        <span class="st">data-position</span>="bottom"<span class="kw">&gt;&lt;/script&gt;</span></div>
+  </div>
+
+  <!-- Console triggers -->
+  <div class="card" id="console-card">
+    <h2>Console Event Triggers</h2>
+    <div class="actions">
+      <button class="btn"        onclick="console.log('Hello world!', {ts: Date.now(), user: 'demo'})">console.log</button>
+      <button class="btn sec"    onclick="console.info('Page info:', navigator.platform, window.innerWidth+'×'+window.innerHeight)">console.info</button>
+      <button class="btn sec"    onclick="console.warn('Low memory', {used:'87%', limit:'4GB'})">console.warn</button>
+      <button class="btn danger" onclick="console.error(new Error('Simulated: connection refused'))">console.error</button>
+      <button class="btn sec"    onclick="console.debug('Debug frame', performance.now().toFixed(2))">console.debug</button>
+      <button class="btn"        onclick="doFetch()">fetch() request</button>
+      <button class="btn sec"    onclick="throwAsync()">Uncaught error</button>
+      <button class="btn sec"    onclick="logDeep()">Complex object</button>
+      <button class="btn danger" onclick="PhantomDevTools.clear()">Clear panel</button>
+    </div>
+    <div id="out">Click a button above…</div>
+  </div>
+
+  <!-- Form card -->
+  <div class="card" id="form-card">
+    <h2>Form Elements</h2>
+    <form onsubmit="return false">
+      <div><label for="inp-name">Full Name</label><input type="text" id="inp-name" placeholder="Jane Doe" /></div>
+      <div><label for="inp-email">Email</label><input type="email" id="inp-email" placeholder="jane@example.com" /></div>
+      <div>
+        <label for="inp-role">Role</label>
+        <select id="inp-role"><option>Developer</option><option>Designer</option><option>Manager</option></select>
+      </div>
+      <div><label for="inp-notes">Notes</label><textarea id="inp-notes" placeholder="Additional comments…"></textarea></div>
+      <button class="btn" type="submit" onclick="console.log('Submitted', {name:document.getElementById('inp-name').value, email:document.getElementById('inp-email').value})">Submit</button>
+    </form>
+  </div>
+
+  <!-- Tags -->
+  <div class="card" id="tags-card">
+    <h2>Tag Components — try selector <code style="background:#f0f0f0;padding:2px 6px;border-radius:4px;font-size:12px">.tag.green</code></h2>
+    <div>
+      <span class="tag blue"   id="t-js">JavaScript</span>
+      <span class="tag green"  id="t-css">CSS</span>
+      <span class="tag red"    id="t-html">HTML</span>
+      <span class="tag orange" id="t-dom">DOM API</span>
+      <span class="tag blue"   id="t-es6">ES6+</span>
+      <span class="tag green"  id="t-web">Web Platform</span>
+      <span class="tag red"    id="t-ts">TypeScript</span>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card" id="table-card">
+    <h2>Data Table</h2>
+    <table id="data-table">
+      <thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>001</td><td>Alpha</td>  <td><span class="tag green">Active</span></td>  <td>$1,240</td></tr>
+        <tr><td>002</td><td>Beta</td>   <td><span class="tag red">Inactive</span></td>  <td>$890</td></tr>
+        <tr><td>003</td><td>Gamma</td>  <td><span class="tag blue">Pending</span></td>  <td>$3,410</td></tr>
+        <tr><td>004</td><td>Delta</td>  <td><span class="tag green">Active</span></td>  <td>$2,100</td></tr>
+        <tr><td>005</td><td>Epsilon</td><td><span class="tag orange">Review</span></td> <td>$760</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Text -->
+  <div class="card" id="text-card">
+    <h2>Typography</h2>
+    <p id="main-para">Primary body text. Use the Inspector to examine <strong id="strong-el">computed styles</strong>, <em id="em-el">inherited properties</em>, and the box model of any element on this page.</p>
+    <p style="margin-top:10px;color:#888;font-size:12px" id="muted-para">Muted secondary paragraph — try the CSS selector <code>.card p</code> to highlight all paragraph elements simultaneously.</p>
+  </div>
+
+</div>
+
+<footer id="page-footer">
+  <p>Phantom DevTools Demo · Drop-in inspector for any web project · No build step required</p>
+</footer>
+
+<script>
+function doFetch() {
+  var out = document.getElementById('out');
+  out.textContent = 'Fetching…';
+  fetch('https://api.github.com/zen')
+    .then(function(r){ return r.text(); })
+    .then(function(t){ out.textContent = 'GitHub zen: '+t; })
+    .catch(function(e){ out.textContent = 'Error: '+e.message; });
+}
+function throwAsync() {
+  setTimeout(function() { undefinedFunctionXYZ(); }, 10);
+}
+function logDeep() {
+  console.log('Deep object:', {
+    user: { id: 42, name: 'Jane Doe', roles: ['admin','editor'], settings: { theme:'dark', lang:'en' } },
+    matrix: [[1,2,3],[4,5,6],[7,8,9]],
+    callback: function onLoad(e) { return e; },
+    timestamp: new Date().toISOString()
+  });
+  console.table([
+    {name:'Alpha', score:98, grade:'A'},
+    {name:'Beta',  score:74, grade:'C'},
+    {name:'Gamma', score:85, grade:'B'}
+  ]);
+}
+</script>
+
+<!-- ════════════════════════════════════════════════════════════
+     DROP-IN: just these two lines are all you need in your project
+════════════════════════════════════════════════════════════ -->
+<script src="phantom-devtools.js"></script>
+<script>
+  PhantomDevTools.init({
+    position: 'bottom',
+    height: 320,
+    open: false,
+    intercept: true,
+  });
+</script>
+
+</body>
+</html>
