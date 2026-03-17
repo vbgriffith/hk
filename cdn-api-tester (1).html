@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CDN & API Connection Tester</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0e;
+    --surface: #0a1520;
+    --surface2: #0f1f30;
+    --border: #1a3a55;
+    --accent: #00d4ff;
+    --accent2: #00ff9d;
+    --warn: #ffaa00;
+    --danger: #ff3a5c;
+    --muted: #3a6080;
+    --text: #c8e8f8;
+    --text2: #7aaccc;
+    --mono: 'Share Tech Mono', monospace;
+    --display: 'Barlow Condensed', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--display);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .wrapper { position: relative; z-index: 2; max-width: 1600px; margin: 0 auto; padding: 0 24px; }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+    position: sticky;
+    top: 0;
+    background: rgba(5,10,14,0.95);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .logo-main {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,212,255,0.5);
+  }
+  .logo-sub {
+    font-size: 11px;
+    font-weight: 300;
+    letter-spacing: 3px;
+    color: var(--text2);
+    text-transform: uppercase;
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .stat-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 16px;
+    min-width: 80px;
+  }
+  .stat-pill .val {
+    font-size: 22px;
+    font-weight: 700;
+    font-family: var(--mono);
+    line-height: 1;
+  }
+  .stat-pill .lbl {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin-top: 2px;
+  }
+  .stat-pill.ok .val { color: var(--accent2); }
+  .stat-pill.fail .val { color: var(--danger); }
+  .stat-pill.warn .val { color: var(--warn); }
+  .stat-pill.total .val { color: var(--accent); }
+  .stat-pill.speed .val { color: #b090ff; }
+
+  /* CONTROLS */
+  .controls {
+    padding: 20px 0 16px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .btn {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    padding: 10px 28px;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  }
+  .btn-primary:hover { background: #40e8ff; box-shadow: 0 0 20px rgba(0,212,255,0.5); }
+  .btn-primary:disabled { background: var(--muted); color: var(--surface); cursor: not-allowed; box-shadow: none; }
+  .btn-secondary {
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border);
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  .filter-group {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+  .filter-btn:hover, .filter-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,0.05); }
+  .filter-btn.f-ok.active { border-color: var(--accent2); color: var(--accent2); background: rgba(0,255,157,0.05); }
+  .filter-btn.f-fail.active { border-color: var(--danger); color: var(--danger); background: rgba(255,58,92,0.05); }
+  .filter-btn.f-warn.active { border-color: var(--warn); color: var(--warn); background: rgba(255,170,0,0.05); }
+
+  /* PROGRESS BAR */
+  .progress-track {
+    height: 3px;
+    background: var(--surface2);
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    width: 0%;
+    transition: width 0.3s;
+    box-shadow: 0 0 8px var(--accent);
+  }
+  .progress-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+  }
+
+  /* SEARCH */
+  .search-bar {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    max-width: 360px;
+  }
+  .search-bar input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 12px 8px 36px;
+    outline: none;
+    letter-spacing: 1px;
+  }
+  .search-bar input:focus { border-color: var(--accent); }
+  .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  /* CATEGORY HEADERS */
+  .category-section { margin-bottom: 32px; }
+  .cat-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .cat-name {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .cat-count {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text2);
+    background: var(--surface2);
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+  }
+  .cat-bar {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .cat-progress {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text2);
+  }
+
+  /* GRID */
+  .test-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 6px;
+  }
+
+  /* CARD */
+  .test-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    cursor: default;
+  }
+  .test-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+  .test-card.ok::before { background: var(--accent2); }
+  .test-card.fail::before { background: var(--danger); }
+  .test-card.warn::before { background: var(--warn); }
+  .test-card.pending::before { background: var(--muted); animation: pulse-bar 1s infinite; }
+  .test-card.testing::before { background: var(--accent); animation: pulse-bar 0.5s infinite; }
+
+  @keyframes pulse-bar {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .test-card:hover { border-color: var(--accent); background: var(--surface2); }
+  .test-card.hidden { display: none; }
+
+  .card-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+  .test-card.ok .card-status-dot { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+  .test-card.fail .card-status-dot { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+  .test-card.warn .card-status-dot { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+  .test-card.testing .card-status-dot { background: var(--accent); animation: spin-dot 0.8s linear infinite; }
+
+  @keyframes spin-dot {
+    0% { box-shadow: 2px 0 0 var(--accent); }
+    25% { box-shadow: 0 2px 0 var(--accent); }
+    50% { box-shadow: -2px 0 0 var(--accent); }
+    75% { box-shadow: 0 -2px 0 var(--accent); }
+  }
+
+  .card-info { flex: 1; min-width: 0; }
+  .card-name {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
+  }
+  .card-url {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+
+  .card-meta {
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .card-time {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text2);
+    transition: color 0.3s;
+  }
+  .test-card.ok .card-time { color: var(--accent2); }
+  .test-card.fail .card-time { color: var(--danger); }
+  .test-card.warn .card-time { color: var(--warn); }
+  .card-size {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 16px 0;
+    margin-top: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--muted);
+    letter-spacing: 1px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* SUMMARY ROW */
+  .summary-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+  }
+  .summary-item { display: flex; gap: 6px; align-items: center; }
+  .summary-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* Tooltip */
+  .test-card[title]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 8px;
+    white-space: nowrap;
+    z-index: 200;
+    pointer-events: none;
+  }
+
+  /* Responsive */
+  @media(max-width: 600px) {
+    .test-grid { grid-template-columns: 1fr; }
+    .logo-main { font-size: 20px; }
+    .header-stats { gap: 10px; }
+    .stat-pill { min-width: 60px; padding: 5px 10px; }
+    .stat-pill .val { font-size: 18px; }
+  }
+
+  /* Pulse animation for testing state */
+  .testing-pulse {
+    animation: glow-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 5px rgba(0,212,255,0.1); }
+    50% { box-shadow: 0 0 20px rgba(0,212,255,0.3); }
+  }
+
+  .elapsed {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrapper">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-main">NETPROBE</span>
+        <span class="logo-sub">CDN &amp; API Latency Tester</span>
+      </div>
+      <div class="header-stats">
+        <div class="stat-pill total"><span class="val" id="s-total">0</span><span class="lbl">Total</span></div>
+        <div class="stat-pill ok"><span class="val" id="s-ok">0</span><span class="lbl">Online</span></div>
+        <div class="stat-pill fail"><span class="val" id="s-fail">0</span><span class="lbl">Failed</span></div>
+        <div class="stat-pill warn"><span class="val" id="s-warn">0</span><span class="lbl">Slow</span></div>
+        <div class="stat-pill speed"><span class="val" id="s-avg">—</span><span class="lbl">Avg ms</span></div>
+        <div class="elapsed" id="elapsed-time">00:00</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrapper">
+  <div class="controls">
+    <button class="btn btn-primary" id="btn-run">▶ RUN ALL TESTS</button>
+    <button class="btn btn-secondary" id="btn-stop" disabled>■ STOP</button>
+    <button class="btn btn-secondary" id="btn-export">↓ EXPORT CSV</button>
+    <div class="search-bar">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="search-input" placeholder="Filter endpoints...">
+    </div>
+    <div class="filter-group">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn f-ok" data-filter="ok">Online</button>
+      <button class="filter-btn f-warn" data-filter="warn">Slow</button>
+      <button class="filter-btn f-fail" data-filter="fail">Failed</button>
+      <button class="filter-btn" data-filter="pending">Pending</button>
+    </div>
+  </div>
+
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+  <div class="progress-label" id="progress-label">Ready — <span id="total-count">0</span> endpoints loaded</div>
+
+  <div id="categories-container"></div>
+</div>
+
+<footer class="wrapper">
+  <span>NETPROBE v1.0 — Tests run via fetch() with no-cors mode</span>
+  <span id="last-run">—</span>
+  <span>Slow threshold: &gt;800ms · Timeout: 8s</span>
+</footer>
+
+<script>
+// =====================================================================
+// ENDPOINT DATABASE — 500+ CDN & API endpoints
+// =====================================================================
+const ENDPOINTS = [
+
+// ─── JSDELIVR CDN (100 entries) ────────────────────────────────────
+{ cat:"jsDelivr CDN", name:"jQuery 3.7.1", url:"https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js" },
+{ cat:"jsDelivr CDN", name:"React 18.2.0", url:"https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js" },
+{ cat:"jsDelivr CDN", name:"ReactDOM 18.2.0", url:"https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js" },
+{ cat:"jsDelivr CDN", name:"Vue 3.4.0", url:"https://cdn.jsdelivr.net/npm/vue@3.4.0/dist/vue.global.prod.js" },
+{ cat:"jsDelivr CDN", name:"Angular 17", url:"https://cdn.jsdelivr.net/npm/@angular/core@17.0.0/fesm2022/core.mjs" },
+{ cat:"jsDelivr CDN", name:"Lodash 4.17.21", url:"https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js" },
+{ cat:"jsDelivr CDN", name:"Axios 1.6.0", url:"https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js" },
+{ cat:"jsDelivr CDN", name:"Bootstrap 5.3.2 CSS", url:"https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" },
+{ cat:"jsDelivr CDN", name:"Bootstrap 5.3.2 JS", url:"https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" },
+{ cat:"jsDelivr CDN", name:"Tailwind CSS 3.4", url:"https://cdn.jsdelivr.net/npm/tailwindcss@3.4.0/src/index.js" },
+{ cat:"jsDelivr CDN", name:"D3.js 7.8.5", url:"https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js" },
+{ cat:"jsDelivr CDN", name:"Chart.js 4.4.0", url:"https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" },
+{ cat:"jsDelivr CDN", name:"Three.js r159", url:"https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js" },
+{ cat:"jsDelivr CDN", name:"Moment.js 2.29.4", url:"https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js" },
+{ cat:"jsDelivr CDN", name:"Day.js 1.11.10", url:"https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js" },
+{ cat:"jsDelivr CDN", name:"Underscore 1.13.6", url:"https://cdn.jsdelivr.net/npm/underscore@1.13.6/underscore-min.js" },
+{ cat:"jsDelivr CDN", name:"Backbone.js 1.6.0", url:"https://cdn.jsdelivr.net/npm/backbone@1.6.0/backbone-min.js" },
+{ cat:"jsDelivr CDN", name:"Ember.js 5.4.0", url:"https://cdn.jsdelivr.net/npm/ember-source@5.4.0/dist/ember.prod.js" },
+{ cat:"jsDelivr CDN", name:"Svelte 4.2.8", url:"https://cdn.jsdelivr.net/npm/svelte@4.2.8/src/index.js" },
+{ cat:"jsDelivr CDN", name:"Alpine.js 3.13.3", url:"https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js" },
+{ cat:"jsDelivr CDN", name:"GSAP 3.12.3", url:"https://cdn.jsdelivr.net/npm/gsap@3.12.3/dist/gsap.min.js" },
+{ cat:"jsDelivr CDN", name:"Anime.js 3.2.1", url:"https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js" },
+{ cat:"jsDelivr CDN", name:"Lottie Web 5.12.2", url:"https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie.min.js" },
+{ cat:"jsDelivr CDN", name:"Socket.io 4.6.1", url:"https://cdn.jsdelivr.net/npm/socket.io-client@4.6.1/dist/socket.io.min.js" },
+{ cat:"jsDelivr CDN", name:"Popper.js 2.11.8", url:"https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" },
+{ cat:"jsDelivr CDN", name:"Tippy.js 6.3.7", url:"https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy.umd.min.js" },
+{ cat:"jsDelivr CDN", name:"SweetAlert2 11.10", url:"https://cdn.jsdelivr.net/npm/sweetalert2@11.10.0/dist/sweetalert2.min.js" },
+{ cat:"jsDelivr CDN", name:"Toastify 1.12.0", url:"https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/src/toastify.min.js" },
+{ cat:"jsDelivr CDN", name:"Flatpickr 4.6.13", url:"https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" },
+{ cat:"jsDelivr CDN", name:"Select2 4.1.0", url:"https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js" },
+{ cat:"jsDelivr CDN", name:"Choices.js 10.2.0", url:"https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/scripts/choices.min.js" },
+{ cat:"jsDelivr CDN", name:"Quill 1.3.7", url:"https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js" },
+{ cat:"jsDelivr CDN", name:"TinyMCE 6.8.2", url:"https://cdn.jsdelivr.net/npm/tinymce@6.8.2/tinymce.min.js" },
+{ cat:"jsDelivr CDN", name:"CodeMirror 6.0.1", url:"https://cdn.jsdelivr.net/npm/codemirror@6.0.1/dist/index.js" },
+{ cat:"jsDelivr CDN", name:"Monaco Editor 0.45", url:"https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js" },
+{ cat:"jsDelivr CDN", name:"Prism.js 1.29.0", url:"https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js" },
+{ cat:"jsDelivr CDN", name:"Highlight.js 11.9", url:"https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/core.min.js" },
+{ cat:"jsDelivr CDN", name:"Marked.js 10.0.0", url:"https://cdn.jsdelivr.net/npm/marked@10.0.0/marked.min.js" },
+{ cat:"jsDelivr CDN", name:"DOMPurify 3.0.6", url:"https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js" },
+{ cat:"jsDelivr CDN", name:"xss 1.0.14", url:"https://cdn.jsdelivr.net/npm/xss@1.0.14/dist/xss.min.js" },
+{ cat:"jsDelivr CDN", name:"CryptoJS 4.2.0", url:"https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.js" },
+{ cat:"jsDelivr CDN", name:"JSZip 3.10.1", url:"https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" },
+{ cat:"jsDelivr CDN", name:"FileSaver.js 2.0.5", url:"https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js" },
+{ cat:"jsDelivr CDN", name:"Papa Parse 5.4.1", url:"https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" },
+{ cat:"jsDelivr CDN", name:"SheetJS 0.20.1", url:"https://cdn.jsdelivr.net/npm/xlsx@0.20.1/dist/xlsx.mini.min.js" },
+{ cat:"jsDelivr CDN", name:"jsPDF 2.5.1", url:"https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" },
+{ cat:"jsDelivr CDN", name:"PDF.js 4.0.379", url:"https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs" },
+{ cat:"jsDelivr CDN", name:"Fabric.js 5.3.0", url:"https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js" },
+{ cat:"jsDelivr CDN", name:"Konva.js 9.3.2", url:"https://cdn.jsdelivr.net/npm/konva@9.3.2/konva.min.js" },
+{ cat:"jsDelivr CDN", name:"Pixi.js 7.3.2", url:"https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js" },
+{ cat:"jsDelivr CDN", name:"Babylon.js 6.29", url:"https://cdn.jsdelivr.net/npm/babylonjs@6.29.0/babylon.js" },
+{ cat:"jsDelivr CDN", name:"Leaflet 1.9.4", url:"https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet-src.min.js" },
+{ cat:"jsDelivr CDN", name:"OpenLayers 8.2.0", url:"https://cdn.jsdelivr.net/npm/ol@8.2.0/dist/ol.js" },
+{ cat:"jsDelivr CDN", name:"Mapbox GL 3.0.1", url:"https://cdn.jsdelivr.net/npm/mapbox-gl@3.0.1/dist/mapbox-gl.js" },
+{ cat:"jsDelivr CDN", name:"Turf.js 6.5.0", url:"https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js" },
+{ cat:"jsDelivr CDN", name:"Recharts 2.10.1", url:"https://cdn.jsdelivr.net/npm/recharts@2.10.1/src/index.ts" },
+{ cat:"jsDelivr CDN", name:"Vega 5.26.1", url:"https://cdn.jsdelivr.net/npm/vega@5.26.1/build/vega.min.js" },
+{ cat:"jsDelivr CDN", name:"Vega-Lite 5.16.3", url:"https://cdn.jsdelivr.net/npm/vega-lite@5.16.3/build/vega-lite.min.js" },
+{ cat:"jsDelivr CDN", name:"ApexCharts 3.44.2", url:"https://cdn.jsdelivr.net/npm/apexcharts@3.44.2/dist/apexcharts.min.js" },
+{ cat:"jsDelivr CDN", name:"Highcharts 11.2.0", url:"https://cdn.jsdelivr.net/npm/highcharts@11.2.0/highcharts.js" },
+{ cat:"jsDelivr CDN", name:"Plotly.js 2.27.1", url:"https://cdn.jsdelivr.net/npm/plotly.js@2.27.1/dist/plotly.min.js" },
+{ cat:"jsDelivr CDN", name:"ECharts 5.4.3", url:"https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js" },
+{ cat:"jsDelivr CDN", name:"C3.js 0.7.20", url:"https://cdn.jsdelivr.net/npm/c3@0.7.20/c3.min.js" },
+{ cat:"jsDelivr CDN", name:"Frappe Charts 1.6.2", url:"https://cdn.jsdelivr.net/npm/frappe-charts@1.6.2/dist/frappe-charts.min.iife.js" },
+{ cat:"jsDelivr CDN", name:"Sortable.js 1.15.1", url:"https://cdn.jsdelivr.net/npm/sortablejs@1.15.1/Sortable.min.js" },
+{ cat:"jsDelivr CDN", name:"Draggable 1.0.0", url:"https://cdn.jsdelivr.net/npm/@shopify/draggable@1.0.0-beta.13/lib/draggable.bundle.js" },
+{ cat:"jsDelivr CDN", name:"interact.js 1.10.27", url:"https://cdn.jsdelivr.net/npm/interactjs@1.10.27/dist/interact.min.js" },
+{ cat:"jsDelivr CDN", name:"Hammer.js 2.0.8", url:"https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js" },
+{ cat:"jsDelivr CDN", name:"Howler.js 2.2.4", url:"https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js" },
+{ cat:"jsDelivr CDN", name:"Tone.js 14.7.77", url:"https://cdn.jsdelivr.net/npm/tone@14.7.77/build/Tone.js" },
+{ cat:"jsDelivr CDN", name:"WaveSurfer 7.5.3", url:"https://cdn.jsdelivr.net/npm/wavesurfer.js@7.5.3/dist/wavesurfer.min.js" },
+{ cat:"jsDelivr CDN", name:"Video.js 8.6.1", url:"https://cdn.jsdelivr.net/npm/video.js@8.6.1/dist/video.min.js" },
+{ cat:"jsDelivr CDN", name:"Plyr 3.7.8", url:"https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js" },
+{ cat:"jsDelivr CDN", name:"Swiper 11.0.5", url:"https://cdn.jsdelivr.net/npm/swiper@11.0.5/swiper-bundle.min.js" },
+{ cat:"jsDelivr CDN", name:"Splide 4.1.4", url:"https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js" },
+{ cat:"jsDelivr CDN", name:"Flickity 3.0.0", url:"https://cdn.jsdelivr.net/npm/flickity@3.0.0/dist/flickity.pkgd.min.js" },
+{ cat:"jsDelivr CDN", name:"Glide.js 3.7.2", url:"https://cdn.jsdelivr.net/npm/@glidejs/glide@3.7.2/dist/glide.min.js" },
+{ cat:"jsDelivr CDN", name:"AOS 2.3.4", url:"https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js" },
+{ cat:"jsDelivr CDN", name:"Waypoints 4.0.1", url:"https://cdn.jsdelivr.net/npm/waypoints@4.0.1/lib/noframework.waypoints.min.js" },
+{ cat:"jsDelivr CDN", name:"ScrollReveal 4.0.9", url:"https://cdn.jsdelivr.net/npm/scrollreveal@4.0.9/dist/scrollreveal.min.js" },
+{ cat:"jsDelivr CDN", name:"Rellax 1.12.1", url:"https://cdn.jsdelivr.net/npm/rellax@1.12.1/rellax.min.js" },
+{ cat:"jsDelivr CDN", name:"FullPage.js 4.0.20", url:"https://cdn.jsdelivr.net/npm/fullpage.js@4.0.20/dist/fullpage.min.js" },
+{ cat:"jsDelivr CDN", name:"DataTables 1.13.7", url:"https://cdn.jsdelivr.net/npm/datatables.net@1.13.7/js/jquery.dataTables.min.js" },
+{ cat:"jsDelivr CDN", name:"AG Grid 31.0.1", url:"https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.1/dist/ag-grid-community.min.js" },
+{ cat:"jsDelivr CDN", name:"Tabulator 6.2.1", url:"https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.1/dist/js/tabulator.min.js" },
+{ cat:"jsDelivr CDN", name:"Handsontable 14.0", url:"https://cdn.jsdelivr.net/npm/handsontable@14.0.0/dist/handsontable.full.min.js" },
+{ cat:"jsDelivr CDN", name:"Immer 10.0.3", url:"https://cdn.jsdelivr.net/npm/immer@10.0.3/dist/immer.umd.production.min.js" },
+{ cat:"jsDelivr CDN", name:"Zustand 4.4.7", url:"https://cdn.jsdelivr.net/npm/zustand@4.4.7/dist/umd.js" },
+{ cat:"jsDelivr CDN", name:"Redux 5.0.1", url:"https://cdn.jsdelivr.net/npm/redux@5.0.1/dist/redux.min.js" },
+{ cat:"jsDelivr CDN", name:"MobX 6.11.0", url:"https://cdn.jsdelivr.net/npm/mobx@6.11.0/dist/mobx.umd.production.min.js" },
+{ cat:"jsDelivr CDN", name:"Recoil 0.7.7", url:"https://cdn.jsdelivr.net/npm/recoil@0.7.7/umd/recoil.min.js" },
+{ cat:"jsDelivr CDN", name:"Jotai 2.6.0", url:"https://cdn.jsdelivr.net/npm/jotai@2.6.0/utils.mjs" },
+{ cat:"jsDelivr CDN", name:"Valtio 1.12.1", url:"https://cdn.jsdelivr.net/npm/valtio@1.12.1/vanilla.mjs" },
+{ cat:"jsDelivr CDN", name:"Zustand devtools", url:"https://cdn.jsdelivr.net/npm/zustand@4.4.7/middleware.mjs" },
+{ cat:"jsDelivr CDN", name:"XState 5.1.0", url:"https://cdn.jsdelivr.net/npm/xstate@5.1.0/dist/xstate.js" },
+{ cat:"jsDelivr CDN", name:"RxJS 7.8.1", url:"https://cdn.jsdelivr.net/npm/rxjs@7.8.1/dist/bundles/rxjs.umd.min.js" },
+
+// ─── CDNJS (100 entries) ───────────────────────────────────────────
+{ cat:"cdnjs", name:"jQuery 3.7.1", url:"https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" },
+{ cat:"cdnjs", name:"React 18.2.0", url:"https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" },
+{ cat:"cdnjs", name:"ReactDOM 18.2.0", url:"https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" },
+{ cat:"cdnjs", name:"Bootstrap 5.3.2 CSS", url:"https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" },
+{ cat:"cdnjs", name:"Bootstrap 5.3.2 JS", url:"https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js" },
+{ cat:"cdnjs", name:"Font Awesome 6.5.1 CSS", url:"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" },
+{ cat:"cdnjs", name:"Lodash 4.17.21", url:"https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js" },
+{ cat:"cdnjs", name:"Axios 1.6.0", url:"https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.0/axios.min.js" },
+{ cat:"cdnjs", name:"Moment.js 2.29.4", url:"https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js" },
+{ cat:"cdnjs", name:"D3.js 7.8.5", url:"https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js" },
+{ cat:"cdnjs", name:"Chart.js 4.4.0", url:"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" },
+{ cat:"cdnjs", name:"Three.js r128", url:"https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" },
+{ cat:"cdnjs", name:"GSAP 3.12.3", url:"https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.3/gsap.min.js" },
+{ cat:"cdnjs", name:"Anime.js 3.2.1", url:"https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" },
+{ cat:"cdnjs", name:"Hammer.js 2.0.8", url:"https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js" },
+{ cat:"cdnjs", name:"Howler.js 2.2.3", url:"https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js" },
+{ cat:"cdnjs", name:"Swiper 11.0.4", url:"https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.4/swiper-bundle.min.js" },
+{ cat:"cdnjs", name:"AOS 2.3.4", url:"https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js" },
+{ cat:"cdnjs", name:"Popper.js 2.11.8", url:"https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.11.8/umd/popper.min.js" },
+{ cat:"cdnjs", name:"Vue 3.3.13", url:"https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.13/vue.global.prod.min.js" },
+{ cat:"cdnjs", name:"Backbone.js 1.5.0", url:"https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.5.0/backbone-min.js" },
+{ cat:"cdnjs", name:"Underscore 1.13.6", url:"https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.6/underscore-min.js" },
+{ cat:"cdnjs", name:"Require.js 2.3.6", url:"https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" },
+{ cat:"cdnjs", name:"Knockout.js 3.5.1", url:"https://cdnjs.cloudflare.com/ajax/libs/knockout/3.5.1/knockout-min.js" },
+{ cat:"cdnjs", name:"Handlebars 4.7.8", url:"https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.8/handlebars.min.js" },
+{ cat:"cdnjs", name:"Mustache 4.2.0", url:"https://cdnjs.cloudflare.com/ajax/libs/mustache.js/4.2.0/mustache.min.js" },
+{ cat:"cdnjs", name:"Pug 3.0.2", url:"https://cdnjs.cloudflare.com/ajax/libs/pug/3.0.2/pug.min.js" },
+{ cat:"cdnjs", name:"EJS 3.1.9", url:"https://cdnjs.cloudflare.com/ajax/libs/ejs/3.1.9/ejs.min.js" },
+{ cat:"cdnjs", name:"Marked 10.0.0", url:"https://cdnjs.cloudflare.com/ajax/libs/marked/10.0.0/marked.min.js" },
+{ cat:"cdnjs", name:"Showdown 2.1.0", url:"https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js" },
+{ cat:"cdnjs", name:"Prism.js 1.29.0", url:"https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" },
+{ cat:"cdnjs", name:"Highlight.js 11.9.0", url:"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" },
+{ cat:"cdnjs", name:"Quill 1.3.7", url:"https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js" },
+{ cat:"cdnjs", name:"CKEditor 4.22.1", url:"https://cdnjs.cloudflare.com/ajax/libs/ckeditor/4.22.1/ckeditor.js" },
+{ cat:"cdnjs", name:"SortableJS 1.15.1", url:"https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.1/Sortable.min.js" },
+{ cat:"cdnjs", name:"Dragula 3.7.3", url:"https://cdnjs.cloudflare.com/ajax/libs/dragula/3.7.3/dragula.min.js" },
+{ cat:"cdnjs", name:"Select2 4.0.13", url:"https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js" },
+{ cat:"cdnjs", name:"Chosen 1.8.7", url:"https://cdnjs.cloudflare.com/ajax/libs/chosen/1.8.7/chosen.jquery.min.js" },
+{ cat:"cdnjs", name:"Flatpickr 4.6.13", url:"https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js" },
+{ cat:"cdnjs", name:"Pikaday 1.8.2", url:"https://cdnjs.cloudflare.com/ajax/libs/pikaday/1.8.2/pikaday.min.js" },
+{ cat:"cdnjs", name:"DataTables 1.13.7", url:"https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js" },
+{ cat:"cdnjs", name:"Leaflet 1.9.4", url:"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet-src.min.js" },
+{ cat:"cdnjs", name:"Leaflet CSS", url:"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" },
+{ cat:"cdnjs", name:"Mapbox GL 3.0.1", url:"https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/3.0.1/mapbox-gl.js" },
+{ cat:"cdnjs", name:"Turf.js 6.5.0", url:"https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js" },
+{ cat:"cdnjs", name:"Plotly 2.26.2", url:"https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.2/plotly.min.js" },
+{ cat:"cdnjs", name:"Highcharts 11.2.0", url:"https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.2.0/highcharts.js" },
+{ cat:"cdnjs", name:"ECharts 5.4.3", url:"https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js" },
+{ cat:"cdnjs", name:"Fabric.js 5.3.0", url:"https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js" },
+{ cat:"cdnjs", name:"Konva.js 9.3.2", url:"https://cdnjs.cloudflare.com/ajax/libs/konva/9.3.2/konva.min.js" },
+{ cat:"cdnjs", name:"Pixi.js 7.3.2", url:"https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js" },
+{ cat:"cdnjs", name:"Paper.js 0.12.17", url:"https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.17/paper-full.min.js" },
+{ cat:"cdnjs", name:"P5.js 1.9.0", url:"https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js" },
+{ cat:"cdnjs", name:"Matter.js 0.19.0", url:"https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js" },
+{ cat:"cdnjs", name:"Cannon.js 0.6.2", url:"https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js" },
+{ cat:"cdnjs", name:"Box2D 1.0.0", url:"https://cdnjs.cloudflare.com/ajax/libs/box2dweb/2.1.a.3/Box2dWeb-2.1.a.3.min.js" },
+{ cat:"cdnjs", name:"Howler CSS Polyfill", url:"https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" },
+{ cat:"cdnjs", name:"Normalize CSS 8.0.1", url:"https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" },
+{ cat:"cdnjs", name:"Bulma CSS 0.9.4", url:"https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.4/css/bulma.min.css" },
+{ cat:"cdnjs", name:"Foundation 6.8.1", url:"https://cdnjs.cloudflare.com/ajax/libs/foundation/6.8.1/js/foundation.min.js" },
+{ cat:"cdnjs", name:"Materialize 1.0.0", url:"https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js" },
+{ cat:"cdnjs", name:"Semantic UI 2.5.0", url:"https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.5.0/semantic.min.js" },
+{ cat:"cdnjs", name:"UIkit 3.16.26", url:"https://cdnjs.cloudflare.com/ajax/libs/uikit/3.16.26/js/uikit.min.js" },
+{ cat:"cdnjs", name:"Ant Design 5.12.5", url:"https://cdnjs.cloudflare.com/ajax/libs/ant-design-icons/1.0.6/index.umd.js" },
+{ cat:"cdnjs", name:"Redux 5.0.1", url:"https://cdnjs.cloudflare.com/ajax/libs/redux/5.0.1/redux.min.js" },
+{ cat:"cdnjs", name:"RxJS 7.8.1", url:"https://cdnjs.cloudflare.com/ajax/libs/rxjs/7.8.1/rxjs.umd.min.js" },
+{ cat:"cdnjs", name:"Ramda 0.29.1", url:"https://cdnjs.cloudflare.com/ajax/libs/ramda/0.29.1/ramda.min.js" },
+{ cat:"cdnjs", name:"Immutable.js 4.3.5", url:"https://cdnjs.cloudflare.com/ajax/libs/immutable/4.3.5/immutable.min.js" },
+{ cat:"cdnjs", name:"CryptoJS 4.2.0", url:"https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js" },
+{ cat:"cdnjs", name:"Forge 1.3.1", url:"https://cdnjs.cloudflare.com/ajax/libs/forge/1.3.1/forge.min.js" },
+{ cat:"cdnjs", name:"JSZip 3.10.1", url:"https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" },
+{ cat:"cdnjs", name:"Pako 2.1.0", url:"https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js" },
+{ cat:"cdnjs", name:"FileSaver.js 2.0.5", url:"https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" },
+{ cat:"cdnjs", name:"Clipboard.js 2.0.11", url:"https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.11/clipboard.min.js" },
+{ cat:"cdnjs", name:"qrcodejs 1.0.0", url:"https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" },
+{ cat:"cdnjs", name:"zxing 0.20.0", url:"https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.20.0/zxing.min.js" },
+{ cat:"cdnjs", name:"Shepherd.js 11.2.0", url:"https://cdnjs.cloudflare.com/ajax/libs/shepherd.js/11.2.0/js/shepherd.min.js" },
+{ cat:"cdnjs", name:"Intro.js 7.2.0", url:"https://cdnjs.cloudflare.com/ajax/libs/intro.js/7.2.0/intro.min.js" },
+{ cat:"cdnjs", name:"Driver.js 1.2.1", url:"https://cdnjs.cloudflare.com/ajax/libs/driver.js/1.2.1/driver.js.iife.js" },
+{ cat:"cdnjs", name:"SweetAlert2 11.10.1", url:"https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.1/sweetalert2.min.js" },
+{ cat:"cdnjs", name:"Notyf 3.10.0", url:"https://cdnjs.cloudflare.com/ajax/libs/notyf/3.10.0/notyf.min.js" },
+{ cat:"cdnjs", name:"Noty 3.1.4", url:"https://cdnjs.cloudflare.com/ajax/libs/noty/3.1.4/noty.min.js" },
+{ cat:"cdnjs", name:"Typed.js 2.0.16", url:"https://cdnjs.cloudflare.com/ajax/libs/typed.js/2.0.16/typed.umd.min.js" },
+{ cat:"cdnjs", name:"Autosize 6.0.1", url:"https://cdnjs.cloudflare.com/ajax/libs/autosize.js/6.0.1/autosize.min.js" },
+{ cat:"cdnjs", name:"Masonry 4.2.2", url:"https://cdnjs.cloudflare.com/ajax/libs/masonry/4.2.2/masonry.pkgd.min.js" },
+{ cat:"cdnjs", name:"Isotope 3.0.6", url:"https://cdnjs.cloudflare.com/ajax/libs/jquery.isotope/3.0.6/isotope.pkgd.min.js" },
+{ cat:"cdnjs", name:"Fuse.js 7.0.0", url:"https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js" },
+{ cat:"cdnjs", name:"FlexSearch 0.7.31", url:"https://cdnjs.cloudflare.com/ajax/libs/flexsearch/0.7.31/flexsearch.bundle.js" },
+{ cat:"cdnjs", name:"Lunr.js 2.3.9", url:"https://cdnjs.cloudflare.com/ajax/libs/lunr.js/2.3.9/lunr.min.js" },
+{ cat:"cdnjs", name:"Luxon 3.4.4", url:"https://cdnjs.cloudflare.com/ajax/libs/luxon/3.4.4/luxon.min.js" },
+{ cat:"cdnjs", name:"Date-fns 3.0.6", url:"https://cdnjs.cloudflare.com/ajax/libs/date-fns/3.0.6/cdn.min.js" },
+{ cat:"cdnjs", name:"Numeral.js 2.0.6", url:"https://cdnjs.cloudflare.com/ajax/libs/numeral.js/2.0.6/numeral.min.js" },
+{ cat:"cdnjs", name:"Accounting.js 0.4.1", url:"https://cdnjs.cloudflare.com/ajax/libs/accounting.js/0.4.1/accounting.min.js" },
+{ cat:"cdnjs", name:"UUID 9.0.0", url:"https://cdnjs.cloudflare.com/ajax/libs/uuid/9.0.0/uuidv4.min.js" },
+{ cat:"cdnjs", name:"Validator.js 13.11.0", url:"https://cdnjs.cloudflare.com/ajax/libs/validator/13.11.0/validator.min.js" },
+
+// ─── PUBLIC APIs (200 entries) ─────────────────────────────────────
+{ cat:"Public APIs", name:"JSONPlaceholder Posts", url:"https://jsonplaceholder.typicode.com/posts/1" },
+{ cat:"Public APIs", name:"JSONPlaceholder Users", url:"https://jsonplaceholder.typicode.com/users/1" },
+{ cat:"Public APIs", name:"JSONPlaceholder Todos", url:"https://jsonplaceholder.typicode.com/todos/1" },
+{ cat:"Public APIs", name:"JSONPlaceholder Albums", url:"https://jsonplaceholder.typicode.com/albums/1" },
+{ cat:"Public APIs", name:"JSONPlaceholder Photos", url:"https://jsonplaceholder.typicode.com/photos/1" },
+{ cat:"Public APIs", name:"JSONPlaceholder Comments", url:"https://jsonplaceholder.typicode.com/comments/1" },
+{ cat:"Public APIs", name:"HTTPBin GET", url:"https://httpbin.org/get" },
+{ cat:"Public APIs", name:"HTTPBin IP", url:"https://httpbin.org/ip" },
+{ cat:"Public APIs", name:"HTTPBin UUID", url:"https://httpbin.org/uuid" },
+{ cat:"Public APIs", name:"HTTPBin Anything", url:"https://httpbin.org/anything" },
+{ cat:"Public APIs", name:"HTTPBin Headers", url:"https://httpbin.org/headers" },
+{ cat:"Public APIs", name:"HTTPBin User-Agent", url:"https://httpbin.org/user-agent" },
+{ cat:"Public APIs", name:"HTTPBin Status 200", url:"https://httpbin.org/status/200" },
+{ cat:"Public APIs", name:"HTTPBin Delay 1s", url:"https://httpbin.org/delay/1" },
+{ cat:"Public APIs", name:"IP API (ipify)", url:"https://api.ipify.org?format=json" },
+{ cat:"Public APIs", name:"IP-API.com", url:"https://ip-api.com/json" },
+{ cat:"Public APIs", name:"ipinfo.io", url:"https://ipinfo.io/json" },
+{ cat:"Public APIs", name:"freeipapi", url:"https://freeipapi.com/api/json" },
+{ cat:"Public APIs", name:"ipwho.is", url:"https://ipwho.is/" },
+{ cat:"Public APIs", name:"Open-Meteo Weather", url:"https://api.open-meteo.com/v1/forecast?latitude=40.71&longitude=-74.01&current_weather=true" },
+{ cat:"Public APIs", name:"Open-Meteo Air Quality", url:"https://air-quality-api.open-meteo.com/v1/air-quality?latitude=52.52&longitude=13.41&current=pm10" },
+{ cat:"Public APIs", name:"Open-Meteo Marine", url:"https://marine-api.open-meteo.com/v1/marine?latitude=54.544587&longitude=10.227487&hourly=wave_height" },
+{ cat:"Public APIs", name:"wttr.in JSON", url:"https://wttr.in/London?format=j1" },
+{ cat:"Public APIs", name:"Open Meteo Geocoding", url:"https://geocoding-api.open-meteo.com/v1/search?name=Berlin&count=1" },
+{ cat:"Public APIs", name:"Open Elevation", url:"https://api.open-elevation.com/api/v1/lookup?locations=10,10" },
+{ cat:"Public APIs", name:"PokéAPI Bulbasaur", url:"https://pokeapi.co/api/v2/pokemon/bulbasaur" },
+{ cat:"Public APIs", name:"PokéAPI Charmander", url:"https://pokeapi.co/api/v2/pokemon/charmander" },
+{ cat:"Public APIs", name:"PokéAPI Squirtle", url:"https://pokeapi.co/api/v2/pokemon/squirtle" },
+{ cat:"Public APIs", name:"PokéAPI Berry", url:"https://pokeapi.co/api/v2/berry/1" },
+{ cat:"Public APIs", name:"PokéAPI Types", url:"https://pokeapi.co/api/v2/type/fire" },
+{ cat:"Public APIs", name:"PokéAPI Move", url:"https://pokeapi.co/api/v2/move/1" },
+{ cat:"Public APIs", name:"PokéAPI Ability", url:"https://pokeapi.co/api/v2/ability/1" },
+{ cat:"Public APIs", name:"REST Countries Name", url:"https://restcountries.com/v3.1/name/germany" },
+{ cat:"Public APIs", name:"REST Countries Alpha", url:"https://restcountries.com/v3.1/alpha/us" },
+{ cat:"Public APIs", name:"REST Countries Region", url:"https://restcountries.com/v3.1/region/europe?fields=name" },
+{ cat:"Public APIs", name:"REST Countries Currency", url:"https://restcountries.com/v3.1/currency/eur?fields=name" },
+{ cat:"Public APIs", name:"REST Countries Language", url:"https://restcountries.com/v3.1/lang/spanish?fields=name" },
+{ cat:"Public APIs", name:"Country Flags API", url:"https://flagcdn.com/w80/de.png" },
+{ cat:"Public APIs", name:"Open Library Search", url:"https://openlibrary.org/search.json?q=javascript&limit=1" },
+{ cat:"Public APIs", name:"Open Library ISBN", url:"https://openlibrary.org/api/books?bibkeys=ISBN:0201558025&format=json" },
+{ cat:"Public APIs", name:"Google Books API", url:"https://www.googleapis.com/books/v1/volumes?q=javascript&maxResults=1" },
+{ cat:"Public APIs", name:"NASA APOD", url:"https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY" },
+{ cat:"Public APIs", name:"NASA Mars Rover", url:"https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/photos?sol=1000&api_key=DEMO_KEY&page=1" },
+{ cat:"Public APIs", name:"NASA NeoWs Asteroids", url:"https://api.nasa.gov/neo/rest/v1/feed/today?api_key=DEMO_KEY" },
+{ cat:"Public APIs", name:"NASA EPIC Images", url:"https://api.nasa.gov/EPIC/api/natural?api_key=DEMO_KEY" },
+{ cat:"Public APIs", name:"NASA Tech Transfer", url:"https://api.nasa.gov/techtransfer/patent/?api_key=DEMO_KEY&engine" },
+{ cat:"Public APIs", name:"SpaceX Latest Launch", url:"https://api.spacexdata.com/v4/launches/latest" },
+{ cat:"Public APIs", name:"SpaceX Rockets", url:"https://api.spacexdata.com/v4/rockets" },
+{ cat:"Public APIs", name:"SpaceX Capsules", url:"https://api.spacexdata.com/v4/capsules" },
+{ cat:"Public APIs", name:"SpaceX Crew", url:"https://api.spacexdata.com/v4/crew" },
+{ cat:"Public APIs", name:"SpaceX Landpads", url:"https://api.spacexdata.com/v4/landpads" },
+{ cat:"Public APIs", name:"ISS Position", url:"https://api.wheretheiss.at/v1/satellites/25544" },
+{ cat:"Public APIs", name:"Open Notify ISS", url:"http://api.open-notify.org/iss-now.json" },
+{ cat:"Public APIs", name:"Open Notify Astronauts", url:"http://api.open-notify.org/astros.json" },
+{ cat:"Public APIs", name:"Cat Facts", url:"https://catfact.ninja/fact" },
+{ cat:"Public APIs", name:"Cat Facts List", url:"https://catfact.ninja/facts?limit=5" },
+{ cat:"Public APIs", name:"Dog CEO Random", url:"https://dog.ceo/api/breeds/image/random" },
+{ cat:"Public APIs", name:"Dog CEO Breeds List", url:"https://dog.ceo/api/breeds/list/all" },
+{ cat:"Public APIs", name:"RandomUser.me", url:"https://randomuser.me/api/" },
+{ cat:"Public APIs", name:"RandomUser 5 Users", url:"https://randomuser.me/api/?results=5" },
+{ cat:"Public APIs", name:"Lorem Picsum Photo", url:"https://picsum.photos/200/300" },
+{ cat:"Public APIs", name:"Lorem Picsum Info", url:"https://picsum.photos/v2/list?page=1&limit=3" },
+{ cat:"Public APIs", name:"DiceBear Avataaars", url:"https://api.dicebear.com/8.x/avataaars/svg?seed=Felix" },
+{ cat:"Public APIs", name:"DiceBear Pixel Art", url:"https://api.dicebear.com/8.x/pixel-art/svg?seed=test" },
+{ cat:"Public APIs", name:"DiceBear Identicon", url:"https://api.dicebear.com/8.x/identicon/svg?seed=hello" },
+{ cat:"Public APIs", name:"Open Food Facts", url:"https://world.openfoodfacts.org/api/v0/product/737628064502.json" },
+{ cat:"Public APIs", name:"TheMealDB Search", url:"https://www.themealdb.com/api/json/v1/1/search.php?s=Arrabiata" },
+{ cat:"Public APIs", name:"TheMealDB Random", url:"https://www.themealdb.com/api/json/v1/1/random.php" },
+{ cat:"Public APIs", name:"TheMealDB Categories", url:"https://www.themealdb.com/api/json/v1/1/categories.php" },
+{ cat:"Public APIs", name:"TheCocktailDB Search", url:"https://www.thecocktaildb.com/api/json/v1/1/search.php?s=margarita" },
+{ cat:"Public APIs", name:"TheCocktailDB Random", url:"https://www.thecocktaildb.com/api/json/v1/1/random.php" },
+{ cat:"Public APIs", name:"TheCocktailDB Categories", url:"https://www.thecocktaildb.com/api/json/v1/1/list.php?c=list" },
+{ cat:"Public APIs", name:"Open Brewery DB", url:"https://api.openbrewerydb.org/v1/breweries?per_page=3" },
+{ cat:"Public APIs", name:"Open Brewery Random", url:"https://api.openbrewerydb.org/v1/breweries/random" },
+{ cat:"Public APIs", name:"Open Brewery Search", url:"https://api.openbrewerydb.org/v1/breweries/search?query=sierra+nevada" },
+{ cat:"Public APIs", name:"Bored API", url:"https://www.boredapi.com/api/activity" },
+{ cat:"Public APIs", name:"Advice Slip", url:"https://api.adviceslip.com/advice" },
+{ cat:"Public APIs", name:"Quotable Random", url:"https://api.quotable.io/random" },
+{ cat:"Public APIs", name:"Quotable Authors", url:"https://api.quotable.io/authors?limit=3" },
+{ cat:"Public APIs", name:"Chuck Norris Joke", url:"https://api.chucknorris.io/jokes/random" },
+{ cat:"Public APIs", name:"Chuck Norris Categories", url:"https://api.chucknorris.io/jokes/categories" },
+{ cat:"Public APIs", name:"JokeAPI Random", url:"https://v2.jokeapi.dev/joke/Any?blacklistFlags=nsfw" },
+{ cat:"Public APIs", name:"JokeAPI Programming", url:"https://v2.jokeapi.dev/joke/Programming" },
+{ cat:"Public APIs", name:"Official Joke API", url:"https://official-joke-api.appspot.com/random_joke" },
+{ cat:"Public APIs", name:"icanhazdadjoke", url:"https://icanhazdadjoke.com/slack" },
+{ cat:"Public APIs", name:"Numbers API Math", url:"https://numbersapi.com/42/math" },
+{ cat:"Public APIs", name:"Numbers API Trivia", url:"https://numbersapi.com/1729/trivia" },
+{ cat:"Public APIs", name:"Numbers API Year", url:"https://numbersapi.com/1969/year" },
+{ cat:"Public APIs", name:"MathJS Evaluate", url:"https://api.mathjs.org/v4/?expr=2%5E10" },
+{ cat:"Public APIs", name:"Free Dictionary Hello", url:"https://api.dictionaryapi.dev/api/v2/entries/en/hello" },
+{ cat:"Public APIs", name:"Free Dictionary Code", url:"https://api.dictionaryapi.dev/api/v2/entries/en/code" },
+{ cat:"Public APIs", name:"Free Dictionary API", url:"https://api.dictionaryapi.dev/api/v2/entries/en/ephemeral" },
+{ cat:"Public APIs", name:"CoinGecko Ping", url:"https://api.coingecko.com/api/v3/ping" },
+{ cat:"Public APIs", name:"CoinGecko Bitcoin", url:"https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd" },
+{ cat:"Public APIs", name:"CoinGecko Ethereum", url:"https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd" },
+{ cat:"Public APIs", name:"CoinGecko Top Coins", url:"https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&per_page=5" },
+{ cat:"Public APIs", name:"CoinGecko Trending", url:"https://api.coingecko.com/api/v3/search/trending" },
+{ cat:"Public APIs", name:"CoinGecko Global", url:"https://api.coingecko.com/api/v3/global" },
+{ cat:"Public APIs", name:"Exchange Rates USD", url:"https://open.er-api.com/v6/latest/USD" },
+{ cat:"Public APIs", name:"Exchange Rates EUR", url:"https://open.er-api.com/v6/latest/EUR" },
+{ cat:"Public APIs", name:"Frankfurter USD", url:"https://api.frankfurter.app/latest?from=USD" },
+{ cat:"Public APIs", name:"Frankfurter EUR", url:"https://api.frankfurter.app/latest?from=EUR" },
+{ cat:"Public APIs", name:"Frankfurter Currencies", url:"https://api.frankfurter.app/currencies" },
+{ cat:"Public APIs", name:"GitHub Events", url:"https://api.github.com/events?per_page=1" },
+{ cat:"Public APIs", name:"GitHub Repos", url:"https://api.github.com/repositories?since=1" },
+{ cat:"Public APIs", name:"GitHub Torvalds", url:"https://api.github.com/users/torvalds" },
+{ cat:"Public APIs", name:"GitHub Trending Search", url:"https://api.github.com/search/repositories?q=stars:>10000&sort=stars&per_page=1" },
+{ cat:"Public APIs", name:"GitHub Rate Limit", url:"https://api.github.com/rate_limit" },
+{ cat:"Public APIs", name:"GitHub Octocat", url:"https://api.github.com/octocat" },
+{ cat:"Public APIs", name:"npm jQuery", url:"https://registry.npmjs.org/jquery/latest" },
+{ cat:"Public APIs", name:"npm React", url:"https://registry.npmjs.org/react/latest" },
+{ cat:"Public APIs", name:"npm Vue", url:"https://registry.npmjs.org/vue/latest" },
+{ cat:"Public APIs", name:"npm Lodash", url:"https://registry.npmjs.org/lodash/latest" },
+{ cat:"Public APIs", name:"npm Downloads React", url:"https://api.npmjs.org/downloads/point/last-month/react" },
+{ cat:"Public APIs", name:"npm Downloads jQuery", url:"https://api.npmjs.org/downloads/point/last-month/jquery" },
+{ cat:"Public APIs", name:"Open Trivia Questions", url:"https://opentdb.com/api.php?amount=3" },
+{ cat:"Public APIs", name:"Open Trivia Categories", url:"https://opentdb.com/api_category.php" },
+{ cat:"Public APIs", name:"Trivia Token", url:"https://opentdb.com/api_token.php?command=request" },
+{ cat:"Public APIs", name:"World Time UTC", url:"https://worldtimeapi.org/api/timezone/Etc/UTC" },
+{ cat:"Public APIs", name:"World Time NY", url:"https://worldtimeapi.org/api/timezone/America/New_York" },
+{ cat:"Public APIs", name:"World Time London", url:"https://worldtimeapi.org/api/timezone/Europe/London" },
+{ cat:"Public APIs", name:"World Time Zones List", url:"https://worldtimeapi.org/api/timezone" },
+{ cat:"Public APIs", name:"Sunrise-Sunset Today", url:"https://api.sunrise-sunset.org/json?lat=36.7201600&lng=-4.4203400&date=today" },
+{ cat:"Public APIs", name:"Disease.sh COVID Global", url:"https://disease.sh/v3/covid-19/all" },
+{ cat:"Public APIs", name:"Disease.sh Countries", url:"https://disease.sh/v3/covid-19/countries?limit=3" },
+{ cat:"Public APIs", name:"Disease.sh Vaccines", url:"https://disease.sh/v3/covid-19/vaccine/coverage" },
+{ cat:"Public APIs", name:"TV Maze Show", url:"https://api.tvmaze.com/shows/1" },
+{ cat:"Public APIs", name:"TV Maze Search", url:"https://api.tvmaze.com/search/shows?q=breaking+bad" },
+{ cat:"Public APIs", name:"TV Maze Schedule", url:"https://api.tvmaze.com/schedule?country=US&date=2024-01-01" },
+{ cat:"Public APIs", name:"TV Maze Episodes", url:"https://api.tvmaze.com/shows/1/episodes" },
+{ cat:"Public APIs", name:"MusicBrainz Artist", url:"https://musicbrainz.org/ws/2/artist/5b11f4ce-a62d-471e-81fc-a69a8278c7da?fmt=json" },
+{ cat:"Public APIs", name:"MusicBrainz Search", url:"https://musicbrainz.org/ws/2/artist/?query=radiohead&fmt=json" },
+{ cat:"Public APIs", name:"iTunes Search", url:"https://itunes.apple.com/search?term=jack+johnson&limit=3" },
+{ cat:"Public APIs", name:"iTunes Lookup", url:"https://itunes.apple.com/lookup?id=909253" },
+{ cat:"Public APIs", name:"SWAPI People", url:"https://swapi.dev/api/people/1/" },
+{ cat:"Public APIs", name:"SWAPI Films", url:"https://swapi.dev/api/films/1/" },
+{ cat:"Public APIs", name:"SWAPI Planets", url:"https://swapi.dev/api/planets/1/" },
+{ cat:"Public APIs", name:"SWAPI Species", url:"https://swapi.dev/api/species/1/" },
+{ cat:"Public APIs", name:"Rick & Morty Character", url:"https://rickandmortyapi.com/api/character/1" },
+{ cat:"Public APIs", name:"Rick & Morty Locations", url:"https://rickandmortyapi.com/api/location" },
+{ cat:"Public APIs", name:"Rick & Morty Episodes", url:"https://rickandmortyapi.com/api/episode" },
+{ cat:"Public APIs", name:"GoT Characters", url:"https://anapioficeandfire.com/api/characters?pageSize=3" },
+{ cat:"Public APIs", name:"GoT Houses", url:"https://anapioficeandfire.com/api/houses?pageSize=3" },
+{ cat:"Public APIs", name:"GoT Books", url:"https://anapioficeandfire.com/api/books" },
+{ cat:"Public APIs", name:"Harry Potter Characters", url:"https://hp-api.onrender.com/api/characters" },
+{ cat:"Public APIs", name:"Harry Potter Houses", url:"https://hp-api.onrender.com/api/characters/house/gryffindor" },
+{ cat:"Public APIs", name:"Superhero API", url:"https://akabab.github.io/superhero-api/api/id/1.json" },
+{ cat:"Public APIs", name:"Superhero All", url:"https://akabab.github.io/superhero-api/api/all.json" },
+{ cat:"Public APIs", name:"Agify Name", url:"https://api.agify.io?name=michael" },
+{ cat:"Public APIs", name:"Nationalize Name", url:"https://api.nationalize.io?name=nathaniel" },
+{ cat:"Public APIs", name:"Genderize Name", url:"https://api.genderize.io?name=peter" },
+{ cat:"Public APIs", name:"Zippopotamus US", url:"https://api.zippopotam.us/us/90210" },
+{ cat:"Public APIs", name:"Zippopotamus UK", url:"https://api.zippopotam.us/gb/SW1A" },
+{ cat:"Public APIs", name:"OpenStreetMap Nominatim", url:"https://nominatim.openstreetmap.org/search?q=London&format=json&limit=1" },
+{ cat:"Public APIs", name:"Nominatim Reverse", url:"https://nominatim.openstreetmap.org/reverse?lat=51.5&lon=-0.12&format=json" },
+{ cat:"Public APIs", name:"UUID Generator", url:"https://httpbin.org/uuid" },
+{ cat:"Public APIs", name:"Random.org Integers", url:"https://www.random.org/integers/?num=5&min=1&max=100&col=1&base=10&format=plain&rnd=new" },
+{ cat:"Public APIs", name:"Bacon Ipsum", url:"https://baconipsum.com/api/?type=meat-and-filler&paras=1&format=json" },
+{ cat:"Public APIs", name:"Lorem Ipsum API", url:"https://loripsum.net/api/1/short/plaintext" },
+{ cat:"Public APIs", name:"Corporate BS", url:"https://corporatebs-generator.sameerkumar.website/" },
+{ cat:"Public APIs", name:"RandomFox Image", url:"https://randomfox.ca/floof/" },
+{ cat:"Public APIs", name:"Shibe Online Dog", url:"https://shibe.online/api/shibes?count=1" },
+{ cat:"Public APIs", name:"Shibe Online Cat", url:"https://shibe.online/api/cats?count=1" },
+{ cat:"Public APIs", name:"Shibe Online Bird", url:"https://shibe.online/api/birds?count=1" },
+{ cat:"Public APIs", name:"The Dog API", url:"https://api.thedogapi.com/v1/breeds?limit=3" },
+{ cat:"Public APIs", name:"The Cat API", url:"https://api.thecatapi.com/v1/breeds?limit=3" },
+{ cat:"Public APIs", name:"FishWatch NOAA", url:"https://www.fishwatch.gov/api/species" },
+{ cat:"Public APIs", name:"Open Notify ISS Pass", url:"http://api.open-notify.org/iss-now.json" },
+{ cat:"Public APIs", name:"Wikidata Entity", url:"https://www.wikidata.org/wiki/Special:EntityData/Q42.json" },
+{ cat:"Public APIs", name:"Wikipedia Summary", url:"https://en.wikipedia.org/api/rest_v1/page/summary/JavaScript" },
+{ cat:"Public APIs", name:"Wikipedia Random", url:"https://en.wikipedia.org/api/rest_v1/page/random/summary" },
+{ cat:"Public APIs", name:"Wikimedia Commons", url:"https://commons.wikimedia.org/w/api.php?action=query&list=random&rnnamespace=6&rnlimit=1&format=json" },
+{ cat:"Public APIs", name:"MediaWiki OpenSearch", url:"https://en.wikipedia.org/w/api.php?action=opensearch&search=javascript&limit=3&format=json" },
+{ cat:"Public APIs", name:"Archive.org Search", url:"https://archive.org/advancedsearch.php?q=javascript&output=json&rows=3" },
+{ cat:"Public APIs", name:"Gutenberg Books", url:"https://gutendex.com/books/?page=1" },
+{ cat:"Public APIs", name:"Gutenberg Search", url:"https://gutendex.com/books/?search=dickens" },
+{ cat:"Public APIs", name:"Crossref Works", url:"https://api.crossref.org/works?rows=1&query=javascript" },
+{ cat:"Public APIs", name:"arXiv Search", url:"https://export.arxiv.org/api/query?search_query=all:electron&max_results=1" },
+{ cat:"Public APIs", name:"PubMed Search", url:"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=cancer&retmax=3&format=json" },
+{ cat:"Public APIs", name:"FDA Drug API", url:"https://api.fda.gov/drug/label.json?limit=1" },
+{ cat:"Public APIs", name:"FDA Food Enforcement", url:"https://api.fda.gov/food/enforcement.json?limit=1" },
+{ cat:"Public APIs", name:"USAspending.gov", url:"https://api.usaspending.gov/api/v2/references/agency/456/" },
+{ cat:"Public APIs", name:"Data.gov USDA", url:"https://api.nal.usda.gov/fdc/v1/foods/list?dataType=Branded&pageSize=1&api_key=DEMO_KEY" },
+{ cat:"Public APIs", name:"US Census Bureau", url:"https://api.census.gov/data/2020/dec/pl?get=P1_001N&for=state:*" },
+{ cat:"Public APIs", name:"BLS Employment", url:"https://api.bls.gov/publicAPI/v2/timeseries/data/LNS14000000" },
+{ cat:"Public APIs", name:"FRED Economic Data", url:"https://api.stlouisfed.org/fred/series?series_id=GNPCA&api_key=abcdefghijklmnopqrstuvwxyz123456&file_type=json" },
+{ cat:"Public APIs", name:"World Bank GDP", url:"https://api.worldbank.org/v2/country/us/indicator/NY.GDP.MKTP.CD?format=json&mrv=1" },
+{ cat:"Public APIs", name:"World Bank Countries", url:"https://api.worldbank.org/v2/country?format=json&per_page=5" },
+{ cat:"Public APIs", name:"World Bank Topics", url:"https://api.worldbank.org/v2/topic?format=json" },
+{ cat:"Public APIs", name:"UN Data API", url:"https://data.un.org/ws/rest/data/DF_UNDATA_COUNTRYDATA/A..UGA/?format=json" },
+{ cat:"Public APIs", name:"Open Parliament", url:"https://api.parliament.uk/query/sparql" },
+{ cat:"Public APIs", name:"OpenFDA Events", url:"https://api.fda.gov/device/event.json?limit=1" },
+{ cat:"Public APIs", name:"AviationStack Free", url:"https://api.aviationstack.com/v1/flights?access_key=test" },
+{ cat:"Public APIs", name:"OpenSky Network", url:"https://opensky-network.org/api/states/all?lamin=45.8389&lomin=5.9962&lamax=47.8229&lomax=10.5226" },
+{ cat:"Public APIs", name:"ADS-B Exchange", url:"https://api.adsb.lol/api/0/mil" },
+{ cat:"Public APIs", name:"Marine Traffic Free", url:"https://services.marinetraffic.com/api/getvessel/v:3/DEMO/" },
+{ cat:"Public APIs", name:"Railway API UK", url:"https://api.rtt.io/api/v1/json/search/PAD" },
+{ cat:"Public APIs", name:"CityBikes Networks", url:"https://api.citybik.es/v2/networks" },
+{ cat:"Public APIs", name:"CityBikes London", url:"https://api.citybik.es/v2/networks/santander-cycles" },
+{ cat:"Public APIs", name:"GBFS Bike Share", url:"https://gbfs.bird.co/van" },
+{ cat:"Public APIs", name:"OpenChargeMap EV", url:"https://api.openchargemap.io/v3/poi/?output=json&countrycode=US&maxresults=3&key=test" },
+{ cat:"Public APIs", name:"Geocode Maps", url:"https://geocode.maps.co/search?q=London" },
+{ cat:"Public APIs", name:"BigDataCloud Geo", url:"https://api.bigdatacloud.net/data/client-ip" },
+{ cat:"Public APIs", name:"AbstractAPI IP", url:"https://ipgeolocation.abstractapi.com/v1/?api_key=test" },
+{ cat:"Public APIs", name:"Clearbit Logo", url:"https://logo.clearbit.com/google.com" },
+{ cat:"Public APIs", name:"DuckDuckGo Icons", url:"https://icons.duckduckgo.com/ip3/github.com.ico" },
+{ cat:"Public APIs", name:"Have I Been Pwned", url:"https://haveibeenpwned.com/api/v3/breacheddomain/adobe.com" },
+{ cat:"Public APIs", name:"Shodan Internet DB", url:"https://internetdb.shodan.io/8.8.8.8" },
+{ cat:"Public APIs", name:"VirusTotal DNS", url:"https://www.virustotal.com/vtapi/v2/url/report?apikey=demo&resource=google.com" },
+{ cat:"Public APIs", name:"URLScan.io Search", url:"https://urlscan.io/api/v1/search/?q=domain:google.com&size=1" },
+{ cat:"Public APIs", name:"SSL Labs Grade", url:"https://api.ssllabs.com/api/v3/info" },
+{ cat:"Public APIs", name:"SecurityHeaders.com", url:"https://securityheaders.com/?q=google.com&followRedirects=on&hide=on" },
+{ cat:"Public APIs", name:"PwnedPasswords Count", url:"https://api.pwnedpasswords.com/range/21BD1" },
+{ cat:"Public APIs", name:"Gravatar Profile", url:"https://en.gravatar.com/205e460b479e2e5b48aec07710c08d50.json" },
+
+
+// ─── GOOGLE APIs & SERVICES (50 entries) ───────────────────────────
+{ cat:"Google Services", name:"Google Fonts API", url:"https://fonts.googleapis.com/css2?family=Roboto&display=swap" },
+{ cat:"Google Services", name:"Google Fonts Static", url:"https://fonts.gstatic.com/s/roboto/v32/KFOmCnqEu92Fr1Mu4mxKKTU1Kg.woff2" },
+{ cat:"Google Services", name:"Google AJAX jQuery", url:"https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js" },
+{ cat:"Google Services", name:"Google AJAX Angular", url:"https://ajax.googleapis.com/ajax/libs/angularjs/1.8.3/angular.min.js" },
+{ cat:"Google Services", name:"Google AJAX Dojo", url:"https://ajax.googleapis.com/ajax/libs/dojo/1.17.3/dojo/dojo.js" },
+{ cat:"Google Services", name:"Google Maps JS API", url:"https://maps.googleapis.com/maps/api/js" },
+{ cat:"Google Services", name:"Google Charts", url:"https://www.gstatic.com/charts/loader.js" },
+{ cat:"Google Services", name:"Material Icons", url:"https://fonts.googleapis.com/icon?family=Material+Icons" },
+{ cat:"Google Services", name:"Material Symbols", url:"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" },
+{ cat:"Google Services", name:"Google reCAPTCHA", url:"https://www.google.com/recaptcha/api.js" },
+{ cat:"Google Services", name:"Google Tag Manager", url:"https://www.googletagmanager.com/gtm.js?id=GTM-XXXX" },
+{ cat:"Google Services", name:"Google Analytics 4", url:"https://www.googletagmanager.com/gtag/js?id=G-XXXX" },
+{ cat:"Google Services", name:"Firebase App", url:"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js" },
+{ cat:"Google Services", name:"Firebase Auth", url:"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js" },
+{ cat:"Google Services", name:"Firebase Firestore", url:"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js" },
+{ cat:"Google Services", name:"Firebase Realtime DB", url:"https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js" },
+{ cat:"Google Services", name:"Firebase Storage", url:"https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js" },
+{ cat:"Google Services", name:"Firebase Messaging", url:"https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js" },
+{ cat:"Google Services", name:"Firebase Functions", url:"https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js" },
+{ cat:"Google Services", name:"Firebase Analytics", url:"https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js" },
+{ cat:"Google Services", name:"Google Pay", url:"https://pay.google.com/gp/p/js/pay.js" },
+{ cat:"Google Services", name:"Google Ads", url:"https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js" },
+{ cat:"Google Services", name:"YouTube iFrame API", url:"https://www.youtube.com/iframe_api" },
+{ cat:"Google Services", name:"YouTube Player", url:"https://s.ytimg.com/yts/jsbin/www-widgetapi.vflset/www-widgetapi.js" },
+{ cat:"Google Services", name:"Google Translate JS", url:"https://translate.google.com/translate_a/static?client=webapp" },
+{ cat:"Google Services", name:"GStatic Fonts CSS2", url:"https://fonts.gstatic.com/s/lato/v24/S6uyw4BMUTPHjx4wXiWtFCc.woff2" },
+{ cat:"Google Services", name:"Google Open Sans", url:"https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Lato Font", url:"https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Poppins Font", url:"https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" },
+{ cat:"Google Services", name:"Google Nunito Font", url:"https://fonts.googleapis.com/css2?family=Nunito&display=swap" },
+{ cat:"Google Services", name:"Google Montserrat", url:"https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Raleway Font", url:"https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Source Sans", url:"https://fonts.googleapis.com/css2?family=Source+Sans+3&display=swap" },
+{ cat:"Google Services", name:"Google Merriweather", url:"https://fonts.googleapis.com/css2?family=Merriweather&display=swap" },
+{ cat:"Google Services", name:"Google Playfair", url:"https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap" },
+{ cat:"Google Services", name:"Google Inter Font", url:"https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Oswald Font", url:"https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Ubuntu Font", url:"https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Fira Sans", url:"https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Work Sans", url:"https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google DM Sans", url:"https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Cabin Font", url:"https://fonts.googleapis.com/css2?family=Cabin:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google PT Sans", url:"https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Rubik Font", url:"https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Mulish Font", url:"https://fonts.googleapis.com/css2?family=Mulish:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Quicksand", url:"https://fonts.googleapis.com/css2?family=Quicksand:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Barlow Font", url:"https://fonts.googleapis.com/css2?family=Barlow:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Josefin Sans", url:"https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google IBM Plex", url:"https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Space Grotesk", url:"https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&display=swap" },
+
+// ─── AWS, AZURE & CLOUD CDNs (50 entries) ─────────────────────────
+{ cat:"Cloud CDNs", name:"AWS CloudFront S3", url:"https://d1.awsstatic.com/logos/aws-logo-lockups/poweredbyaws/PB_AWS_logo_RGB_stacked_REV_SQ.91cd4af40773cbfbd15577a3c2b8a346fe3e8fa2.png" },
+{ cat:"Cloud CDNs", name:"AWS SDK Browser", url:"https://sdk.amazonaws.com/js/aws-sdk-2.1518.0.min.js" },
+{ cat:"Cloud CDNs", name:"Azure CDN jQuery", url:"https://ajax.aspnetcdn.com/ajax/jquery/jquery-3.7.1.min.js" },
+{ cat:"Cloud CDNs", name:"Azure CDN Bootstrap", url:"https://ajax.aspnetcdn.com/ajax/bootstrap/3.4.1/bootstrap.min.js" },
+{ cat:"Cloud CDNs", name:"Azure CDN Angular", url:"https://ajax.aspnetcdn.com/ajax/angular.js/1.8.3/angular.min.js" },
+{ cat:"Cloud CDNs", name:"Azure CDN React", url:"https://ajax.aspnetcdn.com/ajax/react/0.14.8/react.min.js" },
+{ cat:"Cloud CDNs", name:"Azure CDN KnockoutJS", url:"https://ajax.aspnetcdn.com/ajax/knockout/knockout-3.5.1.js" },
+{ cat:"Cloud CDNs", name:"Cloudflare CDN Assets", url:"https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" },
+{ cat:"Cloud CDNs", name:"Fastly CDN", url:"https://cdn.fastly.net/http-archive/httparchive.org/fonts/opensans/bold/opensans-bold.woff2" },
+{ cat:"Cloud CDNs", name:"GitHub Raw Content", url:"https://raw.githubusercontent.com/jquery/jquery/main/dist/jquery.min.js" },
+{ cat:"Cloud CDNs", name:"GitHub Pages", url:"https://pages.github.com/" },
+{ cat:"Cloud CDNs", name:"Netlify CDN", url:"https://www.netlify.com/v3/img/components/logomark.png" },
+{ cat:"Cloud CDNs", name:"Vercel CDN", url:"https://vercel.com/button" },
+{ cat:"Cloud CDNs", name:"Render CDN", url:"https://render.com/" },
+{ cat:"Cloud CDNs", name:"Supabase CDN JS", url:"https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js" },
+{ cat:"Cloud CDNs", name:"Stripe.js", url:"https://js.stripe.com/v3/" },
+{ cat:"Cloud CDNs", name:"PayPal SDK", url:"https://www.paypalobjects.com/api/checkout.js" },
+{ cat:"Cloud CDNs", name:"Braintree JS", url:"https://js.braintreegateway.com/web/3.97.3/js/client.min.js" },
+{ cat:"Cloud CDNs", name:"Square Web Payments", url:"https://web.squarecdn.com/v1/square.js" },
+{ cat:"Cloud CDNs", name:"Twilio JS SDK", url:"https://sdk.twilio.com/js/taskrouter/v1.21/taskrouter.min.js" },
+{ cat:"Cloud CDNs", name:"SendGrid CDN", url:"https://cdn.jsdelivr.net/npm/@sendgrid/mail@8.1.1/src/index.js" },
+{ cat:"Cloud CDNs", name:"Intercom SDK", url:"https://js.intercomcdn.com/intercom.v5.js" },
+{ cat:"Cloud CDNs", name:"Segment Analytics.js", url:"https://cdn.segment.com/analytics.js/v1/YOUR_WRITE_KEY/analytics.min.js" },
+{ cat:"Cloud CDNs", name:"Mixpanel CDN", url:"https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js" },
+{ cat:"Cloud CDNs", name:"Amplitude SDK", url:"https://cdn.amplitude.com/libs/amplitude-8.21.4-min.gz.js" },
+{ cat:"Cloud CDNs", name:"Heap Analytics", url:"https://cdn.heapanalytics.com/js/heap-1234567.js" },
+{ cat:"Cloud CDNs", name:"Hotjar Tracking", url:"https://static.hotjar.com/c/hotjar-1234567.js" },
+{ cat:"Cloud CDNs", name:"FullStory SDK", url:"https://edge.fullstory.com/s/fs.js" },
+{ cat:"Cloud CDNs", name:"LogRocket CDN", url:"https://cdn.lr-ingest.com/LogRocket.min.js" },
+{ cat:"Cloud CDNs", name:"Datadog Browser SDK", url:"https://www.datadoghq-browser-agent.com/us1/v5/datadog-rum.js" },
+{ cat:"Cloud CDNs", name:"New Relic Browser", url:"https://js-agent.newrelic.com/nr-loader-rum-1.261.0.min.js" },
+{ cat:"Cloud CDNs", name:"Sentry Browser", url:"https://browser.sentry-cdn.com/7.91.0/bundle.tracing.replay.min.js" },
+{ cat:"Cloud CDNs", name:"Rollbar CDN", url:"https://cdnjs.cloudflare.com/ajax/libs/rollbar.js/2.26.4/rollbar.umd.min.js" },
+{ cat:"Cloud CDNs", name:"Bugsnag JS", url:"https://d2wy8f7a9ursnm.cloudfront.net/v7/bugsnag.min.js" },
+{ cat:"Cloud CDNs", name:"Raygun CDN", url:"https://cdn.raygun.io/raygun4js/raygun.min.js" },
+{ cat:"Cloud CDNs", name:"TrackJS CDN", url:"https://cdn.trackjs.com/releases/current/tracker.js" },
+{ cat:"Cloud CDNs", name:"Auth0 JS", url:"https://cdn.auth0.com/js/auth0/9.23.3/auth0.min.js" },
+{ cat:"Cloud CDNs", name:"Okta Auth JS", url:"https://global.oktacdn.com/okta-auth-js/7.5.1/okta-auth-js.min.js" },
+{ cat:"Cloud CDNs", name:"Clerk JS", url:"https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5.0.0/dist/clerk.browser.js" },
+{ cat:"Cloud CDNs", name:"Supertokens", url:"https://cdn.jsdelivr.net/npm/supertokens-web-js@0.9.5/bundle/website.js" },
+{ cat:"Cloud CDNs", name:"Firebase CDN App", url:"https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-app.js" },
+{ cat:"Cloud CDNs", name:"Cloudinary Upload", url:"https://widget.cloudinary.com/v2.0/global/all.js" },
+{ cat:"Cloud CDNs", name:"Imgix CDN", url:"https://assets.imgix.net/logo.svg" },
+{ cat:"Cloud CDNs", name:"Bunny CDN", url:"https://cdn.bunny.net/" },
+{ cat:"Cloud CDNs", name:"KeyCDN", url:"https://api.keycdn.com/status" },
+{ cat:"Cloud CDNs", name:"StackPath CDN", url:"https://cdn.stackpath.io/lib/bootstrap/5.3.2/css/bootstrap.min.css" },
+{ cat:"Cloud CDNs", name:"Akamai CDN", url:"https://ak1.abmr.net/lib/bootstrap/5.3.2/css/bootstrap.min.css" },
+{ cat:"Cloud CDNs", name:"Limelight CDN", url:"https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie.min.js" },
+{ cat:"Cloud CDNs", name:"AWS S3 Public", url:"https://s3.amazonaws.com/codecademy-content/courses/ltp2/img/css-badge.png" },
+{ cat:"Cloud CDNs", name:"Azure Blob Storage", url:"https://azure.microsoft.com/en-us/products/storage/" },
+{ cat:"Cloud CDNs", name:"GCP Cloud Storage", url:"https://cloud.google.com/storage" },
+
+// ─── MISC / DEV TOOLS (50 entries) ────────────────────────────────
+{ cat:"Dev Tools & Misc", name:"Vite CDN (jsdelivr)", url:"https://cdn.jsdelivr.net/npm/vite@5.0.10/dist/client/client.mjs" },
+{ cat:"Dev Tools & Misc", name:"esbuild-wasm", url:"https://cdn.jsdelivr.net/npm/esbuild-wasm@0.19.11/esbuild.wasm" },
+{ cat:"Dev Tools & Misc", name:"Babel Standalone", url:"https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.7/babel.min.js" },
+{ cat:"Dev Tools & Misc", name:"TypeScript 5.3", url:"https://cdn.jsdelivr.net/npm/typescript@5.3.3/lib/typescript.js" },
+{ cat:"Dev Tools & Misc", name:"CoffeeScript 2.7.0", url:"https://cdn.jsdelivr.net/npm/coffeescript@2.7.0/extras/coffee-script.js" },
+{ cat:"Dev Tools & Misc", name:"Sass.js 0.11.1", url:"https://cdn.jsdelivr.net/npm/sass.js@0.11.1/dist/sass.sync.min.js" },
+{ cat:"Dev Tools & Misc", name:"PostCSS 8.4.32", url:"https://cdn.jsdelivr.net/npm/postcss@8.4.32/lib/postcss.js" },
+{ cat:"Dev Tools & Misc", name:"Autoprefixer 10.4.16", url:"https://cdn.jsdelivr.net/npm/autoprefixer@10.4.16/lib/autoprefixer.js" },
+{ cat:"Dev Tools & Misc", name:"Jest 29.7.0", url:"https://cdn.jsdelivr.net/npm/jest@29.7.0/package.json" },
+{ cat:"Dev Tools & Misc", name:"Mocha 10.2.0", url:"https://cdn.jsdelivr.net/npm/mocha@10.2.0/mocha.js" },
+{ cat:"Dev Tools & Misc", name:"Jasmine 5.1.1", url:"https://cdn.jsdelivr.net/npm/jasmine-core@5.1.1/lib/jasmine-core/jasmine.js" },
+{ cat:"Dev Tools & Misc", name:"Chai 5.1.0", url:"https://cdn.jsdelivr.net/npm/chai@5.1.0/chai.js" },
+{ cat:"Dev Tools & Misc", name:"Sinon.js 17.0.1", url:"https://cdn.jsdelivr.net/npm/sinon@17.0.1/pkg/sinon.js" },
+{ cat:"Dev Tools & Misc", name:"Cypress CDN hint", url:"https://cdn.jsdelivr.net/npm/cypress@13.6.2/package.json" },
+{ cat:"Dev Tools & Misc", name:"Playwright hint", url:"https://cdn.jsdelivr.net/npm/playwright@1.40.1/package.json" },
+{ cat:"Dev Tools & Misc", name:"Webpack 5.89.0", url:"https://cdn.jsdelivr.net/npm/webpack@5.89.0/lib/webpack.js" },
+{ cat:"Dev Tools & Misc", name:"Rollup 4.9.1", url:"https://cdn.jsdelivr.net/npm/rollup@4.9.1/dist/rollup.browser.js" },
+{ cat:"Dev Tools & Misc", name:"Parcel 2.11.0", url:"https://cdn.jsdelivr.net/npm/@parcel/core@2.11.0/lib/public/Parcel.js" },
+{ cat:"Dev Tools & Misc", name:"SWC Wasm", url:"https://cdn.jsdelivr.net/npm/@swc/wasm-web@1.4.1/wasm_bg.wasm" },
+{ cat:"Dev Tools & Misc", name:"Terser 5.26.0", url:"https://cdn.jsdelivr.net/npm/terser@5.26.0/dist/bundle.min.js" },
+{ cat:"Dev Tools & Misc", name:"Acorn 8.11.3", url:"https://cdn.jsdelivr.net/npm/acorn@8.11.3/dist/acorn.js" },
+{ cat:"Dev Tools & Misc", name:"Recast 0.23.4", url:"https://cdn.jsdelivr.net/npm/recast@0.23.4/lib/main.js" },
+{ cat:"Dev Tools & Misc", name:"AST Explorer", url:"https://cdn.jsdelivr.net/npm/@babel/parser@7.23.7/lib/index.js" },
+{ cat:"Dev Tools & Misc", name:"ESLint 8.56.0", url:"https://cdn.jsdelivr.net/npm/eslint@8.56.0/lib/eslint/eslint.js" },
+{ cat:"Dev Tools & Misc", name:"Prettier 3.1.1", url:"https://cdn.jsdelivr.net/npm/prettier@3.1.1/index.mjs" },
+{ cat:"Dev Tools & Misc", name:"Stylelint 16.1.0", url:"https://cdn.jsdelivr.net/npm/stylelint@16.1.0/lib/index.mjs" },
+{ cat:"Dev Tools & Misc", name:"Commitlint", url:"https://cdn.jsdelivr.net/npm/@commitlint/core@18.4.4/lib/index.js" },
+{ cat:"Dev Tools & Misc", name:"Husky 9.0.2", url:"https://cdn.jsdelivr.net/npm/husky@9.0.2/lib/bin.js" },
+{ cat:"Dev Tools & Misc", name:"Storybook Core", url:"https://cdn.jsdelivr.net/npm/@storybook/core@7.6.10/package.json" },
+{ cat:"Dev Tools & Misc", name:"Chromatic CDN", url:"https://cdn.jsdelivr.net/npm/chromatic@10.9.6/package.json" },
+{ cat:"Dev Tools & Misc", name:"Bit CDN", url:"https://cdn.jsdelivr.net/npm/@teambit/bit@0.0.935/package.json" },
+{ cat:"Dev Tools & Misc", name:"Nx Workspace", url:"https://cdn.jsdelivr.net/npm/nx@17.2.8/package.json" },
+{ cat:"Dev Tools & Misc", name:"Turborepo hint", url:"https://cdn.jsdelivr.net/npm/turbo@1.11.3/package.json" },
+{ cat:"Dev Tools & Misc", name:"Lerna 8.0.2", url:"https://cdn.jsdelivr.net/npm/lerna@8.0.2/package.json" },
+{ cat:"Dev Tools & Misc", name:"Changesets", url:"https://cdn.jsdelivr.net/npm/@changesets/cli@2.27.1/package.json" },
+{ cat:"Dev Tools & Misc", name:"Verdaccio hint", url:"https://cdn.jsdelivr.net/npm/verdaccio@5.29.2/package.json" },
+{ cat:"Dev Tools & Misc", name:"OpenAPI UI", url:"https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.10.3/swagger-ui.css" },
+{ cat:"Dev Tools & Misc", name:"Swagger UI JS", url:"https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.10.3/swagger-ui-bundle.js" },
+{ cat:"Dev Tools & Misc", name:"ReDoc CDN", url:"https://cdn.jsdelivr.net/npm/redoc@2.1.3/bundles/redoc.standalone.js" },
+{ cat:"Dev Tools & Misc", name:"Stoplightio Elements", url:"https://cdn.jsdelivr.net/npm/@stoplight/elements@8.2.2/styles.min.css" },
+{ cat:"Dev Tools & Misc", name:"JSON Editor 10.0", url:"https://cdn.jsdelivr.net/npm/@json-editor/json-editor@2.14.1/dist/jsoneditor.min.js" },
+{ cat:"Dev Tools & Misc", name:"React JSON View", url:"https://cdn.jsdelivr.net/npm/react-json-view@1.21.3/lib/cjs/index.js" },
+{ cat:"Dev Tools & Misc", name:"JSONView 0.0.1", url:"https://cdn.jsdelivr.net/npm/jsonview@0.0.1/jsonview.js" },
+{ cat:"Dev Tools & Misc", name:"jq-web 0.5.1", url:"https://cdn.jsdelivr.net/npm/jq-web@0.5.1/jq.asm.min.js" },
+{ cat:"Dev Tools & Misc", name:"Jmespath 0.16.0", url:"https://cdn.jsdelivr.net/npm/jmespath@0.16.0/jmespath.js" },
+{ cat:"Dev Tools & Misc", name:"JSONPath Plus", url:"https://cdn.jsdelivr.net/npm/jsonpath-plus@8.1.0/dist/index-browser-umd.cjs" },
+{ cat:"Dev Tools & Misc", name:"YAML 2.3.4", url:"https://cdn.jsdelivr.net/npm/yaml@2.3.4/dist/browser/index.min.js" },
+{ cat:"Dev Tools & Misc", name:"TOML 3.0.0", url:"https://cdn.jsdelivr.net/npm/smol-toml@1.1.4/dist/index.min.js" },
+{ cat:"Dev Tools & Misc", name:"CSV Parse 5.5.3", url:"https://cdn.jsdelivr.net/npm/csv-parse@5.5.3/dist/cjs/sync.cjs" },
+{ cat:"Dev Tools & Misc", name:"SQL.js 1.10.2", url:"https://cdn.jsdelivr.net/npm/sql.js@1.10.2/dist/sql-wasm.js" },
+
+];
+
+// =====================================================================
+// PRELOAD ALL LINKS
+// =====================================================================
+(function preloadLinks() {
+  ENDPOINTS.forEach(ep => {
+    try {
+      const link = document.createElement('link');
+      link.rel = 'preconnect';
+      const url = new URL(ep.url);
+      link.href = url.origin;
+      link.crossOrigin = 'anonymous';
+      document.head.appendChild(link);
+    } catch(e) {}
+  });
+})();
+
+// =====================================================================
+// STATE
+// =====================================================================
+let state = {
+  results: {},
+  running: false,
+  filter: 'all',
+  searchTerm: '',
+  abortControllers: [],
+  startTime: null,
+  timerInterval: null,
+  totalTests: ENDPOINTS.length
+};
+
+// =====================================================================
+// INIT UI
+// =====================================================================
+document.getElementById('s-total').textContent = ENDPOINTS.length;
+document.getElementById('total-count').textContent = ENDPOINTS.length;
+
+function buildUI() {
+  const container = document.getElementById('categories-container');
+  container.innerHTML = '';
+
+  const byCategory = {};
+  ENDPOINTS.forEach((ep, i) => {
+    ep._id = i;
+    if (!byCategory[ep.cat]) byCategory[ep.cat] = [];
+    byCategory[ep.cat].push(ep);
+  });
+
+  for (const [cat, endpoints] of Object.entries(byCategory)) {
+    const section = document.createElement('div');
+    section.className = 'category-section';
+    section.id = `cat-${cat.replace(/\s+/g,'_')}`;
+
+    section.innerHTML = `
+      <div class="cat-header">
+        <span class="cat-name">${cat}</span>
+        <span class="cat-count" id="count-${cat.replace(/\s+/g,'_')}">${endpoints.length} endpoints</span>
+        <div class="cat-bar"></div>
+        <span class="cat-progress" id="prog-${cat.replace(/\s+/g,'_')}">—</span>
+      </div>
+      <div class="test-grid" id="grid-${cat.replace(/\s+/g,'_')}"></div>
+    `;
+
+    const grid = section.querySelector('.test-grid');
+    endpoints.forEach(ep => {
+      const card = document.createElement('div');
+      card.className = 'test-card pending';
+      card.id = `card-${ep._id}`;
+      card.dataset.cat = cat;
+      card.dataset.name = ep.name.toLowerCase();
+      card.dataset.url = ep.url.toLowerCase();
+
+      const shortUrl = ep.url.replace('https://','').replace('http://','');
+      card.innerHTML = `
+        <div class="card-status-dot"></div>
+        <div class="card-info">
+          <div class="card-name">${ep.name}</div>
+          <div class="card-url">${shortUrl}</div>
+        </div>
+        <div class="card-meta">
+          <div class="card-time" id="time-${ep._id}">—</div>
+          <div class="card-size" id="size-${ep._id}">—</div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    container.appendChild(section);
+  }
+}
+
+// =====================================================================
+// TEST RUNNER
+// =====================================================================
+async function testEndpoint(ep) {
+  const card = document.getElementById(`card-${ep._id}`);
+  const timeEl = document.getElementById(`time-${ep._id}`);
+  const sizeEl = document.getElementById(`size-${ep._id}`);
+
+  card.className = 'test-card testing';
+
+  const controller = new AbortController();
+  state.abortControllers.push(controller);
+
+  const TIMEOUT = 8000;
+  const SLOW_THRESHOLD = 800;
+
+  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
+  const start = performance.now();
+
+  try {
+    const response = await fetch(ep.url, {
+      method: 'GET',
+      mode: 'no-cors',
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    const elapsed = Math.round(performance.now() - start);
+
+    // With no-cors, response.type === 'opaque', status is always 0
+    // If we got here without throwing, connection succeeded
+    const status = response.status === 0 ? 'opaque' : response.status;
+    const ok = true; // no-cors success means reachable
+
+    const contentLen = response.headers.get ? response.headers.get('content-length') : null;
+    const sizeStr = contentLen ? `${Math.round(contentLen/1024)}KB` : '—';
+
+    const isWarn = elapsed > SLOW_THRESHOLD;
+    card.className = `test-card ${isWarn ? 'warn' : 'ok'}`;
+    timeEl.textContent = `${elapsed}ms`;
+    sizeEl.textContent = sizeStr;
+
+    state.results[ep._id] = { status: isWarn ? 'warn' : 'ok', elapsed, url: ep.url, name: ep.name, cat: ep.cat };
+
+  } catch (err) {
+    clearTimeout(timeoutId);
+    const elapsed = Math.round(performance.now() - start);
+
+    let failReason = '✕ fail';
+    if (err.name === 'AbortError') failReason = '⏱ timeout';
+
+    card.className = 'test-card fail';
+    timeEl.textContent = failReason;
+    sizeEl.textContent = `${elapsed}ms`;
+
+    state.results[ep._id] = { status: 'fail', elapsed, url: ep.url, name: ep.name, cat: ep.cat };
+  }
+
+  applyVisibility(document.getElementById(`card-${ep._id}`));
+  updateStats();
+  updateProgress();
+}
+
+// =====================================================================
+// RUN ALL
+// =====================================================================
+async function runAll() {
+  state.results = {};
+  state.abortControllers = [];
+  state.running = true;
+  state.startTime = Date.now();
+
+  document.getElementById('btn-run').disabled = true;
+  document.getElementById('btn-stop').disabled = false;
+
+  // Reset all cards
+  ENDPOINTS.forEach(ep => {
+    const card = document.getElementById(`card-${ep._id}`);
+    card.className = 'test-card pending';
+    const timeEl = document.getElementById(`time-${ep._id}`);
+    const sizeEl = document.getElementById(`size-${ep._id}`);
+    timeEl.textContent = '—';
+    sizeEl.textContent = '—';
+  });
+
+  document.getElementById('s-ok').textContent = '0';
+  document.getElementById('s-fail').textContent = '0';
+  document.getElementById('s-warn').textContent = '0';
+  document.getElementById('s-avg').textContent = '—';
+  document.getElementById('progress-fill').style.width = '0%';
+
+  // Start timer
+  state.timerInterval = setInterval(updateElapsed, 500);
+
+  // Run in parallel batches of 30
+  const BATCH = 30;
+  for (let i = 0; i < ENDPOINTS.length; i += BATCH) {
+    if (!state.running) break;
+    const batch = ENDPOINTS.slice(i, i + BATCH);
+    await Promise.allSettled(batch.map(ep => testEndpoint(ep)));
+  }
+
+  state.running = false;
+  clearInterval(state.timerInterval);
+  document.getElementById('btn-run').disabled = false;
+  document.getElementById('btn-stop').disabled = true;
+  document.getElementById('last-run').textContent = `Last run: ${new Date().toLocaleTimeString()}`;
+  document.getElementById('progress-label').textContent = `Complete — ${ENDPOINTS.length} endpoints tested`;
+}
+
+function stopTests() {
+  state.running = false;
+  state.abortControllers.forEach(c => { try { c.abort(); } catch(e){} });
+  clearInterval(state.timerInterval);
+  document.getElementById('btn-run').disabled = false;
+  document.getElementById('btn-stop').disabled = true;
+  document.getElementById('progress-label').textContent = `Stopped — ${Object.keys(state.results).length} tested`;
+}
+
+// =====================================================================
+// STATS & UI
+// =====================================================================
+function updateStats() {
+  const vals = Object.values(state.results);
+  const ok = vals.filter(v => v.status === 'ok').length;
+  const fail = vals.filter(v => v.status === 'fail').length;
+  const warn = vals.filter(v => v.status === 'warn').length;
+  const times = vals.filter(v => v.status !== 'fail').map(v => v.elapsed);
+  const avg = times.length ? Math.round(times.reduce((a,b) => a+b, 0) / times.length) : null;
+
+  document.getElementById('s-ok').textContent = ok;
+  document.getElementById('s-fail').textContent = fail;
+  document.getElementById('s-warn').textContent = warn;
+  document.getElementById('s-avg').textContent = avg !== null ? avg : '—';
+}
+
+function updateProgress() {
+  const tested = Object.keys(state.results).length;
+  const pct = Math.round((tested / ENDPOINTS.length) * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = `Testing… ${tested} / ${ENDPOINTS.length} (${pct}%)`;
+}
+
+function updateElapsed() {
+  if (!state.startTime) return;
+  const elapsed = Date.now() - state.startTime;
+  const s = Math.floor((elapsed / 1000) % 60).toString().padStart(2,'0');
+  const m = Math.floor(elapsed / 60000).toString().padStart(2,'0');
+  document.getElementById('elapsed-time').textContent = `${m}:${s}`;
+}
+
+// =====================================================================
+// FILTER & SEARCH
+// =====================================================================
+function applyVisibility(card) {
+  const filter = state.filter;
+  const search = state.searchTerm.toLowerCase();
+  const result = state.results[parseInt(card.id.split('-')[1])];
+  const currentStatus = result ? result.status : 'pending';
+
+  let show = true;
+
+  if (filter !== 'all' && currentStatus !== filter) show = false;
+
+  if (search) {
+    const name = card.dataset.name || '';
+    const url = card.dataset.url || '';
+    const cat = (card.dataset.cat || '').toLowerCase();
+    if (!name.includes(search) && !url.includes(search) && !cat.includes(search)) show = false;
+  }
+
+  card.classList.toggle('hidden', !show);
+}
+
+function applyAllFilters() {
+  document.querySelectorAll('.test-card').forEach(card => applyVisibility(card));
+}
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.filter = btn.dataset.filter;
+    applyAllFilters();
+  });
+});
+
+document.getElementById('search-input').addEventListener('input', e => {
+  state.searchTerm = e.target.value;
+  applyAllFilters();
+});
+
+// =====================================================================
+// EXPORT CSV
+// =====================================================================
+document.getElementById('btn-export').addEventListener('click', () => {
+  const rows = [['Name','Category','URL','Status','Time (ms)']];
+  ENDPOINTS.forEach(ep => {
+    const r = state.results[ep._id];
+    rows.push([
+      `"${ep.name}"`,
+      `"${ep.cat}"`,
+      `"${ep.url}"`,
+      r ? r.status : 'pending',
+      r ? r.elapsed : ''
+    ]);
+  });
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `netprobe-${Date.now()}.csv`;
+  a.click();
+});
+
+// =====================================================================
+// WIRE BUTTONS
+// =====================================================================
+document.getElementById('btn-run').addEventListener('click', runAll);
+document.getElementById('btn-stop').addEventListener('click', stopTests);
+
+// =====================================================================
+// INIT
+// =====================================================================
+buildUI();
+document.getElementById('s-total').textContent = ENDPOINTS.length;
+document.getElementById('total-count').textContent = ENDPOINTS.length;
+</script>
+</body>
+</html>
