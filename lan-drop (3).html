@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LANdrop — Local File Transfer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Syne+Mono&display=swap" rel="stylesheet">
+<style>
+/* ── RESET & TOKENS ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ink:    #0e0e11;
+  --paper:  #f5f2eb;
+  --cream:  #ede9df;
+  --rule:   #d4cfc4;
+  --mid:    #9e9990;
+  --dim:    #6b675f;
+  --accent: #d4500a;
+  --go:     #1a7a4a;
+  --go-lt:  #e8f5ed;
+  --warn:   #b8860b;
+  --err:    #b0260e;
+  --sky:    #1a5fa8;
+  --sky-lt: #e8f0fa;
+  --mono:   'Syne Mono', monospace;
+  --sans:   'Syne', sans-serif;
+  --r:      4px;
+}
+
+html, body { height: 100%; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  /* subtle grain */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+}
+
+/* ── LAYOUT ─────────────────────────────────────────────── */
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ── HEADER ─────────────────────────────────────────────── */
+header {
+  padding: 28px 0 20px;
+  border-bottom: 2px solid var(--ink);
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.logo {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.logo span { color: var(--accent); }
+
+.logo-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border: 1px solid var(--rule);
+  padding: 2px 8px;
+  border-radius: 2px;
+}
+
+.conn-badge {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1.5px solid var(--rule);
+  color: var(--dim);
+  background: var(--cream);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all .3s;
+}
+.conn-badge.connected {
+  border-color: var(--go);
+  color: var(--go);
+  background: var(--go-lt);
+}
+.conn-badge::before {
+  content: '';
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--rule);
+  transition: background .3s;
+}
+.conn-badge.connected::before { background: var(--go); }
+
+/* ── MAIN ────────────────────────────────────────────────── */
+main { padding: 28px 0; display: flex; flex-direction: column; gap: 24px; }
+
+/* ── CARD ────────────────────────────────────────────────── */
+.card {
+  background: #fff;
+  border: 1.5px solid var(--rule);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--cream);
+}
+.card-head .step {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--ink);
+  color: var(--paper);
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.card-head h2 {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.card-head .hint {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--mid);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.card-body { padding: 18px; }
+
+/* ── ROLE SELECTOR ───────────────────────────────────────── */
+.role-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.role-btn {
+  border: 2px solid var(--rule);
+  background: var(--paper);
+  border-radius: var(--r);
+  padding: 20px 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: all .15s;
+  font-family: var(--sans);
+}
+.role-btn:hover { border-color: var(--ink); background: var(--cream); }
+.role-btn.active { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+.role-btn .rb-icon { font-size: 28px; display: block; margin-bottom: 8px; }
+.role-btn .rb-title { font-size: 15px; font-weight: 700; display: block; margin-bottom: 3px; }
+.role-btn .rb-desc { font-size: 12px; opacity: .6; line-height: 1.4; display: block; }
+
+/* ── TEXTAREA / CODE BLOCKS ──────────────────────────────── */
+textarea, .code-out {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  border: 1.5px solid var(--rule);
+  border-radius: var(--r);
+  padding: 12px;
+  background: var(--ink);
+  color: #a8e6cf;
+  resize: vertical;
+  outline: none;
+  transition: border-color .2s;
+}
+textarea:focus { border-color: var(--sky); }
+textarea::placeholder { color: #4a5568; }
+
+.code-out {
+  min-height: 90px;
+  word-break: break-all;
+  white-space: pre-wrap;
+  position: relative;
+  cursor: text;
+  user-select: all;
+}
+
+/* ── BUTTONS ─────────────────────────────────────────────── */
+.btn {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 10px 20px;
+  border: 2px solid transparent;
+  border-radius: var(--r);
+  cursor: pointer;
+  transition: all .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.btn-primary {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.btn-primary:hover { background: #2a2a30; }
+.btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+
+.btn-accent {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.btn-accent:hover { background: #b84208; }
+.btn-accent:disabled { opacity: .4; cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--dim);
+  border-color: var(--rule);
+}
+.btn-ghost:hover { border-color: var(--ink); color: var(--ink); }
+
+.btn-copy {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 6px 12px;
+  background: #2a3a2a;
+  color: #a8e6cf;
+  border: 1px solid #3a5a3a;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-copy:hover { background: #3a4a3a; }
+.btn-copy.copied { background: var(--go); color: #fff; border-color: var(--go); }
+
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.row-end { justify-content: flex-end; }
+
+/* ── LABELS / HELPERS ────────────────────────────────────── */
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 6px;
+}
+.helper {
+  font-size: 12px;
+  color: var(--mid);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+.gap { margin-top: 14px; }
+
+/* ── STATUS PILL ─────────────────────────────────────────── */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--rule);
+  color: var(--mid);
+  background: var(--cream);
+}
+.status-pill.ok { border-color: var(--go); color: var(--go); background: var(--go-lt); }
+.status-pill.info { border-color: var(--sky); color: var(--sky); background: var(--sky-lt); }
+.status-pill.warn { border-color: var(--warn); color: var(--warn); background: #fdf8e8; }
+.status-pill.err { border-color: var(--err); color: var(--err); background: #fdf0ee; }
+
+/* ── DROP ZONE ───────────────────────────────────────────── */
+#drop-zone {
+  border: 2px dashed var(--rule);
+  border-radius: var(--r);
+  padding: 36px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  background: var(--paper);
+  position: relative;
+}
+#drop-zone:hover, #drop-zone.drag-over {
+  border-color: var(--accent);
+  background: #fdf4ef;
+}
+#drop-zone input[type=file] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+.dz-icon { font-size: 36px; margin-bottom: 10px; }
+.dz-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.dz-sub { font-size: 12px; color: var(--mid); }
+
+/* ── FILE QUEUE ──────────────────────────────────────────── */
+#file-queue { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+
+.fq-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--cream);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  padding: 10px 14px;
+  animation: slide-in .2s ease;
+}
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fq-icon { font-size: 22px; flex-shrink: 0; }
+.fq-info { flex: 1; min-width: 0; }
+.fq-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fq-size { font-family: var(--mono); font-size: 11px; color: var(--mid); }
+.fq-status { font-family: var(--mono); font-size: 11px; margin-left: auto; flex-shrink: 0; }
+
+/* ── PROGRESS ────────────────────────────────────────────── */
+.prog-wrap {
+  height: 4px;
+  background: var(--rule);
+  border-radius: 2px;
+  margin-top: 5px;
+  overflow: hidden;
+}
+.prog-bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  width: 0%;
+  transition: width .1s linear;
+}
+.prog-bar.done { background: var(--go); }
+
+/* ── RECEIVED FILES ──────────────────────────────────────── */
+#received-list { display: flex; flex-direction: column; gap: 8px; }
+
+.recv-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--go-lt);
+  border: 1px solid #b2d8c2;
+  border-radius: var(--r);
+  padding: 10px 14px;
+  animation: slide-in .25s ease;
+}
+.recv-info { flex: 1; min-width: 0; }
+.recv-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.recv-meta { font-family: var(--mono); font-size: 11px; color: var(--go); }
+
+.btn-dl {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  background: var(--go);
+  color: #fff;
+  border: none;
+  border-radius: var(--r);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .15s;
+}
+.btn-dl:hover { background: #135c38; }
+
+/* ── INSTRUCTIONS BANNER ─────────────────────────────────── */
+.how-it-works {
+  background: var(--sky-lt);
+  border: 1px solid #b8d0f0;
+  border-radius: var(--r);
+  padding: 14px 18px;
+  font-size: 13px;
+  color: var(--sky);
+  line-height: 1.7;
+}
+.how-it-works strong { font-weight: 700; }
+.how-it-works ol { padding-left: 18px; margin-top: 6px; }
+
+/* ── LOG ─────────────────────────────────────────────────── */
+#log {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mid);
+  max-height: 90px;
+  overflow-y: auto;
+  padding: 10px 14px;
+  background: var(--cream);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+}
+#log p { margin: 1px 0; }
+#log .log-ok { color: var(--go); }
+#log .log-err { color: var(--err); }
+#log .log-info { color: var(--sky); }
+
+/* ── DIVIDER ─────────────────────────────────────────────── */
+.divider {
+  display: flex; align-items: center; gap: 10px;
+  color: var(--mid); font-size: 12px; margin: 6px 0;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--rule);
+}
+
+/* ── FOOTER ──────────────────────────────────────────────── */
+footer {
+  padding: 16px 0;
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mid);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ── HIDDEN ──────────────────────────────────────────────── */
+.hidden { display: none !important; }
+
+/* ── RESPONSIVE ──────────────────────────────────────────── */
+@media (max-width: 500px) {
+  .role-grid { grid-template-columns: 1fr; }
+  header { flex-wrap: wrap; }
+}
+
+/* ── CHUNK DISPLAY ───────────────────────────────────────── */
+.chunk-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chunk-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.chunk-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--mid);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  min-width: 52px;
+  flex-shrink: 0;
+}
+.chunk-val {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--ink);
+  background: var(--cream);
+  border: 1.5px solid var(--rule);
+  border-radius: var(--r);
+  padding: 10px 16px;
+  flex: 1;
+  word-break: break-all;
+  cursor: text;
+  user-select: all;
+  line-height: 1.5;
+}
+.chunk-val:hover { border-color: var(--accent); }
+.chunk-copy {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 5px 10px;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  cursor: pointer;
+  color: var(--mid);
+  flex-shrink: 0;
+  transition: all .15s;
+}
+.chunk-copy:hover { border-color: var(--ink); color: var(--ink); }
+.chunk-copy.copied { background: var(--go); color: #fff; border-color: var(--go); }
+
+/* ── CHUNK INPUTS ────────────────────────────────────────── */
+.input-chunk-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.input-chunk-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.input-chunk-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--mid);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  min-width: 52px;
+  flex-shrink: 0;
+}
+.input-chunk-field {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--ink);
+  background: #fff;
+  border: 1.5px solid var(--rule);
+  border-radius: var(--r);
+  padding: 10px 16px;
+  flex: 1;
+  outline: none;
+  text-transform: uppercase;
+  transition: border-color .15s;
+  width: 100%;
+}
+.input-chunk-field:focus { border-color: var(--sky); }
+.input-chunk-field.valid { border-color: var(--go); background: var(--go-lt); }
+.input-chunk-field.invalid { border-color: var(--err); background: #fdf0ee; }
+
+/* ── CHAR BADGE ──────────────────────────────────────────── */
+.char-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mid);
+  background: var(--cream);
+  border: 1px solid var(--rule);
+  border-radius: 20px;
+  padding: 3px 10px;
+}
+
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- HEADER -->
+<header>
+  <div class="logo"><span>LAN</span>drop</div>
+  <div class="logo-tag">P2P · WebRTC · No Server</div>
+  <div class="conn-badge" id="conn-badge">Disconnected</div>
+</header>
+
+<!-- MAIN -->
+<main>
+
+  <!-- HOW IT WORKS -->
+  <div class="how-it-works">
+    <strong>How it works —</strong> both devices open this file on the same WiFi.
+    <ol>
+      <li><strong>Sender</strong> generates an Offer — reads ~4 short groups aloud or writes them down</li>
+      <li><strong>Receiver</strong> types those groups in → generates an Answer → reads it back</li>
+      <li><strong>Sender</strong> types the Answer groups → connected</li>
+    </ol>
+    Codes are split into small labeled chunks so you can dictate, text, or hand-write them easily.
+  </div>
+
+  <!-- STEP 1: ROLE -->
+  <div class="card">
+    <div class="card-head">
+      <div class="step">1</div>
+      <h2>Choose your role on this device</h2>
+    </div>
+    <div class="card-body">
+      <div class="role-grid">
+        <button class="role-btn" id="btn-sender" onclick="chooseRole('sender')">
+          <span class="rb-icon">📤</span>
+          <span class="rb-title">I'm Sending</span>
+          <span class="rb-desc">I want to send files to another device</span>
+        </button>
+        <button class="role-btn" id="btn-receiver" onclick="chooseRole('receiver')">
+          <span class="rb-icon">📥</span>
+          <span class="rb-title">I'm Receiving</span>
+          <span class="rb-desc">I want to receive files from another device</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: SIGNALING — SENDER SIDE -->
+  <div class="card hidden" id="card-sender-sig">
+    <div class="card-head">
+      <div class="step">2</div>
+      <h2>Create &amp; share offer</h2>
+      <span class="hint">Sender</span>
+    </div>
+    <div class="card-body">
+      <button class="btn btn-primary" id="btn-create-offer" onclick="createOffer()">
+        ⚡ Generate Offer
+      </button>
+
+      <div id="offer-out-wrap" class="gap hidden">
+        <label>Read these to the receiver — one chunk at a time</label>
+        <div id="offer-chunks" class="chunk-grid"></div>
+        <div class="row gap" style="margin-top:12px;">
+          <button class="btn-copy" id="btn-copy-offer" onclick="copyChunks('offer-chunks','btn-copy-offer')">Copy all</button>
+          <span id="offer-char-count" class="char-badge"></span>
+        </div>
+      </div>
+
+      <div id="answer-input-wrap" class="gap hidden">
+        <div class="divider">Receiver reads their answer back to you</div>
+        <label>Type the Answer here</label>
+        <div id="answer-inputs" class="input-chunk-grid"></div>
+        <div class="row gap" style="margin-top:12px;">
+          <button class="btn btn-accent" id="btn-connect" onclick="applyAnswer()">🔗 Connect</button>
+          <span id="sender-conn-status"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: SIGNALING — RECEIVER SIDE -->
+  <div class="card hidden" id="card-receiver-sig">
+    <div class="card-head">
+      <div class="step">2</div>
+      <h2>Receive offer &amp; send answer</h2>
+      <span class="hint">Receiver</span>
+    </div>
+    <div class="card-body">
+      <label>Sender reads these to you — type each chunk</label>
+      <div id="offer-inputs" class="input-chunk-grid"></div>
+      <div class="row gap" style="margin-top:12px;">
+        <button class="btn btn-primary" id="btn-gen-answer" onclick="createAnswer()">📡 Generate Answer</button>
+      </div>
+
+      <div id="answer-out-wrap" class="gap hidden">
+        <div class="divider">Read these back to the sender</div>
+        <label>Your Answer — read chunk by chunk</label>
+        <div id="answer-chunks" class="chunk-grid"></div>
+        <div class="row gap" style="margin-top:12px;">
+          <button class="btn-copy" id="btn-copy-answer" onclick="copyChunks('answer-chunks','btn-copy-answer')">Copy all</button>
+          <span id="answer-char-count" class="char-badge"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: SEND FILES (sender only, shown when connected) -->
+  <div class="card hidden" id="card-send-files">
+    <div class="card-head">
+      <div class="step">3</div>
+      <h2>Send files</h2>
+      <span class="hint">Sender</span>
+    </div>
+    <div class="card-body">
+      <div id="drop-zone"
+           ondragover="dzOver(event)"
+           ondragleave="dzLeave(event)"
+           ondrop="dzDrop(event)">
+        <input type="file" multiple onchange="filesChosen(this.files)" id="file-input">
+        <div class="dz-icon">🗂</div>
+        <div class="dz-title">Drop files here or click to browse</div>
+        <div class="dz-sub">Any file type · Any size · Multiple files OK</div>
+      </div>
+      <div id="file-queue"></div>
+    </div>
+  </div>
+
+  <!-- STEP 3: RECEIVE FILES (receiver only, shown when connected) -->
+  <div class="card hidden" id="card-recv-files">
+    <div class="card-head">
+      <div class="step">3</div>
+      <h2>Received files</h2>
+      <span class="hint">Receiver</span>
+    </div>
+    <div class="card-body">
+      <p class="helper" style="margin-bottom:12px;">Files sent by the other device will appear here automatically.</p>
+      <div id="received-list">
+        <p style="font-size:13px;color:var(--mid);" id="recv-empty">No files received yet…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOG -->
+  <div id="log"></div>
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <span>LANdrop — WebRTC DataChannel P2P</span>
+  <span>No data leaves your network</span>
+</footer>
+
+</div><!-- .shell -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//
+//  HOW THE SHORT CODE WORKS
+//  ────────────────────────
+//  A full WebRTC SDP is ~3-4 KB. Almost all of it is static boilerplate
+//  that every browser generates identically. The ONLY parts that differ
+//  per-session are:
+//
+//    ufrag      4  chars   (ICE username fragment)
+//    pwd       24  chars   (ICE password)
+//    fp        64  hex chars  (DTLS SHA-256 fingerprint)  → 32 hex pairs
+//    ip        ≤15 chars   (candidate IP, e.g. 192.168.1.42)
+//    port       ≤5 chars   (candidate port, e.g. 54321)
+//
+//  We extract just these fields, encode them into a compact string,
+//  and reconstruct a full valid SDP on the other side.
+//
+//  OFFER compact format  (≈ 95–115 chars total, split into 4 chunks)
+//    chunk A: ufrag (4) + pwd (24)                  = 28 chars
+//    chunk B: fingerprint hex, first 32 chars        = 32 chars
+//    chunk C: fingerprint hex, last 32 chars         = 32 chars
+//    chunk D: IP (≤15) + ":" + port (≤5)            = ≤21 chars
+//
+//  ANSWER compact format (≈ 62–66 chars, split into 3 chunks)
+//    chunk A: ufrag (4) + pwd (24)                  = 28 chars
+//    chunk B: fingerprint hex, first 32 chars        = 32 chars
+//    chunk C: fingerprint hex, last 32 chars         = 32 chars
+//    (answer has no candidate — browser connects back to sender's IP)
+//
+//  Characters used: 0-9 a-f (fingerprint), 0-9 a-z A-Z (ufrag/pwd),
+//  plus "." and ":" for IP:port.  Easy to read aloud or hand-write.
+//
+// ═══════════════════════════════════════════════════════════════════
+
+// ── CONFIG ────────────────────────────────────────────────────────
+const ICE_CFG = { iceServers: [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+]};
+const ICE_WAIT = 4000; // ms to collect candidates
+
+// Chunk labels and sizes for OFFER (4 chunks) and ANSWER (3 chunks)
+const OFFER_CHUNKS  = [
+  { id:'A', label:'A  ufrag+pwd',  len: 28, hint:'28 chars' },
+  { id:'B', label:'B  fingerprint 1/2', len: 32, hint:'32 chars' },
+  { id:'C', label:'C  fingerprint 2/2', len: 32, hint:'32 chars' },
+  { id:'D', label:'D  ip:port',    len: null, hint:'e.g. 192.168.1.5:54321' },
+];
+const ANSWER_CHUNKS = [
+  { id:'A', label:'A  ufrag+pwd',  len: 28, hint:'28 chars' },
+  { id:'B', label:'B  fingerprint 1/2', len: 32, hint:'32 chars' },
+  { id:'C', label:'C  fingerprint 2/2', len: 32, hint:'32 chars' },
+];
+
+// ── STATE ─────────────────────────────────────────────────────────
+let pc        = null;
+let dc        = null;
+let role      = null;
+let connected = false;
+let iceTimer  = null;
+let offerDone = false;
+let answerDone= false;
+
+let incomingMeta   = null;
+let incomingChunks = [];
+let sendQueue      = [];
+let sending        = false;
+
+const CHUNK_SIZE = 64 * 1024;
+
+// ── LOGGING ───────────────────────────────────────────────────────
+function log(msg, type='') {
+  const el = document.getElementById('log');
+  const p  = document.createElement('p');
+  p.className = type ? 'log-'+type : '';
+  const t = new Date().toLocaleTimeString('en',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  p.textContent = `[${t}] ${msg}`;
+  el.appendChild(p);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── ROLE ──────────────────────────────────────────────────────────
+function chooseRole(r) {
+  role = r;
+  document.getElementById('btn-sender').classList.toggle('active',   r==='sender');
+  document.getElementById('btn-receiver').classList.toggle('active', r==='receiver');
+  show('card-sender-sig',   r==='sender');
+  show('card-receiver-sig', r==='receiver');
+  if (r === 'receiver') buildInputGrid('offer-inputs',  OFFER_CHUNKS);
+  if (r === 'sender')   buildInputGrid('answer-inputs', ANSWER_CHUNKS);
+  log('Role: ' + r, 'info');
+}
+
+// ── CHUNK UI BUILDERS ─────────────────────────────────────────────
+
+// Render read-only chunk display boxes
+function buildChunkGrid(containerId, chunks, values) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  let total = 0;
+  chunks.forEach((c, i) => {
+    const val = values[i] || '';
+    total += val.length;
+    const row = document.createElement('div');
+    row.className = 'chunk-row';
+    const btnId = containerId + '-copy-' + c.id;
+    row.innerHTML = `
+      <span class="chunk-label">${c.label}</span>
+      <span class="chunk-val" id="${containerId}-val-${c.id}" onclick="selectChunk(this)">${val}</span>
+      <button class="chunk-copy" id="${btnId}" onclick="copyChunk('${containerId}-val-${c.id}','${btnId}')">copy</button>
+    `;
+    el.appendChild(row);
+  });
+  return total;
+}
+
+// Render editable input boxes
+function buildInputGrid(containerId, chunks) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  chunks.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'input-chunk-row';
+    const inputId = containerId + '-input-' + c.id;
+    const maxLen  = c.len || 64; // generous max for ip:port chunk
+    row.innerHTML = `
+      <span class="input-chunk-label">${c.label}</span>
+      <input class="input-chunk-field"
+             id="${inputId}"
+             maxlength="${maxLen + 5}"
+             placeholder="${c.hint}"
+             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+             oninput="onChunkInput(this, ${c.len || 0})"
+      />
+    `;
+    el.appendChild(row);
+  });
+}
+
+function onChunkInput(el, expectedLen) {
+  const v = el.value.trim();
+  if (expectedLen > 0 && v.length === expectedLen) {
+    el.classList.add('valid');
+    el.classList.remove('invalid');
+    // Auto-focus next field
+    const inputs = [...document.querySelectorAll('.input-chunk-field')];
+    const idx = inputs.indexOf(el);
+    if (idx >= 0 && idx < inputs.length - 1) inputs[idx+1].focus();
+  } else if (v.length > 0) {
+    el.classList.remove('valid');
+    el.classList.add('invalid');
+  } else {
+    el.classList.remove('valid','invalid');
+  }
+}
+
+function readInputGrid(containerId, chunks) {
+  return chunks.map(c => {
+    const el = document.getElementById(containerId + '-input-' + c.id);
+    return el ? el.value.trim().toUpperCase() : '';
+  });
+}
+
+// ── SDP EXTRACT / RECONSTRUCT ─────────────────────────────────────
+
+function extractOfferFields(sdp) {
+  // ufrag, pwd
+  const ufrag = (sdp.match(/a=ice-ufrag:(\S+)/) || [])[1] || '';
+  const pwd   = (sdp.match(/a=ice-pwd:(\S+)/)   || [])[1] || '';
+  // fingerprint — strip colons, lowercase
+  const fpRaw = (sdp.match(/a=fingerprint:\S+ ([0-9A-Fa-f:]+)/) || [])[1] || '';
+  const fp    = fpRaw.replace(/:/g,'').toLowerCase();
+  // first host candidate
+  let ip = '', port = '';
+  const candLines = sdp.match(/a=candidate:[^\r\n]+/g) || [];
+  for (const line of candLines) {
+    const m = line.match(/a=candidate:\S+ \d+ udp \d+ ([\d.]+) (\d+) typ host/i);
+    if (m) { ip = m[1]; port = m[2]; break; }
+  }
+  // fallback: try tcp or any typ
+  if (!ip) {
+    for (const line of candLines) {
+      const m = line.match(/\S+ \d+ \S+ \d+ ([\d.]+) (\d+)/i);
+      if (m && !m[1].startsWith('0.') && m[1] !== '0.0.0.0') {
+        ip = m[1]; port = m[2]; break;
+      }
+    }
+  }
+  const chunkA = (ufrag + pwd).toUpperCase();
+  const chunkB = fp.slice(0,  32).toUpperCase();
+  const chunkC = fp.slice(32, 64).toUpperCase();
+  const chunkD = ip + ':' + port;
+  return [chunkA, chunkB, chunkC, chunkD];
+}
+
+function extractAnswerFields(sdp) {
+  const ufrag = (sdp.match(/a=ice-ufrag:(\S+)/) || [])[1] || '';
+  const pwd   = (sdp.match(/a=ice-pwd:(\S+)/)   || [])[1] || '';
+  const fpRaw = (sdp.match(/a=fingerprint:\S+ ([0-9A-Fa-f:]+)/) || [])[1] || '';
+  const fp    = fpRaw.replace(/:/g,'').toLowerCase();
+  const chunkA = (ufrag + pwd).toUpperCase();
+  const chunkB = fp.slice(0,  32).toUpperCase();
+  const chunkC = fp.slice(32, 64).toUpperCase();
+  return [chunkA, chunkB, chunkC];
+}
+
+// Reconstruct a minimal but valid SDP from extracted fields
+// role: 'offer' or 'answer'
+function buildSDP(chunks, sdpType) {
+  let ufrag, pwd, fp, ip, port;
+  if (sdpType === 'offer') {
+    const [A, B, C, D] = chunks;
+    ufrag = A.slice(0, 4).toLowerCase();
+    pwd   = A.slice(4, 28).toLowerCase();
+    fp    = (B + C).toLowerCase().replace(/(.{2})/g, '$1:').slice(0, -1); // add colons back
+    const parts = D.split(':');
+    ip   = parts[0];
+    port = parts[1] || '9';
+  } else {
+    const [A, B, C] = chunks;
+    ufrag = A.slice(0, 4).toLowerCase();
+    pwd   = A.slice(4, 28).toLowerCase();
+    fp    = (B + C).toLowerCase().replace(/(.{2})/g, '$1:').slice(0, -1);
+    ip   = '0.0.0.0';
+    port = '9';
+  }
+
+  const candLine = sdpType === 'offer'
+    ? `a=candidate:1 1 UDP 2113937151 ${ip} ${port} typ host\r\n`
+    : '';
+
+  return [
+    'v=0\r\n',
+    'o=- 0 0 IN IP4 127.0.0.1\r\n',
+    's=-\r\n',
+    't=0 0\r\n',
+    'a=group:BUNDLE 0\r\n',
+    'a=msid-semantic:WMS\r\n',
+    'm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n',
+    'c=IN IP4 0.0.0.0\r\n',
+    'a=ice-ufrag:' + ufrag + '\r\n',
+    'a=ice-pwd:'   + pwd   + '\r\n',
+    'a=ice-options:trickle\r\n',
+    'a=fingerprint:sha-256 ' + fp + '\r\n',
+    'a=setup:' + (sdpType === 'offer' ? 'actpass' : 'active') + '\r\n',
+    'a=mid:0\r\n',
+    'a=sctp-port:5000\r\n',
+    'a=max-message-size:262144\r\n',
+    candLine,
+    'a=end-of-candidates\r\n',
+  ].join('');
+}
+
+// ── PEER CONNECTION ───────────────────────────────────────────────
+function makePeerConnection() {
+  if (pc) { try { pc.close(); } catch(_){} }
+  pc = new RTCPeerConnection(ICE_CFG);
+
+  pc.onicecandidate = (e) => {
+    clearTimeout(iceTimer);
+    iceTimer = setTimeout(flushSignal, e.candidate ? ICE_WAIT : 600);
+  };
+  pc.onicegatheringstatechange = () => {
+    log('ICE gathering: ' + pc.iceGatheringState);
+    if (pc.iceGatheringState === 'complete') { clearTimeout(iceTimer); flushSignal(); }
+  };
+  pc.onconnectionstatechange = () => {
+    log('Connection: ' + pc.connectionState);
+    if (pc.connectionState === 'connected')                               onConnected();
+    if (['disconnected','failed','closed'].includes(pc.connectionState)) onDisconnected();
+  };
+  pc.ondatachannel = e => attachDataChannel(e.channel);
+}
+
+function flushSignal() {
+  if (role === 'sender'   && !offerDone)  finaliseOffer();
+  if (role === 'receiver' && !answerDone) finaliseAnswer();
+}
+
+function attachDataChannel(ch) {
+  dc = ch;
+  dc.binaryType = 'arraybuffer';
+  dc.onopen    = () => { log('Channel open ✓', 'ok'); onConnected(); };
+  dc.onclose   = () => onDisconnected();
+  dc.onerror   = e => log('DC error: ' + (e.error||e), 'err');
+  dc.onmessage = e => typeof e.data==='string' ? handleCtrl(JSON.parse(e.data)) : handleChunk(e.data);
+  if (dc.readyState === 'open') onConnected();
+}
+
+// ── SENDER — OFFER ────────────────────────────────────────────────
+async function createOffer() {
+  document.getElementById('btn-create-offer').disabled = true;
+  offerDone = false;
+  log('Creating offer…');
+  makePeerConnection();
+  const ch = pc.createDataChannel('landrop', { ordered:true });
+  attachDataChannel(ch);
+  try {
+    await pc.setLocalDescription(await pc.createOffer());
+    log('Gathering ICE…');
+  } catch(e) {
+    log('Offer failed: ' + e.message, 'err');
+    document.getElementById('btn-create-offer').disabled = false;
+  }
+}
+
+function finaliseOffer() {
+  if (offerDone) return;
+  offerDone = true;
+  const sdp    = pc.localDescription.sdp;
+  const chunks = extractOfferFields(sdp);
+  const total  = buildChunkGrid('offer-chunks', OFFER_CHUNKS, chunks);
+  show('offer-out-wrap',    true);
+  show('answer-input-wrap', true);
+  const badge = document.getElementById('offer-char-count');
+  if (badge) badge.textContent = total + ' chars total';
+  log('Offer ready — ' + total + ' chars across 4 chunks', 'ok');
+}
+
+async function applyAnswer() {
+  const vals = readInputGrid('answer-inputs', ANSWER_CHUNKS);
+  if (vals.some(v => !v)) { alert('Fill in all answer chunks first.'); return; }
+  try {
+    const sdp = buildSDP(vals, 'answer');
+    await pc.setRemoteDescription({ type:'answer', sdp });
+    log('Answer applied — waiting for connection…', 'info');
+    document.getElementById('sender-conn-status').innerHTML =
+      '<span class="status-pill info">Connecting…</span>';
+  } catch(e) {
+    log('Bad answer: ' + e.message, 'err');
+    alert('Something in the answer chunks looks wrong — double-check chunks A, B, C.');
+  }
+}
+
+// ── RECEIVER — ANSWER ─────────────────────────────────────────────
+async function createAnswer() {
+  const vals = readInputGrid('offer-inputs', OFFER_CHUNKS);
+  if (vals.some(v => !v)) { alert('Fill in all offer chunks first.'); return; }
+  answerDone = false;
+  try {
+    const sdp = buildSDP(vals, 'offer');
+    makePeerConnection();
+    await pc.setRemoteDescription({ type:'offer', sdp });
+    await pc.setLocalDescription(await pc.createAnswer());
+    log('Gathering answer ICE…');
+  } catch(e) {
+    log('Bad offer: ' + e.message, 'err');
+    alert('Something in the offer chunks looks wrong — double-check all chunks.');
+  }
+}
+
+function finaliseAnswer() {
+  if (answerDone) return;
+  answerDone = true;
+  const sdp    = pc.localDescription.sdp;
+  const chunks = extractAnswerFields(sdp);
+  const total  = buildChunkGrid('answer-chunks', ANSWER_CHUNKS, chunks);
+  show('answer-out-wrap', true);
+  const badge = document.getElementById('answer-char-count');
+  if (badge) badge.textContent = total + ' chars total';
+  log('Answer ready — ' + total + ' chars across 3 chunks', 'ok');
+}
+
+// ── CONNECTED / DISCONNECTED ──────────────────────────────────────
+function onConnected() {
+  if (connected) return;
+  connected = true;
+  const b = document.getElementById('conn-badge');
+  b.textContent = 'Connected ✓';
+  b.classList.add('connected');
+  log('🎉 Connected!', 'ok');
+  if (role === 'sender')   { show('card-sender-sig', false);   show('card-send-files', true); }
+  else                     { show('card-receiver-sig', false); show('card-recv-files',  true); }
+}
+
+function onDisconnected() {
+  if (!connected) return;
+  connected = false;
+  const b = document.getElementById('conn-badge');
+  b.textContent = 'Disconnected';
+  b.classList.remove('connected');
+  log('Disconnected.', 'err');
+}
+
+// ── FILE SENDING ──────────────────────────────────────────────────
+function dzOver(e)  { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
+function dzLeave()  { document.getElementById('drop-zone').classList.remove('drag-over'); }
+function dzDrop(e)  { e.preventDefault(); dzLeave(); filesChosen(e.dataTransfer.files); }
+function filesChosen(files) {
+  [...files].forEach(f => enqueueFile(f));
+  document.getElementById('file-input').value = '';
+}
+
+const ICONS = {
+  pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',ppt:'📋',pptx:'📋',
+  zip:'🗜',rar:'🗜',gz:'🗜','7z':'🗜',tar:'🗜',
+  mp4:'🎬',mov:'🎬',avi:'🎬',mkv:'🎬',webm:'🎬',
+  mp3:'🎵',wav:'🎵',flac:'🎵',aac:'🎵',
+  png:'🖼',jpg:'🖼',jpeg:'🖼',gif:'🖼',svg:'🖼',webp:'🖼',heic:'🖼',
+  txt:'📃',md:'📃',csv:'📊',json:'📦',js:'⚙️',ts:'⚙️',
+  html:'🌐',css:'🎨',py:'🐍',sh:'💻',exe:'⚙️',dmg:'💾',apk:'📱',
+};
+const fileIcon = name => ICONS[name.split('.').pop().toLowerCase()] || '📦';
+
+function fmt(b) {
+  if (b < 1024)        return b + ' B';
+  if (b < 1048576)     return (b/1024).toFixed(1) + ' KB';
+  if (b < 1073741824)  return (b/1048576).toFixed(2) + ' MB';
+  return (b/1073741824).toFixed(2) + ' GB';
+}
+
+function enqueueFile(file) {
+  const id  = 'fq-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+  const box = document.getElementById('file-queue');
+  const div = document.createElement('div');
+  div.className = 'fq-item'; div.id = id;
+  div.innerHTML = `
+    <div class="fq-icon">${fileIcon(file.name)}</div>
+    <div class="fq-info">
+      <div class="fq-name" title="${file.name}">${file.name}</div>
+      <div class="fq-size">${fmt(file.size)}</div>
+      <div class="prog-wrap"><div class="prog-bar" id="bar-${id}"></div></div>
+    </div>
+    <div class="fq-status" id="st-${id}">Queued</div>`;
+  box.appendChild(div);
+  sendQueue.push({ file, bar: document.getElementById('bar-'+id), st: document.getElementById('st-'+id) });
+  if (!sending) drainQueue();
+}
+
+async function drainQueue() {
+  if (!dc || dc.readyState !== 'open') { log('Channel not open', 'err'); return; }
+  sending = true;
+  while (sendQueue.length) await sendFile(sendQueue.shift());
+  sending = false;
+}
+
+function sendFile({ file, bar, st }) {
+  return new Promise((res, rej) => {
+    st.textContent = 'Sending…'; st.style.color = 'var(--sky)';
+    log('Sending: ' + file.name + ' (' + fmt(file.size) + ')');
+    dc.send(JSON.stringify({ type:'meta', name:file.name, size:file.size, mime:file.type||'application/octet-stream' }));
+    let offset = 0;
+    function pump() {
+      if (dc.bufferedAmount > 8*1024*1024) { setTimeout(pump, 50); return; }
+      if (offset >= file.size) {
+        dc.send(JSON.stringify({ type:'done' }));
+        bar.style.width = '100%'; bar.classList.add('done');
+        st.textContent = '✓ Sent'; st.style.color = 'var(--go)';
+        log('✓ Sent: ' + file.name, 'ok'); res(); return;
+      }
+      file.slice(offset, offset + CHUNK_SIZE).arrayBuffer().then(buf => {
+        dc.send(buf); offset += buf.byteLength;
+        const pct = Math.round(offset/file.size*100);
+        bar.style.width = pct + '%'; st.textContent = pct + '%';
+        pump();
+      }).catch(rej);
+    }
+    pump();
+  });
+}
+
+// ── FILE RECEIVING ────────────────────────────────────────────────
+function handleCtrl(msg) {
+  if (msg.type === 'meta') {
+    incomingMeta = msg; incomingChunks = [];
+    log('Incoming: ' + msg.name + ' (' + fmt(msg.size) + ')');
+  } else if (msg.type === 'done') {
+    assemble();
+  }
+}
+function handleChunk(buf) { incomingChunks.push(buf); }
+function assemble() {
+  if (!incomingMeta) return;
+  const blob = new Blob(incomingChunks, { type: incomingMeta.mime });
+  const url  = URL.createObjectURL(blob);
+  const list = document.getElementById('received-list');
+  document.getElementById('recv-empty')?.remove();
+  const div = document.createElement('div');
+  div.className = 'recv-item';
+  div.innerHTML = `
+    <div class="fq-icon">${fileIcon(incomingMeta.name)}</div>
+    <div class="recv-info">
+      <div class="recv-name" title="${incomingMeta.name}">${incomingMeta.name}</div>
+      <div class="recv-meta">${fmt(incomingMeta.size)} · ${incomingMeta.mime}</div>
+    </div>
+    <a href="${url}" download="${incomingMeta.name}"><button class="btn-dl">↓ Save</button></a>`;
+  list.appendChild(div);
+  log('✓ Received: ' + incomingMeta.name, 'ok');
+  incomingMeta = null; incomingChunks = [];
+}
+
+// ── UI UTILITIES ──────────────────────────────────────────────────
+function show(id, v) { document.getElementById(id).classList.toggle('hidden', !v); }
+
+function selectChunk(el) {
+  const r = document.createRange(); r.selectNodeContents(el);
+  const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+}
+
+function copyChunk(valId, btnId) {
+  const text = document.getElementById(valId).textContent;
+  const btn  = document.getElementById(btnId);
+  const orig = btn.textContent;
+  const ok = () => {
+    btn.textContent = '✓'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(ok).catch(() => fbCopy(valId, ok));
+  } else fbCopy(valId, ok);
+}
+
+function copyChunks(gridId, btnId) {
+  const vals = [...document.getElementById(gridId).querySelectorAll('.chunk-val')]
+    .map(el => el.textContent).join('\n');
+  const btn  = document.getElementById(btnId);
+  const orig = btn.textContent;
+  const ok = () => {
+    btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(vals).then(ok).catch(() => ok());
+  } else ok();
+}
+
+function fbCopy(valId, cb) {
+  const el = document.getElementById(valId);
+  selectChunk(el); try { document.execCommand('copy'); cb(); } catch(_) {}
+}
+</script>
+
+</body>
+</html>
