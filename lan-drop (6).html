@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LANdrop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+
+:root{
+  --bg:#0d0f14;--surface:#161920;--panel:#1c2030;
+  --border:#2a3045;--border2:#363d55;
+  --txt:#e2e6f0;--txt2:#8892aa;--txt3:#505870;
+  --accent:#4f8ef7;--accent2:#6ee7b7;
+  --warn:#f59e0b;--err:#f87171;
+  --me-bg:#1e3a6e;--me-bdr:#2d5299;
+  --them-bg:#1c2030;--them-bdr:#2a3045;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+}
+
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);
+  font-size:14px;line-height:1.5;display:flex;flex-direction:column;}
+
+.screen{display:none;flex-direction:column;height:100vh}
+.screen.active{display:flex}
+
+/* ── CONNECT SCREEN ── */
+#screen-connect{
+  align-items:center;justify-content:center;
+  background:radial-gradient(ellipse 60% 40% at 50% 0%,rgba(79,142,247,.12) 0%,transparent 70%),var(--bg);
+}
+.connect-card{width:100%;max-width:480px;padding:0 24px 32px;display:flex;flex-direction:column;gap:18px;}
+
+.brand{text-align:center;padding:28px 0 4px;}
+.brand-name{font-size:30px;font-weight:700;letter-spacing:-1px;color:var(--txt);}
+.brand-name em{color:var(--accent);font-style:normal;}
+.brand-sub{font-family:var(--mono);font-size:11px;color:var(--txt3);letter-spacing:2px;text-transform:uppercase;margin-top:4px;}
+
+.relay-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  font-family:var(--mono);font-size:11px;color:var(--txt2);}
+.relay-dot{width:7px;height:7px;border-radius:50%;background:var(--txt3);flex-shrink:0;transition:background .3s;}
+.relay-dot.ok{background:var(--accent2);}
+.relay-dot.fail{background:var(--err);}
+.relay-dot.busy{background:var(--warn);animation:blink .8s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.mode-tabs{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);
+  border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.mode-tab{padding:11px 0;text-align:center;background:var(--panel);cursor:pointer;
+  font-size:13px;font-weight:500;color:var(--txt2);border:none;transition:all .15s;font-family:var(--sans);}
+.mode-tab:hover{background:var(--surface);color:var(--txt);}
+.mode-tab.active{background:var(--accent);color:#fff;font-weight:600;}
+
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--txt3);}
+.field input,.field textarea{background:var(--panel);border:1px solid var(--border);border-radius:6px;
+  color:var(--txt);font-family:var(--mono);font-size:13px;padding:10px 13px;outline:none;
+  transition:border-color .15s;width:100%;}
+.field input:focus,.field textarea:focus{border-color:var(--accent);}
+.field textarea{resize:vertical;min-height:80px;}
+
+.btn{font-family:var(--sans);font-size:13px;font-weight:600;padding:10px 20px;border:none;
+  border-radius:6px;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;
+  justify-content:center;gap:7px;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:#3a7af5;}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;}
+.btn-accent{background:var(--accent2);color:#000;}
+.btn-accent:hover{background:#4cd4a0;}
+.btn-accent:disabled{opacity:.4;cursor:not-allowed;}
+.btn-ghost{background:transparent;color:var(--txt2);border:1px solid var(--border);}
+.btn-ghost:hover{border-color:var(--border2);color:var(--txt);}
+.btn-full{width:100%;}
+
+.or-divider{display:flex;align-items:center;gap:10px;color:var(--txt3);
+  font-size:11px;font-family:var(--mono);letter-spacing:1px;text-transform:uppercase;}
+.or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* chunk display */
+.chunks-wrap{display:flex;flex-direction:column;gap:6px;}
+.chunk-row{display:flex;align-items:center;gap:8px;}
+.chunk-lbl{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--txt3);
+  letter-spacing:.5px;min-width:20px;text-align:right;flex-shrink:0;}
+.chunk-box{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;
+  padding:8px 12px;font-family:var(--mono);font-size:14px;font-weight:500;
+  letter-spacing:2px;color:var(--txt);user-select:all;cursor:text;word-break:break-all;}
+.chunk-copy-btn{font-family:var(--mono);font-size:10px;background:transparent;
+  border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--txt3);
+  cursor:pointer;flex-shrink:0;transition:all .15s;white-space:nowrap;}
+.chunk-copy-btn:hover{border-color:var(--accent);color:var(--accent);}
+.chunk-copy-btn.done{background:var(--accent2);border-color:var(--accent2);color:#000;}
+
+/* chunk inputs */
+.chunk-input-row{display:flex;align-items:center;gap:8px;}
+.chunk-input{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:4px;
+  padding:8px 12px;font-family:var(--mono);font-size:14px;font-weight:500;letter-spacing:2px;
+  color:var(--txt);outline:none;transition:border-color .15s;text-transform:uppercase;width:100%;}
+.chunk-input:focus{border-color:var(--accent);}
+.chunk-input.ok{border-color:var(--accent2);background:rgba(110,231,183,.05);}
+.chunk-input.bad{border-color:var(--err);background:rgba(248,113,113,.05);}
+
+#connect-log{font-family:var(--mono);font-size:11px;color:var(--txt3);min-height:16px;text-align:center;}
+
+/* ── CHAT SCREEN ── */
+#screen-chat{background:var(--bg);}
+.chat-layout{flex:1;display:flex;flex-direction:column;height:100vh;max-width:700px;margin:0 auto;width:100%;}
+
+.chat-topbar{display:flex;align-items:center;gap:12px;padding:11px 16px;
+  border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+.topbar-peer{flex:1;display:flex;flex-direction:column;}
+.topbar-peer-name{font-weight:600;font-size:14px;}
+.topbar-peer-status{font-size:11px;color:var(--txt3);font-family:var(--mono);}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:var(--txt3);transition:background .3s;}
+.conn-dot.ok{background:var(--accent2);}
+.conn-label{font-family:var(--mono);font-size:11px;color:var(--txt3);}
+.dc-btn{font-family:var(--mono);font-size:10px;background:transparent;border:1px solid var(--border);
+  border-radius:4px;padding:3px 8px;color:var(--txt3);cursor:pointer;transition:all .15s;}
+.dc-btn:hover{border-color:var(--err);color:var(--err);}
+
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;
+  gap:3px;scroll-behavior:smooth;}
+.chat-messages::-webkit-scrollbar{width:4px;}
+.chat-messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+.msg-system{text-align:center;font-family:var(--mono);font-size:10px;color:var(--txt3);
+  padding:3px 0 6px;letter-spacing:.5px;}
+
+.msg-wrap{display:flex;flex-direction:column;max-width:72%;}
+.msg-wrap.me{align-self:flex-end;align-items:flex-end;}
+.msg-wrap.them{align-self:flex-start;align-items:flex-start;}
+.msg-sender{font-size:10px;font-weight:600;color:var(--txt3);margin-bottom:2px;
+  padding:0 4px;font-family:var(--mono);letter-spacing:.3px;}
+.msg-bubble{padding:9px 13px;border-radius:14px;font-size:14px;line-height:1.5;word-break:break-word;}
+.msg-wrap.me .msg-bubble{background:var(--me-bg);border:1px solid var(--me-bdr);
+  border-bottom-right-radius:3px;color:#c8d8f8;}
+.msg-wrap.them .msg-bubble{background:var(--them-bg);border:1px solid var(--them-bdr);border-bottom-left-radius:3px;}
+.msg-time{font-size:10px;color:var(--txt3);font-family:var(--mono);margin-top:2px;padding:0 4px;}
+
+.msg-file{display:flex;align-items:center;gap:10px;padding:10px 13px;
+  border-radius:12px;border:1px solid var(--border2);background:var(--panel);min-width:220px;max-width:300px;}
+.msg-file-icon{font-size:22px;flex-shrink:0;}
+.msg-file-info{flex:1;min-width:0;}
+.msg-file-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.msg-file-meta{font-family:var(--mono);font-size:10px;color:var(--txt3);}
+.msg-file-prog{height:3px;background:var(--border);border-radius:2px;margin-top:5px;overflow:hidden;}
+.msg-file-bar{height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .12s;}
+.msg-file-bar.done{background:var(--accent2);}
+.btn-save{font-family:var(--sans);font-size:11px;font-weight:600;padding:5px 11px;
+  background:var(--accent2);color:#000;border:none;border-radius:5px;cursor:pointer;
+  flex-shrink:0;transition:background .15s;white-space:nowrap;}
+.btn-save:hover{background:#4cd4a0;}
+
+.chat-input-area{border-top:1px solid var(--border);background:var(--surface);
+  padding:10px 14px;flex-shrink:0;}
+.chat-input-row{display:flex;gap:8px;align-items:flex-end;}
+.chat-textarea{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  color:var(--txt);font-family:var(--sans);font-size:14px;padding:8px 13px;outline:none;
+  resize:none;max-height:120px;line-height:1.5;transition:border-color .15s;overflow-y:auto;}
+.chat-textarea:focus{border-color:var(--border2);}
+.chat-textarea::placeholder{color:var(--txt3);}
+.send-btn{width:38px;height:38px;border-radius:50%;background:var(--accent);border:none;
+  cursor:pointer;color:#fff;font-size:15px;flex-shrink:0;display:grid;place-items:center;
+  transition:all .15s;align-self:flex-end;}
+.send-btn:hover{background:#3a7af5;transform:scale(1.05);}
+.send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.attach-btn{width:34px;height:34px;border-radius:8px;background:transparent;
+  border:1px solid var(--border);cursor:pointer;color:var(--txt3);font-size:16px;
+  display:grid;place-items:center;transition:all .15s;align-self:flex-end;flex-shrink:0;}
+.attach-btn:hover{border-color:var(--accent);color:var(--accent);}
+#file-attach-input{display:none;}
+
+#drop-overlay{display:none;position:fixed;inset:0;background:rgba(79,142,247,.12);
+  border:3px dashed var(--accent);z-index:200;align-items:center;justify-content:center;
+  flex-direction:column;gap:12px;font-size:18px;font-weight:600;color:var(--accent);}
+#drop-overlay.active{display:flex;}
+
+.chat-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;color:var(--txt3);font-size:13px;}
+.chat-empty-icon{font-size:36px;opacity:.4;}
+
+.hidden{display:none!important;}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+.accent-line{height:2px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2),var(--accent));
+  background-size:200%;animation:slide-grad 3s linear infinite;flex-shrink:0;}
+@keyframes slide-grad{0%{background-position:0%}100%{background-position:200%}}
+@keyframes pop-in{from{opacity:0;transform:translateY(5px) scale(.97)}to{opacity:1;transform:none}}
+.msg-wrap,.msg-system{animation:pop-in .16s ease;}
+
+/* big room-code display */
+.room-code-display{
+  font-family:var(--mono);font-size:28px;font-weight:500;letter-spacing:4px;
+  text-align:center;color:var(--accent2);padding:14px;
+  background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  user-select:all;cursor:text;
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     CONNECT SCREEN
+══════════════════════════════════════ -->
+<div id="screen-connect" class="screen active">
+  <div class="accent-line"></div>
+  <div class="connect-card">
+
+    <div class="brand">
+      <div class="brand-name"><em>LAN</em>drop</div>
+      <div class="brand-sub">Local · P2P · No Upload</div>
+    </div>
+
+    <div class="relay-bar">
+      <div class="relay-dot busy" id="relay-dot"></div>
+      <span id="relay-txt">Checking relay…</span>
+    </div>
+
+    <div class="field">
+      <label>Your name</label>
+      <input id="my-name" type="text" placeholder="e.g. Alice" maxlength="24"
+             autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tab-host" onclick="setMode('host')">📡 &nbsp;Host</button>
+      <button class="mode-tab"        id="tab-join" onclick="setMode('join')">🔗 &nbsp;Join</button>
+    </div>
+
+    <!-- ── HOST PANEL ── -->
+    <div id="host-panel" style="display:flex;flex-direction:column;gap:12px;">
+      <button class="btn btn-primary btn-full" id="btn-host" onclick="doHost()">⚡ &nbsp;Start Session</button>
+
+      <!-- after offer generated -->
+      <div id="host-offer-wrap" class="hidden" style="display:flex;flex-direction:column;gap:10px;">
+        <!-- relay mode: just show room code -->
+        <div id="host-relay-code" class="hidden" style="display:flex;flex-direction:column;gap:8px;">
+          <div class="field"><label>Room code — tell the other person</label>
+            <div class="room-code-display" id="room-code-display" onclick="selAll(this)"></div>
+          </div>
+          <button class="btn btn-ghost" style="font-size:12px;" onclick="copyRoomCode()">Copy code</button>
+        </div>
+        <!-- manual mode: show 4 chunks -->
+        <div id="host-manual-code" class="hidden" style="display:flex;flex-direction:column;gap:8px;">
+          <div class="field">
+            <label>Read these 4 chunks to the other person</label>
+            <div class="chunks-wrap" id="host-chunks"></div>
+          </div>
+          <button class="btn btn-ghost btn-full" style="font-size:12px;" id="btn-copy-host" onclick="copyAllChunks('host-chunks',this)">Copy all</button>
+          <!-- answer inputs appear here -->
+          <div id="host-answer-section" class="hidden" style="display:flex;flex-direction:column;gap:10px;">
+            <div class="or-divider">enter their answer</div>
+            <div class="field"><label>Answer chunks from joiner</label>
+              <div id="answer-input-chunks" style="display:flex;flex-direction:column;gap:6px;"></div>
+            </div>
+            <button class="btn btn-accent btn-full" id="btn-apply-answer" onclick="manualApplyAnswer()">🔗 &nbsp;Connect</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── JOIN PANEL ── -->
+    <div id="join-panel" class="hidden" style="display:flex;flex-direction:column;gap:12px;">
+      <!-- relay join -->
+      <div id="join-relay-ui" style="display:flex;flex-direction:column;gap:10px;">
+        <div class="field">
+          <label>Room code</label>
+          <input id="join-code-input" type="text" placeholder="e.g. WOLF-4291"
+                 autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                 style="font-size:20px;letter-spacing:3px;text-transform:uppercase;"
+                 oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <button class="btn btn-primary btn-full" id="btn-join" onclick="doJoinRelay()">🔗 &nbsp;Join</button>
+      </div>
+      <!-- manual join -->
+      <div id="join-manual-ui" class="hidden" style="display:flex;flex-direction:column;gap:10px;">
+        <div class="or-divider">manual — no relay</div>
+        <div class="field">
+          <label>Offer chunks (from host)</label>
+          <div id="offer-input-chunks" style="display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+        <button class="btn btn-primary btn-full" id="btn-gen-answer" onclick="doGenAnswer()">📡 &nbsp;Generate Answer</button>
+        <div id="answer-out-section" class="hidden" style="display:flex;flex-direction:column;gap:8px;">
+          <div class="field"><label>Read these back to host</label>
+            <div class="chunks-wrap" id="answer-chunks"></div>
+          </div>
+          <button class="btn btn-ghost btn-full" style="font-size:12px;" id="btn-copy-ans" onclick="copyAllChunks('answer-chunks',this)">Copy all</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="connect-log"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     CHAT SCREEN
+══════════════════════════════════════ -->
+<div id="screen-chat" class="screen">
+  <div class="accent-line"></div>
+  <div class="chat-layout">
+
+    <div class="chat-topbar">
+      <div class="topbar-peer">
+        <div class="topbar-peer-name" id="peer-name-el">Peer</div>
+        <div class="topbar-peer-status" id="peer-status-el">connected · P2P</div>
+      </div>
+      <div class="topbar-right">
+        <div class="conn-dot ok" id="conn-dot"></div>
+        <span class="conn-label" id="conn-label">P2P</span>
+        <button class="dc-btn" onclick="doDisconnect()">leave</button>
+      </div>
+    </div>
+
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-empty" id="chat-empty">
+        <div class="chat-empty-icon">💬</div>
+        <div>Say hello — or drop a file to send it</div>
+      </div>
+    </div>
+
+    <div id="drop-overlay">
+      <div style="font-size:40px;">📂</div>
+      <div>Drop to send</div>
+    </div>
+
+    <div class="chat-input-area">
+      <div class="chat-input-row">
+        <button class="attach-btn" onclick="document.getElementById('file-attach-input').click()" title="Attach file">📎</button>
+        <input type="file" id="file-attach-input" multiple onchange="handleFileAttach(this.files)">
+        <textarea class="chat-textarea" id="chat-input" rows="1"
+          placeholder="Message…"
+          onkeydown="chatKey(event)"
+          oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendChatMsg()">➤</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════════
+const RELAY_URLS = [
+  'wss://ws.vi-server.org/mirror',
+  'wss://socketsbay.com/wss/v2/1/demo/',  // fallback relay
+];
+const RELAY_PROBE_MS = 4000;
+const ICE_FLUSH_MS   = 4000;   // wait this long after last candidate
+const ICE_DONE_MS    = 600;    // flush faster once gathering=complete
+const ICE_SERVERS    = { iceServers:[
+  {urls:'stun:stun.l.google.com:19302'},
+  {urls:'stun:stun1.l.google.com:19302'},
+]};
+const FILE_CHUNK = 64 * 1024;
+const BUF_LIMIT  = 8  * 1024 * 1024;
+
+const WORDS = ['WOLF','FIRE','BIRD','LAKE','MOON','STAR','PINE','ROCK',
+               'SNOW','TIDE','WIND','GLOW','MIST','DAWN','DUSK','FLUX',
+               'HAZE','IRIS','JADE','KITE','LARK','MESA','NOVA','OPAL'];
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+let relayOk   = false;
+let relayUrl  = null;
+let ws        = null;
+let pc        = null;
+let dc        = null;
+let role      = null;   // 'host' | 'join'
+let roomCode  = null;
+let myName    = 'Me';
+let peerName  = 'Peer';
+let iceTimer      = null;
+let offerDone     = false;
+let ansDone       = false;
+let connected     = false;
+let bestCandidate = '';   // best LAN IP:port collected in onicecandidate
+
+// incoming file
+let inMeta = null, inBufs = [], inBarEl = null;
+
+// ═══════════════════════════════════════════════════════════════
+//  RELAY PROBE
+// ═══════════════════════════════════════════════════════════════
+(function probe() {
+  let tried = 0;
+  function tryNext() {
+    if (tried >= RELAY_URLS.length) { setRelay(false, null); return; }
+    const url = RELAY_URLS[tried++];
+    const s   = new WebSocket(url);
+    const tid = setTimeout(() => { s.close(); tryNext(); }, RELAY_PROBE_MS);
+    s.onopen  = () => { clearTimeout(tid); s.close(); setRelay(true, url); };
+    s.onerror = () => { clearTimeout(tid); tryNext(); };
+  }
+  tryNext();
+})();
+
+function setRelay(ok, url) {
+  relayOk  = ok;
+  relayUrl = url;
+  const dot = document.getElementById('relay-dot');
+  const txt = document.getElementById('relay-txt');
+  if (ok) {
+    dot.className = 'relay-dot ok';
+    txt.textContent = 'Relay available — join with a short room code';
+  } else {
+    dot.className = 'relay-dot fail';
+    txt.textContent = 'No relay — will use copy-paste codes (~90 chars)';
+    // Switch join UI to manual
+    document.getElementById('join-relay-ui').classList.add('hidden');
+    document.getElementById('join-manual-ui').classList.remove('hidden');
+    buildOfferInputs();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════════════════
+function setMode(m) {
+  document.getElementById('tab-host').classList.toggle('active', m==='host');
+  document.getElementById('tab-join').classList.toggle('active', m==='join');
+  show('host-panel', m==='host');
+  show('join-panel', m==='join');
+}
+
+function show(id, v) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (v) el.classList.remove('hidden');
+  else   el.classList.add('hidden');
+}
+
+function clog(msg, col) {
+  const el = document.getElementById('connect-log');
+  el.textContent = msg;
+  el.style.color = col || 'var(--txt3)';
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+}
+
+function genRoom() {
+  const w = WORDS[Math.random()*WORDS.length|0];
+  const n = (Math.random()*9000+1000)|0;
+  return w + '-' + n;
+}
+
+// ─── chunk display ───────────────────────────────────────────
+function renderChunks(containerId, items) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  items.forEach(({label, value}) => {
+    const row = document.createElement('div');
+    row.className = 'chunk-row';
+    const btnId = 'cb-' + Math.random().toString(36).slice(2);
+    // Escape for inline onclick
+    const escaped = value.replace(/'/g, "\\'");
+    row.innerHTML =
+      `<span class="chunk-lbl">${label}</span>` +
+      `<span class="chunk-box" onclick="selAll(this)">${value}</span>` +
+      `<button class="chunk-copy-btn" id="${btnId}" onclick="copyText('${escaped}','${btnId}')">copy</button>`;
+    el.appendChild(row);
+  });
+}
+
+function buildOfferInputs() {
+  const wrap = document.getElementById('offer-input-chunks');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  [
+    {id:'oi-1', lbl:'1', ph:'ufrag|pwd  e.g. ABCD|passphrase', len:0},
+    {id:'oi-2', lbl:'2', ph:'fingerprint first 32 hex chars', len:32},
+    {id:'oi-3', lbl:'3', ph:'fingerprint last 32 hex chars', len:32},
+    {id:'oi-4', lbl:'4', ph:'ip:port  e.g. 192.168.1.5:54321', len:0, noCaps:true},
+  ].forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'chunk-input-row';
+    const maxL = f.len > 0 ? f.len : 64;
+    const caps  = f.noCaps ? 'off' : 'off';
+    const xform = f.noCaps ? '' : 'text-transform:uppercase;';
+    row.innerHTML =
+      `<span class="chunk-lbl">${f.lbl}</span>` +
+      `<input class="chunk-input" id="${f.id}"` +
+      ` placeholder="${f.ph}" maxlength="${maxL}"` +
+      ` style="${xform}"` +
+      ` autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"` +
+      ` oninput="chunkVal(this,${f.len})">`;
+    wrap.appendChild(row);
+  });
+}
+
+function buildAnswerInputs() {
+  const wrap = document.getElementById('answer-input-chunks');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  [
+    {id:'ai-1', lbl:'1', ph:'ufrag|pwd  e.g. ABCD|passphrase', len:0},
+    {id:'ai-2', lbl:'2', ph:'fingerprint first 32 hex chars', len:32},
+    {id:'ai-3', lbl:'3', ph:'fingerprint last 32 hex chars', len:32},
+  ].forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'chunk-input-row';
+    row.innerHTML =
+      `<span class="chunk-lbl">${f.lbl}</span>` +
+      `<input class="chunk-input" id="${f.id}"` +
+      ` placeholder="${f.ph}" maxlength="${f.len}"` +
+      ` autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"` +
+      ` oninput="chunkVal(this,${f.len})">`;
+    wrap.appendChild(row);
+  });
+}
+
+function chunkVal(el, len) {
+  const v = el.value.trim();
+  if (!v) { el.classList.remove('ok','bad'); return; }
+  let ok;
+  if (len === 0) {
+    // Variable-length fields: show ok once they have some content
+    ok = v.length >= 3;
+  } else {
+    ok = v.length === len;
+  }
+  el.classList.toggle('ok',  ok);
+  el.classList.toggle('bad', !ok);
+  if (ok && len > 0) {
+    const all = [...document.querySelectorAll('.chunk-input')];
+    const i   = all.indexOf(el);
+    if (i >= 0 && i < all.length-1) all[i+1].focus();
+  }
+}
+
+function copyAllChunks(gridId, btn) {
+  const text = [...document.getElementById(gridId).querySelectorAll('.chunk-box')]
+    .map(b => b.textContent).join('\n');
+  const orig = btn.textContent;
+  clipboard(text, () => { btn.textContent='✓ Copied!'; setTimeout(()=>btn.textContent=orig,2000); });
+}
+
+function copyRoomCode() {
+  clipboard(document.getElementById('room-code-display').textContent.trim(), ()=>{});
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SDP UTILITIES
+// ═══════════════════════════════════════════════════════════════
+
+// Pull ufrag, pwd, fingerprint (no colons, uppercase) from an SDP string
+function sdpExtract(sdp) {
+  const ufrag = (sdp.match(/a=ice-ufrag:(\S+)/)||[])[1]||'';
+  const pwd   = (sdp.match(/a=ice-pwd:(\S+)/)||[])[1]||'';
+  const fpRaw = (sdp.match(/a=fingerprint:\S+ ([0-9A-Fa-f:]+)/)||[])[1]||'';
+  const fp    = fpRaw.replace(/:/g,'').toUpperCase();
+  return {ufrag, pwd, fp};
+}
+
+// Pull best local candidate IP:port from a gathered SDP
+function sdpCandidate(sdp) {
+  const lines = sdp.split(/\r?\n/);
+  // Prefer host UDP on a real LAN IP
+  for (const l of lines) {
+    const m = l.match(/^a=candidate:\S+ \d+ UDP \d+ ([\d.]+) (\d+) typ host/i);
+    if (m && !m[1].startsWith('0.') && !m[1].startsWith('169.') && m[1]!=='127.0.0.1')
+      return m[1]+':'+m[2];
+  }
+  // Fallback: any candidate with a real IP
+  for (const l of lines) {
+    const m = l.match(/^a=candidate:\S+ \d+ \S+ \d+ ([\d.]+) (\d+)/i);
+    if (m && !m[1].startsWith('0.') && !m[1].startsWith('169.') && m[1]!=='127.0.0.1')
+      return m[1]+':'+m[2];
+  }
+  return '';
+}
+
+// Rebuild a minimal valid SDP from extracted fields
+function sdpBuild(ufrag, pwd, fp64, ipport, type) {
+  // Ensure ufrag/pwd are lowercase (as spec requires)
+  ufrag = ufrag.toLowerCase().trim();
+  pwd   = pwd.toLowerCase().trim();
+  // fp64 is 64 uppercase hex chars; re-insert colons
+  const fpColon = fp64.replace(/[^0-9a-fA-F]/g,'').toLowerCase().match(/.{2}/g).join(':');
+  const isOffer = type === 'offer';
+  let cand = '';
+  if (ipport && ipport.includes(':')) {
+    const [ip, port] = ipport.split(':');
+    cand = `a=candidate:1 1 UDP 2113937151 ${ip} ${port} typ host\r\na=end-of-candidates\r\n`;
+  }
+  return (
+    'v=0\r\n' +
+    'o=- 0 0 IN IP4 127.0.0.1\r\n' +
+    's=-\r\nt=0 0\r\n' +
+    'a=group:BUNDLE 0\r\n' +
+    'm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n' +
+    'c=IN IP4 0.0.0.0\r\n' +
+    `a=ice-ufrag:${ufrag.toLowerCase()}\r\n` +
+    `a=ice-pwd:${pwd.toLowerCase()}\r\n` +
+    'a=ice-options:trickle\r\n' +
+    `a=fingerprint:sha-256 ${fpColon}\r\n` +
+    `a=setup:${isOffer ? 'actpass' : 'active'}\r\n` +
+    'a=mid:0\r\na=sctp-port:5000\r\na=max-message-size:262144\r\n' +
+    cand
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PEER CONNECTION
+// ═══════════════════════════════════════════════════════════════
+function makePc() {
+  if (pc) { try{pc.close()}catch(_){} }
+  offerDone = false; ansDone = false; bestCandidate = '';
+  pc = new RTCPeerConnection(ICE_SERVERS);
+
+  pc.onicecandidate = e => {
+    if (e.candidate) {
+      // Trickle to relay if available
+      if (ws && ws.readyState === WebSocket.OPEN)
+        wsSend({t:'ice', c: e.candidate.toJSON()});
+
+      // Capture the best LAN candidate ourselves — don't rely on re-parsing SDP later
+      const cand = e.candidate;
+      const ip   = cand.address || '';
+      const port = cand.port    || 0;
+      const typ  = cand.type    || '';
+      // Prefer host UDP on a real private IP
+      const isPrivate = /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(ip);
+      const isHost    = typ === 'host';
+      const isUDP     = (cand.protocol||'').toLowerCase() === 'udp' ||
+                        (cand.candidate||'').toLowerCase().includes(' udp ');
+      if (ip && port && isPrivate && isHost && isUDP && !bestCandidate) {
+        bestCandidate = ip + ':' + port;
+      }
+      // Fallback: any non-loopback host candidate
+      if (ip && port && isHost && !bestCandidate &&
+          ip !== '127.0.0.1' && !ip.startsWith('169.') && !ip.startsWith('0.')) {
+        bestCandidate = ip + ':' + port;
+      }
+    }
+    clearTimeout(iceTimer);
+    iceTimer = setTimeout(flushSDP, e.candidate ? ICE_FLUSH_MS : ICE_DONE_MS);
+  };
+
+  pc.onicegatheringstatechange = () => {
+    if (pc.iceGatheringState === 'complete') {
+      clearTimeout(iceTimer); flushSDP();
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    const s = pc.connectionState;
+    if (s === 'connected')                              handleConnected();
+    if (['disconnected','failed','closed'].includes(s)) handleDC();
+  };
+
+  pc.ondatachannel = e => bindDC(e.channel);
+}
+
+function flushSDP() {
+  if (role === 'host' && !offerDone) finaliseOffer();
+  if (role === 'join' && !ansDone)   finaliseAnswer();
+}
+
+function bindDC(ch) {
+  dc = ch;
+  dc.binaryType = 'arraybuffer';
+  dc.onopen    = handleConnected;
+  dc.onclose   = handleDC;
+  dc.onerror   = e => console.error('DC err', e);
+  dc.onmessage = e => typeof e.data==='string'
+    ? handleCtrl(JSON.parse(e.data))
+    : handleBin(e.data);
+  if (dc.readyState === 'open') handleConnected();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RELAY WebSocket
+// ═══════════════════════════════════════════════════════════════
+function openWS(room, cb) {
+  ws = new WebSocket(relayUrl + (relayUrl.endsWith('/') ? '' : '/') + encodeURIComponent(room));
+  ws.onopen    = () => { clog('Relay connected'); cb(); };
+  ws.onerror   = () => clog('Relay error');
+  ws.onclose   = () => { if (!connected) clog('Relay closed'); };
+  ws.onmessage = async e => {
+    let msg; try { msg = JSON.parse(e.data); } catch { return; }
+    await handleRelayMsg(msg);
+  };
+}
+
+function wsSend(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
+
+async function handleRelayMsg(msg) {
+  if (!pc) return;
+  if (msg.t === 'offer') {
+    peerName = msg.name || 'Peer';
+    try {
+      await pc.setRemoteDescription({type:'offer', sdp: msg.sdp});
+      const ans = await pc.createAnswer();
+      await pc.setLocalDescription(ans);
+      // answer sent via finaliseAnswer once ICE gathered
+    } catch(e) { clog('Offer error: '+e.message,'var(--err)'); }
+  } else if (msg.t === 'answer') {
+    peerName = msg.name || 'Peer';
+    try {
+      await pc.setRemoteDescription({type:'answer', sdp: msg.sdp});
+    } catch(e) { clog('Answer error: '+e.message,'var(--err)'); }
+  } else if (msg.t === 'ice') {
+    try { await pc.addIceCandidate(new RTCIceCandidate(msg.c)); } catch(_) {}
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HOST
+// ═══════════════════════════════════════════════════════════════
+async function doHost() {
+  myName   = document.getElementById('my-name').value.trim() || 'Host';
+  role     = 'host';
+  roomCode = genRoom();
+  document.getElementById('btn-host').disabled = true;
+  clog('Creating session…');
+
+  makePc();
+  const ch = pc.createDataChannel('landrop', {ordered:true});
+  bindDC(ch);
+
+  try {
+    await pc.setLocalDescription(await pc.createOffer());
+    clog('Gathering network info…');
+  } catch(e) {
+    clog('Error: '+e.message,'var(--err)');
+    document.getElementById('btn-host').disabled = false;
+    return;
+  }
+
+  if (relayOk) {
+    openWS(roomCode, () => { /* offer sent in finaliseOffer */ });
+  }
+  // finaliseOffer fires via ICE timer regardless
+}
+
+function finaliseOffer() {
+  if (offerDone) return;
+  offerDone = true;
+
+  const sdp    = pc.localDescription.sdp;
+  const {ufrag, pwd, fp} = sdpExtract(sdp);
+  // Use the candidate we collected directly — much more reliable than re-parsing SDP
+  const ipport = bestCandidate || sdpCandidate(sdp);
+
+  // Show the offer wrap
+  show('host-offer-wrap', true);
+  document.getElementById('host-offer-wrap').style.display = 'flex';
+
+  if (relayOk && ws) {
+    wsSend({t:'offer', sdp, name: myName, room: roomCode});
+    show('host-relay-code', true);
+    document.getElementById('host-relay-code').style.display = 'flex';
+    document.getElementById('room-code-display').textContent = roomCode;
+    clog('Waiting for peer to join with this code…');
+  } else {
+    // Manual: 4 chunks
+    show('host-manual-code', true);
+    document.getElementById('host-manual-code').style.display = 'flex';
+    const creds = (ufrag + '|' + pwd).toUpperCase();
+    const fp1   = fp.slice(0,32);
+    const fp2   = fp.slice(32,64);
+    const ipStr = ipport || '(no LAN candidate — check WiFi)';
+    renderChunks('host-chunks', [
+      {label:'1', value: creds},
+      {label:'2', value: fp1},
+      {label:'3', value: fp2},
+      {label:'4', value: ipStr},
+    ]);
+    // Show answer input section
+    show('host-answer-section', true);
+    buildAnswerInputs();
+    clog('Share 4 chunks, then enter their 3 answer chunks');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  JOIN — RELAY
+// ═══════════════════════════════════════════════════════════════
+async function doJoinRelay() {
+  if (!relayOk) { clog('No relay available'); return; }
+  myName = document.getElementById('my-name').value.trim() || 'Guest';
+  const code = document.getElementById('join-code-input').value.trim().toUpperCase();
+  if (!code) { clog('Enter a room code'); return; }
+  roomCode = code;
+  role     = 'join';
+  document.getElementById('btn-join').disabled = true;
+  clog('Connecting…');
+
+  makePc();
+
+  openWS(roomCode, () => {
+    // Tell host we're here; they'll re-send their offer
+    wsSend({t:'hello', name: myName, room: roomCode});
+    clog('Waiting for host offer…');
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  JOIN — MANUAL
+// ═══════════════════════════════════════════════════════════════
+async function doGenAnswer() {
+  myName = document.getElementById('my-name').value.trim() || 'Guest';
+  role   = 'join';
+
+  const c1 = (document.getElementById('oi-1')?.value||'').trim().toUpperCase();
+  const c2 = (document.getElementById('oi-2')?.value||'').trim().toUpperCase();
+  const c3 = (document.getElementById('oi-3')?.value||'').trim().toUpperCase();
+  const c4 = (document.getElementById('oi-4')?.value||'').trim();
+
+  if (!c1.includes('|')) { clog('Chunk 1 must have a | between ufrag and pwd','var(--err)'); return; }
+  if (c2.length !== 32) { clog('Chunk 2 must be 32 chars','var(--err)'); return; }
+  if (c3.length !== 32) { clog('Chunk 3 must be 32 chars','var(--err)'); return; }
+  if (!c4 || !c4.includes(':')) { clog('Chunk 4 needs an ip:port','var(--err)'); return; }
+
+  const pipe = c1.indexOf('|');
+  if (pipe < 1) { clog('Chunk 1 must contain a | separator (e.g. ABCD|password…)','var(--err)'); return; }
+  const ufrag = c1.slice(0, pipe);
+  const pwd   = c1.slice(pipe + 1);
+  const fp    = c2 + c3;
+  const sdp   = sdpBuild(ufrag, pwd, fp, c4, 'offer');
+
+  document.getElementById('btn-gen-answer').disabled = true;
+  ansDone = false;
+  makePc();
+
+  try {
+    await pc.setRemoteDescription({type:'offer', sdp});
+    await pc.setLocalDescription(await pc.createAnswer());
+    clog('Gathering ICE…');
+  } catch(e) {
+    clog('Error: '+e.message,'var(--err)');
+    document.getElementById('btn-gen-answer').disabled = false;
+  }
+}
+
+function finaliseAnswer() {
+  if (ansDone) return;
+  ansDone = true;
+
+  const sdp = pc.localDescription.sdp;
+  const {ufrag, pwd, fp} = sdpExtract(sdp);
+
+  if (relayOk && ws) {
+    wsSend({t:'answer', sdp, name: myName});
+    clog('Answer sent — connecting…');
+  } else {
+    show('answer-out-section', true);
+    document.getElementById('answer-out-section').style.display = 'flex';
+    renderChunks('answer-chunks', [
+      {label:'1', value: (ufrag+'|'+pwd).toUpperCase()},
+      {label:'2', value: fp.slice(0,32)},
+      {label:'3', value: fp.slice(32,64)},
+    ]);
+    clog('Read 3 chunks back to the host');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HOST APPLIES MANUAL ANSWER
+// ═══════════════════════════════════════════════════════════════
+async function manualApplyAnswer() {
+  const c1 = (document.getElementById('ai-1')?.value||'').trim().toUpperCase();
+  const c2 = (document.getElementById('ai-2')?.value||'').trim().toUpperCase();
+  const c3 = (document.getElementById('ai-3')?.value||'').trim().toUpperCase();
+
+  if (!c1.includes('|')){clog('Answer chunk 1 needs a | separator','var(--err)');return;}
+  if (c2.length!==32){clog('Answer chunk 2 must be 32 chars','var(--err)');return;}
+  if (c3.length!==32){clog('Answer chunk 3 must be 32 chars','var(--err)');return;}
+
+  const pipe2 = c1.indexOf('|');
+  if (pipe2 < 1) { clog('Answer chunk 1 needs a | separator','var(--err)'); return; }
+  const sdp = sdpBuild(c1.slice(0, pipe2), c1.slice(pipe2+1), c2+c3, '', 'answer');
+  try {
+    await pc.setRemoteDescription({type:'answer', sdp});
+    clog('Answer applied — connecting…');
+  } catch(e) { clog('Bad answer: '+e.message,'var(--err)'); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CONNECTED / DISCONNECTED
+// ═══════════════════════════════════════════════════════════════
+function handleConnected() {
+  if (connected) return;
+  connected = true;
+  if (ws) { try{ws.close()}catch(_){} ws = null; }
+  document.getElementById('peer-name-el').textContent    = peerName;
+  document.getElementById('peer-status-el').textContent  = 'connected · P2P';
+  showScreen('chat');
+  sysMsg('Connected to ' + peerName + ' 🎉');
+  dcSend({t:'name', name: myName});
+}
+
+function handleDC() {
+  if (!connected) return;
+  connected = false;
+  document.getElementById('conn-dot').className = 'conn-dot';
+  sysMsg('Connection lost.');
+}
+
+function doDisconnect() {
+  [dc,pc,ws].forEach(x => { if(x) try{x.close()}catch(_){} });
+  dc=null; pc=null; ws=null; connected=false;
+  // Reset buttons
+  ['btn-host','btn-join','btn-gen-answer'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = false;
+  });
+  showScreen('connect');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DATA CHANNEL MESSAGING
+// ═══════════════════════════════════════════════════════════════
+function dcSend(obj) {
+  if (dc && dc.readyState==='open') dc.send(JSON.stringify(obj));
+}
+
+function handleCtrl(msg) {
+  if (msg.t === 'name') {
+    peerName = msg.name||'Peer';
+    document.getElementById('peer-name-el').textContent = peerName;
+  } else if (msg.t === 'chat') {
+    addMsg('them', peerName, msg.text);
+  } else if (msg.t === 'file-meta') {
+    inMeta = msg; inBufs = [];
+    inBarEl = addFileBubble('them', peerName, msg);
+  } else if (msg.t === 'file-done') {
+    assembleFile();
+  }
+}
+
+function handleBin(buf) {
+  inBufs.push(buf);
+  if (inMeta && inBarEl) {
+    const got = inBufs.reduce((a,b)=>a+b.byteLength,0);
+    inBarEl.style.width = Math.round(got/inMeta.size*100)+'%';
+  }
+}
+
+function assembleFile() {
+  if (!inMeta) return;
+  const blob = new Blob(inBufs, {type: inMeta.mime||'application/octet-stream'});
+  const url  = URL.createObjectURL(blob);
+  if (inBarEl) {
+    inBarEl.style.width='100%'; inBarEl.classList.add('done');
+    const card = inBarEl.closest('.msg-file');
+    if (card) {
+      const a = document.createElement('a');
+      a.href = url; a.download = inMeta.name;
+      a.innerHTML = '<button class="btn-save">↓ Save</button>';
+      card.appendChild(a);
+    }
+  }
+  inMeta=null; inBufs=[]; inBarEl=null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CHAT INPUT
+// ═══════════════════════════════════════════════════════════════
+function chatKey(e) {
+  if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendChatMsg(); }
+}
+function autoResize(el) {
+  el.style.height='auto';
+  el.style.height = Math.min(el.scrollHeight,120)+'px';
+}
+function sendChatMsg() {
+  if (!dc||dc.readyState!=='open') return;
+  const ta = document.getElementById('chat-input');
+  const text = ta.value.trim();
+  if (!text) return;
+  dcSend({t:'chat', text});
+  addMsg('me', myName, text);
+  ta.value=''; ta.style.height='auto';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FILE SEND
+// ═══════════════════════════════════════════════════════════════
+function handleFileAttach(files) {
+  [...files].forEach(sendFile);
+  document.getElementById('file-attach-input').value='';
+}
+function sendFile(file) {
+  if (!dc||dc.readyState!=='open') return;
+  const meta = {t:'file-meta', name:file.name, size:file.size, mime:file.type||'application/octet-stream'};
+  dcSend(meta);
+  const barEl = addFileBubble('me', myName, meta);
+  let offset  = 0;
+  function pump() {
+    if (dc.bufferedAmount > BUF_LIMIT) { setTimeout(pump,50); return; }
+    if (offset >= file.size) {
+      dcSend({t:'file-done'});
+      barEl.style.width='100%'; barEl.classList.add('done'); return;
+    }
+    file.slice(offset, offset+FILE_CHUNK).arrayBuffer().then(buf => {
+      dc.send(buf); offset += buf.byteLength;
+      barEl.style.width = Math.round(offset/file.size*100)+'%';
+      pump();
+    });
+  }
+  pump();
+}
+
+// Drag-and-drop onto chat
+document.addEventListener('dragenter', e => { if(connected) document.getElementById('drop-overlay').classList.add('active'); });
+document.addEventListener('dragleave', e => { if(e.relatedTarget===null) document.getElementById('drop-overlay').classList.remove('active'); });
+document.addEventListener('dragover',  e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  document.getElementById('drop-overlay').classList.remove('active');
+  if (!connected) return;
+  [...e.dataTransfer.files].forEach(sendFile);
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  MESSAGE RENDERING
+// ═══════════════════════════════════════════════════════════════
+const FICONS = {
+  pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',ppt:'📋',pptx:'📋',
+  zip:'🗜',rar:'🗜',gz:'🗜','7z':'🗜',tar:'🗜',
+  mp4:'🎬',mov:'🎬',avi:'🎬',mkv:'🎬',webm:'🎬',
+  mp3:'🎵',wav:'🎵',flac:'🎵',aac:'🎵',m4a:'🎵',
+  png:'🖼',jpg:'🖼',jpeg:'🖼',gif:'🖼',svg:'🖼',webp:'🖼',heic:'🖼',
+  txt:'📃',md:'📃',csv:'📊',json:'📦',js:'⚙️',ts:'⚙️',
+  html:'🌐',css:'🎨',py:'🐍',sh:'💻',exe:'⚙️',dmg:'💾',apk:'📱',
+};
+const ficon = n => FICONS[n.split('.').pop().toLowerCase()]||'📦';
+function fmt(b){
+  if(b<1024)return b+' B';if(b<1048576)return (b/1024).toFixed(1)+' KB';
+  if(b<1073741824)return (b/1048576).toFixed(1)+' MB';return (b/1073741824).toFixed(2)+' GB';
+}
+function ts(){return new Date().toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',hour12:true});}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');}
+
+function getBox(){
+  const b=document.getElementById('chat-messages');
+  document.getElementById('chat-empty')?.remove();
+  return b;
+}
+function scrollBottom(b){b.scrollTop=b.scrollHeight;}
+
+function sysMsg(text){
+  const b=getBox();
+  const d=document.createElement('div');
+  d.className='msg-system'; d.textContent=text;
+  b.appendChild(d); scrollBottom(b);
+}
+function addMsg(who, sender, text){
+  const b=getBox();
+  const w=document.createElement('div');
+  w.className='msg-wrap '+who;
+  w.innerHTML=
+    `<div class="msg-sender">${who==='me'?'you':esc(sender)}</div>`+
+    `<div class="msg-bubble">${esc(text)}</div>`+
+    `<div class="msg-time">${ts()}</div>`;
+  b.appendChild(w); scrollBottom(b);
+}
+function addFileBubble(who, sender, meta){
+  const b   = getBox();
+  const w   = document.createElement('div');
+  w.className = 'msg-wrap '+who;
+  const bid = 'fb-'+Date.now()+'-'+(Math.random()*1e6|0);
+  w.innerHTML=
+    `<div class="msg-sender">${who==='me'?'you':esc(sender)}</div>`+
+    `<div class="msg-file">`+
+      `<div class="msg-file-icon">${ficon(meta.name)}</div>`+
+      `<div class="msg-file-info">`+
+        `<div class="msg-file-name">${esc(meta.name)}</div>`+
+        `<div class="msg-file-meta">${fmt(meta.size)}</div>`+
+        `<div class="msg-file-prog"><div class="msg-file-bar" id="${bid}"></div></div>`+
+      `</div>`+
+    `</div>`+
+    `<div class="msg-time">${ts()}</div>`;
+  b.appendChild(w); scrollBottom(b);
+  return document.getElementById(bid);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CLIPBOARD
+// ═══════════════════════════════════════════════════════════════
+function clipboard(text, cb){
+  if(navigator.clipboard && window.isSecureContext)
+    navigator.clipboard.writeText(text).then(cb).catch(()=>fbClip(text,cb));
+  else fbClip(text,cb);
+}
+function fbClip(text,cb){
+  const t=document.createElement('textarea');
+  t.value=text; t.style.cssText='position:fixed;opacity:0';
+  document.body.appendChild(t); t.select();
+  try{document.execCommand('copy');cb();}catch(_){}
+  document.body.removeChild(t);
+}
+function copyText(text, btnId){
+  const btn=document.getElementById(btnId), orig=btn.textContent;
+  clipboard(text, ()=>{
+    btn.textContent='✓'; btn.classList.add('done');
+    setTimeout(()=>{btn.textContent=orig;btn.classList.remove('done');},1500);
+  });
+}
+function selAll(el){
+  const r=document.createRange(); r.selectNodeContents(el);
+  const s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+setMode('host');
+document.getElementById('my-name').focus();
+</script>
+</body>
+</html>
