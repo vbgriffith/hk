@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LANdrop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+:root{
+  --bg:#080b10;--s1:#0e1420;--s2:#141c2e;--s3:#1a2438;
+  --b1:#1e2d48;--b2:#263860;--b3:#304878;
+  --t1:#dde8ff;--t2:#8ba4d0;--t3:#4a6090;--t4:#2a3858;
+  --ac:#3d9eff;--ac2:#00d4aa;--ac3:#ff6b35;
+  --err:#ff5566;--warn:#ffaa33;
+  --me:#162a52;--me-b:#1e3d78;
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Outfit',sans-serif;
+  --r:6px;
+}
+body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;line-height:1.5;display:flex;flex-direction:column;}
+
+/* ── SCREENS ── */
+.screen{display:none;height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* ── LOBBY ── */
+#lobby{
+  align-items:center;justify-content:center;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%,rgba(61,158,255,.15) 0%,transparent 60%),
+    radial-gradient(ellipse 40% 30% at 80% 80%,rgba(0,212,170,.08) 0%,transparent 50%),
+    var(--bg);
+}
+.lobby-card{width:100%;max-width:520px;padding:0 24px 36px;display:flex;flex-direction:column;gap:16px;overflow-y:auto;max-height:100vh;}
+
+.brand{text-align:center;padding:32px 0 8px;}
+.brand-wordmark{font-size:36px;font-weight:800;letter-spacing:-2px;line-height:1;}
+.brand-wordmark .hi{color:var(--ac);}
+.brand-wordmark .lo{color:var(--t2);}
+.brand-tag{font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:3px;text-transform:uppercase;margin-top:6px;}
+
+/* cert status */
+.cert-bar{display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);font-family:var(--mono);font-size:10px;color:var(--t3);}
+.cert-dot{width:6px;height:6px;border-radius:50%;background:var(--t4);flex-shrink:0;}
+.cert-dot.cached{background:var(--ac);}
+.cert-dot.fresh{background:var(--ac2);}
+.cert-dot.fail{background:var(--err);}
+.cert-dot.spin{background:var(--warn);animation:spin-dot .6s linear infinite;}
+@keyframes spin-dot{0%{opacity:1}50%{opacity:.2}100%{opacity:1}}
+
+.relay-bar{display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);font-family:var(--mono);font-size:10px;color:var(--t3);}
+.relay-dot{width:6px;height:6px;border-radius:50%;background:var(--t4);flex-shrink:0;transition:background .3s;}
+.relay-dot.ok{background:var(--ac2);}
+.relay-dot.fail{background:var(--err);}
+.relay-dot.busy{background:var(--warn);animation:spin-dot .8s infinite;}
+
+/* tabs */
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--b1);border-radius:var(--r);overflow:hidden;border:1px solid var(--b1);}
+.tab{padding:10px;text-align:center;background:var(--s2);cursor:pointer;font-size:13px;font-weight:500;color:var(--t3);border:none;font-family:var(--sans);transition:all .15s;}
+.tab:hover{background:var(--s3);color:var(--t2);}
+.tab.on{background:var(--ac);color:#fff;font-weight:600;}
+
+/* fields */
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--t3);}
+.field input,.field textarea{background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);color:var(--t1);font-family:var(--mono);font-size:13px;padding:9px 12px;outline:none;transition:border-color .15s;width:100%;}
+.field input:focus,.field textarea:focus{border-color:var(--ac);}
+.field textarea{resize:vertical;min-height:72px;}
+.field .sub{font-size:10px;color:var(--t3);font-family:var(--mono);margin-top:3px;}
+
+/* buttons */
+.btn{font-family:var(--sans);font-size:13px;font-weight:600;padding:10px 20px;border:none;border-radius:var(--r);cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;gap:7px;}
+.btn-p{background:var(--ac);color:#fff;} .btn-p:hover{background:#2d8ef0;} .btn-p:disabled{opacity:.35;cursor:not-allowed;}
+.btn-g{background:transparent;color:var(--t2);border:1px solid var(--b2);} .btn-g:hover{border-color:var(--b3);color:var(--t1);}
+.btn-a{background:var(--ac2);color:#000;} .btn-a:hover{background:#00c09a;} .btn-a:disabled{opacity:.35;cursor:not-allowed;}
+.btn-w{width:100%;}
+.btn-sm{font-size:11px;padding:5px 12px;}
+
+.divider{display:flex;align-items:center;gap:8px;color:var(--t4);font-size:10px;font-family:var(--mono);letter-spacing:1px;text-transform:uppercase;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--b1);}
+
+/* short code display */
+.code-block{
+  background:var(--bg);border:1px solid var(--b2);border-radius:var(--r);
+  padding:12px 14px;font-family:var(--mono);font-size:15px;font-weight:500;
+  letter-spacing:2px;color:var(--ac2);user-select:all;cursor:text;
+  word-break:break-all;line-height:1.6;position:relative;
+}
+.code-block .code-len{position:absolute;top:8px;right:10px;font-size:9px;color:var(--t4);letter-spacing:0;}
+.code-block.big{font-size:12px;letter-spacing:.5px;}
+
+.code-row{display:flex;gap:8px;align-items:stretch;}
+.code-row .code-block{flex:1;}
+.copy-btn{font-family:var(--mono);font-size:10px;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);color:var(--t3);cursor:pointer;padding:0 10px;transition:all .15s;flex-shrink:0;white-space:nowrap;}
+.copy-btn:hover{border-color:var(--ac);color:var(--ac);}
+.copy-btn.ok{background:var(--ac2);border-color:var(--ac2);color:#000;}
+
+/* paste input */
+.paste-input{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);color:var(--t1);font-family:var(--mono);font-size:13px;padding:9px 12px;outline:none;transition:border-color .15s;resize:vertical;min-height:64px;letter-spacing:.5px;}
+.paste-input:focus{border-color:var(--ac);}
+.paste-input.valid{border-color:var(--ac2);}
+.paste-input.bad{border-color:var(--err);}
+
+/* peer slots in host panel */
+.peer-slots{display:flex;flex-direction:column;gap:8px;}
+.peer-slot{background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);overflow:hidden;}
+.peer-slot-head{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--b1);cursor:pointer;user-select:none;}
+.peer-slot-head:hover{background:var(--s3);}
+.peer-num{font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--s3);border:1px solid var(--b2);border-radius:3px;padding:2px 6px;flex-shrink:0;}
+.peer-name-span{font-size:13px;font-weight:500;flex:1;}
+.peer-status-dot{width:7px;height:7px;border-radius:50%;background:var(--t4);flex-shrink:0;}
+.peer-status-dot.waiting{background:var(--warn);animation:spin-dot .8s infinite;}
+.peer-status-dot.connected{background:var(--ac2);}
+.peer-slot-body{padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
+.peer-slot-body.collapsed{display:none;}
+
+#lobby-log{font-family:var(--mono);font-size:10px;color:var(--t4);min-height:14px;text-align:center;padding:2px 0;}
+
+/* ── CHAT SCREEN ── */
+#chat{background:var(--bg);}
+.chat-wrap{flex:1;display:flex;height:100vh;}
+
+/* sidebar */
+.sidebar{
+  width:220px;flex-shrink:0;
+  background:var(--s1);
+  border-right:1px solid var(--b1);
+  display:flex;flex-direction:column;
+  transition:width .2s;
+  overflow:hidden;
+}
+.sidebar.collapsed{width:0;border-right:none;}
+@media(max-width:600px){.sidebar{position:absolute;left:0;top:0;bottom:0;z-index:50;transform:translateX(-100%);transition:transform .2s;width:220px;}.sidebar.open{transform:translateX(0);}}
+
+.sidebar-top{padding:12px 14px 8px;border-bottom:1px solid var(--b1);}
+.sidebar-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--t3);margin-bottom:8px;}
+.room-chip{font-family:var(--mono);font-size:11px;color:var(--ac);background:var(--s2);border:1px solid var(--b2);border-radius:4px;padding:3px 8px;word-break:break-all;}
+
+.peer-list{flex:1;overflow-y:auto;padding:8px 0;}
+.peer-item{display:flex;align-items:center;gap:9px;padding:7px 14px;cursor:pointer;transition:background .1s;}
+.peer-item:hover{background:var(--s2);}
+.peer-item.active-peer{background:var(--s3);}
+.peer-item .p-dot{width:7px;height:7px;border-radius:50%;background:var(--t4);flex-shrink:0;}
+.peer-item .p-dot.on{background:var(--ac2);}
+.peer-item .p-name{font-size:13px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.peer-item .p-badge{font-family:var(--mono);font-size:9px;background:var(--ac);color:#fff;border-radius:10px;padding:1px 5px;flex-shrink:0;}
+
+.sidebar-bottom{padding:10px 14px;border-top:1px solid var(--b1);display:flex;flex-direction:column;gap:6px;}
+
+/* add person button in sidebar */
+.add-peer-btn{display:flex;align-items:center;gap:7px;padding:7px 14px;font-size:12px;font-weight:500;color:var(--ac);cursor:pointer;border:1px dashed var(--b2);border-radius:var(--r);margin:6px 10px;transition:all .15s;}
+.add-peer-btn:hover{border-color:var(--ac);background:rgba(61,158,255,.06);}
+
+/* main chat */
+.chat-main{flex:1;display:flex;flex-direction:column;min-width:0;}
+
+.chat-topbar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--b1);background:var(--s1);flex-shrink:0;}
+.sidebar-toggle{background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px;padding:2px 4px;}
+.sidebar-toggle:hover{color:var(--t1);}
+.chat-title{flex:1;font-weight:600;font-size:14px;}
+.chat-subtitle{font-size:10px;color:var(--t3);font-family:var(--mono);}
+.conn-pill{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--t3);padding:3px 9px;border:1px solid var(--b1);border-radius:20px;background:var(--s2);}
+.conn-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--t4);}
+.conn-pill .dot.on{background:var(--ac2);}
+.leave-btn{font-family:var(--mono);font-size:10px;background:transparent;border:1px solid var(--b1);border-radius:4px;padding:3px 8px;color:var(--t3);cursor:pointer;transition:all .15s;}
+.leave-btn:hover{border-color:var(--err);color:var(--err);}
+
+.messages{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:3px;scroll-behavior:smooth;}
+.messages::-webkit-scrollbar{width:3px;}
+.messages::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px;}
+
+.msg-sys{text-align:center;font-family:var(--mono);font-size:10px;color:var(--t4);padding:3px 0 5px;}
+
+.msg-wrap{display:flex;flex-direction:column;max-width:68%;}
+.msg-wrap.me{align-self:flex-end;align-items:flex-end;}
+.msg-wrap.them{align-self:flex-start;align-items:flex-start;}
+.msg-who{font-size:10px;font-weight:600;color:var(--t3);margin-bottom:2px;padding:0 4px;font-family:var(--mono);}
+.msg-bubble{padding:8px 12px;border-radius:12px;font-size:14px;line-height:1.5;word-break:break-word;}
+.msg-wrap.me .msg-bubble{background:var(--me);border:1px solid var(--me-b);border-bottom-right-radius:3px;color:#b8d0ff;}
+.msg-wrap.them .msg-bubble{background:var(--s2);border:1px solid var(--b1);border-bottom-left-radius:3px;}
+.msg-ts{font-size:10px;color:var(--t4);font-family:var(--mono);margin-top:2px;padding:0 4px;}
+
+.msg-file{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:1px solid var(--b2);background:var(--s2);min-width:200px;max-width:280px;}
+.msg-file-ico{font-size:20px;flex-shrink:0;}
+.msg-file-info{flex:1;min-width:0;}
+.msg-file-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.msg-file-meta{font-family:var(--mono);font-size:9px;color:var(--t3);}
+.prog-track{height:2px;background:var(--b1);border-radius:1px;margin-top:4px;}
+.prog-fill{height:100%;background:var(--ac);border-radius:1px;width:0%;transition:width .1s;}
+.prog-fill.done{background:var(--ac2);}
+.save-btn{font-family:var(--sans);font-size:10px;font-weight:600;padding:4px 9px;background:var(--ac2);color:#000;border:none;border-radius:4px;cursor:pointer;flex-shrink:0;transition:background .15s;}
+.save-btn:hover{background:#00c09a;}
+
+.chat-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--t4);font-size:13px;}
+.chat-empty-ico{font-size:32px;opacity:.4;}
+
+.input-area{border-top:1px solid var(--b1);background:var(--s1);padding:10px 12px;flex-shrink:0;}
+.input-row{display:flex;gap:8px;align-items:flex-end;}
+.attach-btn{width:32px;height:32px;background:transparent;border:1px solid var(--b1);border-radius:var(--r);color:var(--t3);cursor:pointer;display:grid;place-items:center;flex-shrink:0;align-self:flex-end;font-size:15px;transition:all .15s;}
+.attach-btn:hover{border-color:var(--ac);color:var(--ac);}
+#file-input{display:none;}
+.msg-ta{flex:1;background:var(--s2);border:1px solid var(--b1);border-radius:9px;color:var(--t1);font-family:var(--sans);font-size:14px;padding:7px 12px;outline:none;resize:none;max-height:110px;line-height:1.5;transition:border-color .15s;overflow-y:auto;}
+.msg-ta:focus{border-color:var(--b2);}
+.msg-ta::placeholder{color:var(--t4);}
+.send-btn{width:32px;height:32px;border-radius:50%;background:var(--ac);border:none;cursor:pointer;color:#fff;font-size:13px;flex-shrink:0;display:grid;place-items:center;transition:all .15s;align-self:flex-end;}
+.send-btn:hover{background:#2d8ef0;transform:scale(1.05);}
+.send-btn:disabled{opacity:.35;cursor:not-allowed;transform:none;}
+
+/* drop overlay */
+#drop-ov{display:none;position:fixed;inset:0;background:rgba(61,158,255,.1);border:3px dashed var(--ac);z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:10px;font-size:16px;font-weight:600;color:var(--ac);}
+#drop-ov.show{display:flex;}
+
+/* modal for add-peer flow */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:center;justify-content:center;}
+.modal-bg.show{display:flex;}
+.modal{background:var(--s1);border:1px solid var(--b2);border-radius:10px;width:100%;max-width:440px;margin:20px;display:flex;flex-direction:column;gap:14px;padding:20px;}
+.modal-title{font-size:16px;font-weight:700;}
+.modal-close{background:none;border:none;color:var(--t3);cursor:pointer;font-size:18px;margin-left:auto;}
+.modal-close:hover{color:var(--t1);}
+
+/* accent line */
+.al{height:2px;background:linear-gradient(90deg,var(--ac),var(--ac2),var(--ac3));background-size:300%;animation:al-move 4s linear infinite;flex-shrink:0;}
+@keyframes al-move{0%{background-position:0%}100%{background-position:300%}}
+
+/* animations */
+@keyframes pop{from{opacity:0;transform:translateY(5px) scale(.97)}to{opacity:1;transform:none}}
+.msg-wrap,.msg-sys{animation:pop .15s ease;}
+
+.hidden{display:none!important;}
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ LOBBY ═══════════════════ -->
+<div id="lobby" class="screen active">
+  <div class="al"></div>
+  <div class="lobby-card">
+
+    <div class="brand">
+      <div class="brand-wordmark"><span class="hi">LAN</span><span class="lo">drop</span></div>
+      <div class="brand-tag">Local · P2P · No Upload</div>
+    </div>
+
+    <div class="cert-bar"><div class="cert-dot spin" id="cert-dot"></div><span id="cert-txt">Checking certificate…</span></div>
+    <div class="relay-bar"><div class="relay-dot busy" id="relay-dot"></div><span id="relay-txt">Checking relay…</span></div>
+
+    <div class="field"><label>Your name</label>
+      <input id="my-name" type="text" placeholder="e.g. Alice" maxlength="24" autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+
+    <div class="tabs">
+      <button class="tab on" id="tab-h" onclick="setTab('host')">📡  Host</button>
+      <button class="tab"    id="tab-j" onclick="setTab('join')">🔗  Join</button>
+    </div>
+
+    <!-- HOST -->
+    <div id="panel-host" style="display:flex;flex-direction:column;gap:12px;">
+      <button class="btn btn-p btn-w" id="btn-start" onclick="startHost()">⚡  Start Session</button>
+
+      <div id="host-room-wrap" class="hidden" style="display:flex;flex-direction:column;gap:10px;">
+        <!-- relay room code -->
+        <div id="host-relay-code" class="hidden" style="display:flex;flex-direction:column;gap:6px;">
+          <div class="field"><label>Room code — share with everyone</label>
+            <div id="room-code-el" class="code-block" style="font-size:24px;letter-spacing:5px;text-align:center;" onclick="selAll(this)"></div>
+          </div>
+          <button class="btn btn-g btn-w btn-sm" onclick="copyRoomCode()">Copy room code</button>
+        </div>
+
+        <!-- peer slots (manual) -->
+        <div id="host-peer-slots" class="hidden" style="display:flex;flex-direction:column;gap:8px;">
+          <div class="field"><label>Offer codes — one per person</label></div>
+          <div class="peer-slots" id="peer-slots-list"></div>
+          <button class="btn btn-g btn-w btn-sm" id="btn-add-person" onclick="addManualPeer()">＋  Add another person</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- JOIN -->
+    <div id="panel-join" class="hidden" style="display:flex;flex-direction:column;gap:12px;">
+      <!-- relay -->
+      <div id="join-relay-ui" style="display:flex;flex-direction:column;gap:8px;">
+        <div class="field"><label>Room code</label>
+          <input id="join-code" type="text" placeholder="e.g. WOLF-4291" maxlength="12"
+            style="font-size:20px;letter-spacing:3px;text-transform:uppercase;text-align:center;"
+            autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+            oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <button class="btn btn-p btn-w" id="btn-join" onclick="doJoin()">🔗  Join</button>
+      </div>
+      <!-- manual -->
+      <div id="join-manual-ui" class="hidden" style="display:flex;flex-direction:column;gap:10px;">
+        <div class="divider">manual — no relay</div>
+        <div class="field">
+          <label>Offer code from host</label>
+          <textarea id="offer-paste" class="paste-input" placeholder="Paste offer code here…" oninput="validatePaste(this)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+          <div class="sub" id="offer-paste-hint"></div>
+        </div>
+        <button class="btn btn-p btn-w" id="btn-gen-ans" onclick="doManualGenAnswer()">📡  Generate Answer</button>
+        <div id="ans-out-wrap" class="hidden" style="display:flex;flex-direction:column;gap:6px;">
+          <div class="field"><label>Answer code — send back to host</label>
+            <div id="ans-code-el" class="code-block" onclick="selAll(this)"></div>
+          </div>
+          <div class="code-row">
+            <button class="copy-btn" id="btn-copy-ans" onclick="copyCodeEl('ans-code-el','btn-copy-ans')">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="lobby-log"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════ CHAT ═══════════════════ -->
+<div id="chat" class="screen">
+  <div class="al"></div>
+  <div class="chat-wrap">
+
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <div class="sidebar-title">Session</div>
+        <div class="room-chip" id="sb-room">—</div>
+      </div>
+      <div class="peer-list" id="peer-list">
+        <div class="peer-item active-peer" id="peer-all-item" onclick="selectPeer('all')">
+          <div class="p-dot on"></div>
+          <div class="p-name">Everyone</div>
+        </div>
+      </div>
+      <div class="add-peer-btn hidden" id="add-peer-sidebar" onclick="showAddModal()">
+        <span>＋</span><span>Add person</span>
+      </div>
+      <div class="sidebar-bottom">
+        <button class="btn btn-g btn-w btn-sm" onclick="doLeave()">Leave session</button>
+      </div>
+    </div>
+
+    <div class="chat-main">
+      <div class="chat-topbar">
+        <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+        <div style="flex:1;">
+          <div class="chat-title" id="chat-title">Everyone</div>
+          <div class="chat-subtitle" id="chat-subtitle">0 peers</div>
+        </div>
+        <div class="conn-pill"><div class="dot on" id="conn-dot"></div><span id="conn-label">P2P</span></div>
+        <button class="leave-btn" onclick="doLeave()">leave</button>
+      </div>
+
+      <div class="messages" id="messages">
+        <div class="chat-empty" id="chat-empty">
+          <div class="chat-empty-ico">💬</div>
+          <div>Connected — say hello or drop a file</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="input-area">
+    <div class="input-row">
+      <button class="attach-btn" onclick="document.getElementById('file-input').click()" title="Attach">📎</button>
+      <input type="file" id="file-input" multiple onchange="handleFiles(this.files)">
+      <textarea class="msg-ta" id="msg-ta" rows="1" placeholder="Message everyone…"
+        onkeydown="taKey(event)" oninput="taResize(this)"></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendChat()">➤</button>
+    </div>
+  </div>
+</div>
+
+<!-- DROP OVERLAY -->
+<div id="drop-ov"><div style="font-size:36px;">📂</div><div>Drop to send</div></div>
+
+<!-- ADD PERSON MODAL (host manual mode) -->
+<div class="modal-bg" id="add-modal">
+  <div class="modal">
+    <div style="display:flex;align-items:center;">
+      <div class="modal-title">Add person</div>
+      <button class="modal-close" onclick="hideAddModal()">✕</button>
+    </div>
+    <div id="modal-offer-section" style="display:flex;flex-direction:column;gap:8px;">
+      <div class="field"><label>Share this offer code</label>
+        <div id="modal-offer-code" class="code-block" onclick="selAll(this)"></div>
+      </div>
+      <button class="copy-btn" id="btn-copy-modal-offer" onclick="copyCodeEl('modal-offer-code','btn-copy-modal-offer')" style="align-self:flex-start;">Copy offer</button>
+    </div>
+    <div class="divider">then paste their answer</div>
+    <div class="field">
+      <label>Answer code from them</label>
+      <textarea id="modal-answer-paste" class="paste-input" placeholder="Paste answer code…" oninput="validatePaste(this)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+    </div>
+    <button class="btn btn-a btn-w" id="btn-modal-connect" onclick="modalApplyAnswer()">🔗  Connect</button>
+    <div id="modal-log" style="font-family:var(--mono);font-size:10px;color:var(--t4);text-align:center;"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════════════════
+//
+//  ARCHITECTURE
+//  ─────────────────────────────────────────────────────────────────
+//
+//  PERSISTENT CERTIFICATE
+//  Each device generates one ECDSA keypair on first run, stored in
+//  IndexedDB. Subsequent sessions reuse it → fingerprint is constant.
+//  Short code format (cert known):  UFRAG.PWD.IP:PORT  ≈ 55 chars
+//  First-run format (cert unknown): compressed full SDP  ≈ 300 chars
+//
+//  MULTI-PEER (star topology)
+//  Host:   one RTCPeerConnection + DataChannel per joiner
+//  Joiner: one RTCPeerConnection back to host
+//  Chat:   host relays to all; joiners send to host who fans out
+//  Files:  sent to all connected peers (or targeted peer)
+//
+//  SIGNALING
+//  Relay:  WebSocket room (WORD-NNNN). All signaling over relay.
+//          Multiple joiners all join same room, host handles each.
+//  Manual: host generates one offer per person (button in sidebar).
+//          Codes shown in modal. Answer pasted back in same modal.
+//
+//  CODE FORMAT
+//  Short:  UFRAG . PWD . IP:PORT  (cert cached on both ends)
+//  Long:   deflate-raw → base64url of full SDP (first time)
+//  Prefix: "S:" = short, "L:" = long (so receiver knows which path)
+//
+// ═══════════════════════════════════════════════════════════════════
+
+// ── CONFIG ───────────────────────────────────────────────────────
+const RELAY_URLS = [
+  'wss://ws.vi-server.org/mirror/',
+  'wss://relay.metered.ca/socket.io/?EIO=4&transport=websocket',
+];
+const RELAY_TIMEOUT = 4000;
+const ICE_FLUSH     = 3500;
+const ICE_FAST      = 500;
+const ICE_SERVERS   = {iceServers:[
+  {urls:'stun:stun.l.google.com:19302'},
+  {urls:'stun:stun1.l.google.com:19302'},
+]};
+const DB_NAME  = 'landrop';
+const DB_STORE = 'cert';
+const DB_KEY   = 'dtls-cert';
+const FILE_CHK = 64*1024;
+const BUF_MAX  = 8*1024*1024;
+const WORDS    = ['WOLF','FIRE','BIRD','LAKE','MOON','STAR','PINE','SNAP',
+                  'GLOW','MIST','DAWN','FLUX','IRIS','JADE','KITE','NOVA'];
+
+// ── STATE ────────────────────────────────────────────────────────
+let myName    = '';
+let myRole    = null;      // 'host'|'join'
+let roomCode  = null;
+let relayOk   = false;
+let relayUrl  = null;
+let ws        = null;
+let activePeer= 'all';     // which peer chat is showing
+let certObj   = null;      // cached RTCCertificate
+
+// peers: Map<id, {pc, dc, name, status, iceTimer, iceDone, offerDone, ansDone, bestCand}>
+const peers = new Map();
+let peerSeq = 0;
+
+// For joiner: single peer back to host
+let joinPc = null, joinDc = null;
+let joinIceTimer = null, joinIceDone = false, joinAnsDone = false;
+let joinBestCand = '';
+
+// Incoming file state per peer
+const inFlight = new Map(); // peerId → {meta, bufs, barEl}
+
+// Unread counts
+const unread = new Map(); // peerId → count
+
+// ── CERT MANAGEMENT ──────────────────────────────────────────────
+// Cert is OPTIONAL. The app works perfectly without it.
+// If anything hangs or fails we just skip it and move on.
+
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
+  ]);
+}
+
+function openDB() {
+  return withTimeout(new Promise((res, rej) => {
+    try {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = e => {
+        try { e.target.result.createObjectStore(DB_STORE); } catch(_) {}
+      };
+      req.onsuccess = e => res(e.target.result);
+      req.onerror   = e => rej(e.target.error);
+      req.onblocked = () => rej(new Error('idb blocked'));
+    } catch(e) { rej(e); }
+  }), 2000);
+}
+
+async function loadOrCreateCert() {
+  // Step 1: try to load from IndexedDB (2s timeout)
+  try {
+    const db  = await openDB();
+    const existing = await withTimeout(new Promise((res, rej) => {
+      try {
+        const tx  = db.transaction(DB_STORE, 'readonly');
+        const req = tx.objectStore(DB_STORE).get(DB_KEY);
+        req.onsuccess = () => res(req.result);
+        req.onerror   = e => rej(e.target.error);
+      } catch(e) { rej(e); }
+    }), 2000);
+    if (existing) {
+      certObj = existing;
+      setCertUI('cached', 'Certificate ready');
+      return;
+    }
+  } catch(_) {
+    // IndexedDB unavailable (file://, private mode, etc.) — skip silently
+  }
+
+  // Step 2: generate new cert (3s timeout)
+  setCertUI('spin', 'Generating certificate…');
+  try {
+    certObj = await withTimeout(
+      RTCPeerConnection.generateCertificate({name:'ECDSA', namedCurve:'P-256'}),
+      3000
+    );
+    setCertUI('fresh', 'Certificate ready');
+    // Try to save (best effort, ignore all errors)
+    try {
+      const db = await openDB();
+      const tx = db.transaction(DB_STORE, 'readwrite');
+      tx.objectStore(DB_STORE).put(certObj, DB_KEY);
+    } catch(_) {}
+  } catch(_) {
+    // generateCertificate failed or timed out — app still works, just uses default cert
+    certObj = null;
+    setCertUI('fresh', 'Ready (no cached certificate)');
+  }
+}
+
+// shortFpPreview removed — no longer needed
+
+function setCertUI(state, msg) {
+  const dot = document.getElementById('cert-dot');
+  const cls = {cached:'cached', fresh:'fresh', fail:'fail', spin:'spin'}[state] || 'fresh';
+  dot.className = 'cert-dot ' + cls;
+  document.getElementById('cert-txt').textContent = msg;
+}
+
+// ── RELAY PROBE ──────────────────────────────────────────────────
+(async function probeRelay() {
+  for (const url of RELAY_URLS) {
+    const ok = await new Promise(res => {
+      const s = new WebSocket(url);
+      const t = setTimeout(() => { s.close(); res(false); }, RELAY_TIMEOUT);
+      s.onopen  = () => { clearTimeout(t); s.close(); res(true); };
+      s.onerror = () => { clearTimeout(t); res(false); };
+    });
+    if (ok) { relayOk = true; relayUrl = url; break; }
+  }
+  const dot = document.getElementById('relay-dot');
+  const txt = document.getElementById('relay-txt');
+  if (relayOk) {
+    dot.className = 'relay-dot ok';
+    txt.textContent = 'Relay available — join with a room code';
+  } else {
+    dot.className = 'relay-dot fail';
+    txt.textContent = 'No relay — copy-paste codes required';
+    document.getElementById('join-relay-ui').classList.add('hidden');
+    document.getElementById('join-manual-ui').classList.remove('hidden');
+  }
+})();
+
+// Init cert load — runs in background, never blocks the UI
+loadOrCreateCert().catch(() => setCertUI('fresh', 'Ready'));
+
+// ── UI HELPERS ───────────────────────────────────────────────────
+function setTab(t) {
+  myRole = t;
+  document.getElementById('tab-h').classList.toggle('on', t==='host');
+  document.getElementById('tab-j').classList.toggle('on', t==='join');
+  sh('panel-host', t==='host');
+  sh('panel-join', t==='join');
+}
+function sh(id, v) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (v) el.classList.remove('hidden'); else el.classList.add('hidden');
+}
+function llog(msg, col) {
+  const el = document.getElementById('lobby-log');
+  el.textContent = msg;
+  el.style.color = col || 'var(--t4)';
+}
+function mlog(msg, col) {
+  const el = document.getElementById('modal-log');
+  if (el) { el.textContent = msg; el.style.color = col || 'var(--t4)'; }
+}
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function selAll(el) {
+  const r=document.createRange(); r.selectNodeContents(el);
+  const s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+}
+function copyRoomCode() { clipboard(document.getElementById('room-code-el').textContent.trim(), ()=>{}); }
+function copyCodeEl(elId, btnId) {
+  const txt = document.getElementById(elId)?.textContent?.trim()||'';
+  const btn = document.getElementById(btnId);
+  const orig = btn?.textContent;
+  clipboard(txt, () => {
+    if (btn) { btn.textContent='✓'; btn.classList.add('ok'); setTimeout(()=>{btn.textContent=orig;btn.classList.remove('ok');},1500); }
+  });
+}
+function clipboard(text, cb) {
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(cb).catch(()=>fbClip(text,cb));
+  else fbClip(text,cb);
+}
+function fbClip(text,cb){const t=document.createElement('textarea');t.value=text;t.style.cssText='position:fixed;opacity:0';document.body.appendChild(t);t.select();try{document.execCommand('copy');cb();}catch(_){}document.body.removeChild(t);}
+function genRoom(){const w=WORDS[Math.random()*WORDS.length|0];return w+'-'+((Math.random()*9000+1000)|0);}
+
+function validatePaste(ta) {
+  const v = ta.value.trim();
+  ta.classList.toggle('valid', v.length > 20);
+  ta.classList.toggle('bad',   v.length > 0 && v.length < 10);
+}
+
+// ── CODE ENCODING ────────────────────────────────────────────────
+// One format only: base64url(deflate-raw(stripped SDP))
+// No prefix needed. No SDP reconstruction. Browser SDP in, browser SDP out.
+// Stripping removes ~60% of SDP bulk before compression.
+// Typical result: offer ~220 chars, answer ~180 chars.
+
+function stripSDP(sdp) {
+  const keep = /^(v=|o=|s=|t=|m=application|c=IN|a=ice-ufrag:|a=ice-pwd:|a=ice-options:|a=fingerprint:|a=setup:|a=mid:|a=sctp-port:|a=max-message-size:|a=group:|a=candidate:|a=end-of-candidates)/;
+  return sdp.replace(/\r/g, '').split('\n').filter(l => keep.test(l)).join('\r\n') + '\r\n';
+}
+
+async function encodeCode(sdp) {
+  const stripped = stripSDP(sdp);
+  const bytes = new TextEncoder().encode(stripped);
+  const cs  = new CompressionStream('deflate-raw');
+  const w   = cs.writable.getWriter(); w.write(bytes); w.close();
+  const chunks = []; const rd = cs.readable.getReader();
+  for(;;){const{done,value}=await rd.read();if(done)break;chunks.push(value);}
+  const buf = new Uint8Array(chunks.reduce((n,c)=>n+c.length,0));
+  let o=0; for(const ch of chunks){buf.set(ch,o);o+=ch.length;}
+  let bin=''; buf.forEach(b=>bin+=String.fromCharCode(b));
+  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+async function decodeCode(code) {
+  const b64  = code.trim().replace(/-/g,'+').replace(/_/g,'/');
+  const pad  = (4 - b64.length % 4) % 4;
+  const bin  = atob(b64 + '='.repeat(pad));
+  const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+  const ds   = new DecompressionStream('deflate-raw');
+  const w    = ds.writable.getWriter(); w.write(bytes); w.close();
+  const chunks=[]; const rd=ds.readable.getReader();
+  for(;;){const{done,value}=await rd.read();if(done)break;chunks.push(value);}
+  const out  = new Uint8Array(chunks.reduce((n,c)=>n+c.length,0));
+  let o=0; for(const ch of chunks){out.set(ch,o);o+=ch.length;}
+  return new TextDecoder().decode(out);
+}
+
+// ── PEER CONNECTION FACTORY ──────────────────────────────────────
+function makePcConfig() {
+  const cfg = {...ICE_SERVERS};
+  if (certObj) cfg.certificates = [certObj];
+  return cfg;
+}
+
+function makePc(onFlushed) {
+  let bestCand = '';
+  let iceTimer = null;
+  let iceFlushed = false;
+
+  const pc = new RTCPeerConnection(makePcConfig());
+
+  pc.onicecandidate = e => {
+    if (e.candidate) {
+      // Forward to relay if available
+      if (ws && ws.readyState === WebSocket.OPEN)
+        wsSend({t:'ice', c: e.candidate.toJSON()});
+
+      // Capture best LAN candidate
+      const cand = e.candidate;
+      const ip   = cand.address||'';
+      const port = cand.port||0;
+      const isH  = cand.type==='host';
+      const priv = /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(ip);
+      const udp  = (cand.protocol||'udp').toLowerCase()==='udp';
+      if (ip && port && isH && priv && udp && !bestCand) bestCand = ip+':'+port;
+      if (ip && port && isH && !bestCand && ip!=='127.0.0.1' && !ip.startsWith('169.'))
+        bestCand = ip+':'+port;
+    }
+    clearTimeout(iceTimer);
+    iceTimer = setTimeout(() => {
+      if (!iceFlushed) { iceFlushed=true; onFlushed(bestCand); }
+    }, e.candidate ? ICE_FLUSH : ICE_FAST);
+  };
+
+  pc.onicegatheringstatechange = () => {
+    if (pc.iceGatheringState==='complete' && !iceFlushed) {
+      iceFlushed=true; clearTimeout(iceTimer); onFlushed(bestCand);
+    }
+  };
+
+  return pc;
+}
+
+// ── RELAY WebSocket ──────────────────────────────────────────────
+function openWS(room, onOpen) {
+  ws = new WebSocket(relayUrl + encodeURIComponent(room));
+  ws.onopen  = () => { llog('Relay connected'); onOpen(); };
+  ws.onerror = () => llog('Relay error', 'var(--err)');
+  ws.onclose = () => { if (!peers.size && !joinDc) llog('Relay closed'); };
+  ws.onmessage = async e => {
+    let msg; try{msg=JSON.parse(e.data);}catch{return;}
+    await handleRelayMsg(msg);
+  };
+}
+function wsSend(obj) {
+  if (ws && ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
+
+async function handleRelayMsg(msg) {
+  if (myRole==='host') {
+    if (msg.t==='hello') {
+      // New joiner arrived — create a peer for them
+      const pid = 'r-' + msg.from;
+      if (!peers.has(pid)) await createHostPeer(pid, msg.name||'Guest', true);
+    } else if (msg.t==='answer') {
+      const pid = 'r-' + msg.from;
+      const peer = peers.get(pid);
+      if (peer) {
+        try {
+          await peer.pc.setRemoteDescription({type:'answer', sdp:msg.sdp});
+          llog('Peer ' + (peer.name) + ' answered');
+        } catch(e) { llog('Answer error: '+e.message, 'var(--err)'); }
+      }
+    } else if (msg.t==='ice') {
+      const pid = 'r-' + msg.from;
+      const peer = peers.get(pid);
+      if (peer) try{await peer.pc.addIceCandidate(new RTCIceCandidate(msg.c));}catch(_){}
+    }
+  } else if (myRole==='join') {
+    if (msg.t==='offer') {
+      try {
+        await joinPc.setRemoteDescription({type:'offer', sdp:msg.sdp});
+        const ans = await joinPc.createAnswer();
+        await joinPc.setLocalDescription(ans);
+        llog('Host offer received — gathering ICE…');
+      } catch(e) { llog('Offer error: '+e.message,'var(--err)'); }
+    } else if (msg.t==='ice') {
+      if (joinPc) try{await joinPc.addIceCandidate(new RTCIceCandidate(msg.c));}catch(_){}
+    }
+  }
+}
+
+// ── HOST ─────────────────────────────────────────────────────────
+async function startHost() {
+  myName   = document.getElementById('my-name').value.trim()||'Host';
+  myRole   = 'host';
+  roomCode = genRoom();
+  document.getElementById('btn-start').disabled = true;
+  llog('Starting…');
+
+  sh('host-room-wrap', true);
+  document.getElementById('host-room-wrap').classList.remove('hidden');
+
+  if (relayOk) {
+    openWS(roomCode, () => {
+      document.getElementById('room-code-el').textContent = roomCode;
+      sh('host-relay-code', true);
+      document.getElementById('host-relay-code').classList.remove('hidden');
+      llog('Share the room code — waiting for people to join…');
+    });
+  } else {
+    sh('host-peer-slots', true);
+    document.getElementById('host-peer-slots').classList.remove('hidden');
+    await addManualPeer(); // auto-create first slot
+    llog('Share each offer code with one person');
+  }
+}
+
+async function createHostPeer(pid, name, relayMode) {
+  const peer = {
+    pc: null, dc: null, name, status: 'waiting',
+    iceTimer: null, iceDone: false, offerDone: false, ansDone: false,
+    bestCand: '', relayMode,
+  };
+  peers.set(pid, peer);
+
+  peer.pc = makePc(async (bestCand) => {
+    peer.bestCand = bestCand;
+    if (!peer.offerDone) {
+      peer.offerDone = true;
+      await hostFinaliseOffer(pid);
+    }
+  });
+
+  peer.pc.onconnectionstatechange = () => {
+    const s = peer.pc.connectionState;
+    if (s==='connected') onPeerConnected(pid);
+    if (['disconnected','failed','closed'].includes(s)) onPeerDC(pid);
+  };
+  peer.pc.ondatachannel = e => bindDC(pid, e.channel);
+
+  const dc = peer.pc.createDataChannel('ld', {ordered:true});
+  bindDC(pid, dc);
+
+  const offer = await peer.pc.createOffer();
+  await peer.pc.setLocalDescription(offer);
+  return peer;
+}
+
+async function hostFinaliseOffer(pid) {
+  const peer = peers.get(pid); if (!peer) return;
+  const desc = peer.pc.localDescription;
+
+  if (peer.relayMode && ws) {
+    // Send full SDP over relay; relay handles routing by room
+    wsSend({t:'offer', sdp:desc.sdp, name:myName, to:pid.replace('r-','')});
+    llog('Offer sent to ' + peer.name);
+    return;
+  }
+
+  // Manual: encode and display
+  const code = await encodeCode(peer.pc.localDescription.sdp);
+  // Find the slot UI
+  const slotBody = document.getElementById('slot-body-'+pid);
+  if (slotBody) {
+    const el = slotBody.querySelector('.code-block');
+    if (el) { el.textContent = code; el.dataset.code = code; }
+    const lenEl = slotBody.querySelector('.code-len');
+    if (lenEl) lenEl.textContent = code.length + ' chars';
+    // If modal is open for this peer, update it
+    if (document.getElementById('add-modal').classList.contains('show')) {
+      document.getElementById('modal-offer-code').textContent = code;
+    }
+  }
+  setPeerStatus(pid, 'waiting');
+}
+
+// Add a manual peer slot in host panel
+async function addManualPeer() {
+  const pid  = 'm-' + (++peerSeq);
+  const name = 'Person ' + peerSeq;
+  const peer = await createHostPeer(pid, name, false);
+
+  const list = document.getElementById('peer-slots-list');
+  const slot = document.createElement('div');
+  slot.className = 'peer-slot'; slot.id = 'slot-'+pid;
+  slot.innerHTML =
+    `<div class="peer-slot-head" onclick="toggleSlot('${pid}')">` +
+      `<span class="peer-num">#${peerSeq}</span>` +
+      `<span class="peer-name-span" id="slot-name-${pid}">${name}</span>` +
+      `<div class="peer-status-dot waiting" id="slot-dot-${pid}"></div>` +
+    `</div>` +
+    `<div class="peer-slot-body" id="slot-body-${pid}">` +
+      `<div class="field"><label>Offer code</label>` +
+        `<div class="code-block" id="slot-code-${pid}" onclick="selAll(this)"><span style="color:var(--t4)">Generating…</span></div>` +
+      `</div>` +
+      `<div class="code-row">` +
+        `<button class="copy-btn" id="slot-copy-${pid}" onclick="copySlotCode('${pid}')">Copy offer</button>` +
+        `<span class="code-len" id="slot-len-${pid}" style="font-family:var(--mono);font-size:9px;color:var(--t4);align-self:center;"></span>` +
+      `</div>` +
+      `<div class="divider">then paste their answer</div>` +
+      `<div class="field"><label>Answer from them</label>` +
+        `<textarea class="paste-input" id="slot-ans-${pid}" placeholder="Paste answer code…" oninput="validatePaste(this)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>` +
+      `</div>` +
+      `<button class="btn btn-a btn-w btn-sm" onclick="applySlotAnswer('${pid}')">🔗  Connect</button>` +
+    `</div>`;
+  list.appendChild(slot);
+}
+
+function toggleSlot(pid) {
+  const body = document.getElementById('slot-body-'+pid);
+  if (body) body.classList.toggle('collapsed');
+}
+
+function copySlotCode(pid) {
+  const el  = document.getElementById('slot-code-'+pid);
+  const btn = document.getElementById('slot-copy-'+pid);
+  const code = el?.dataset?.code || el?.textContent?.trim() || '';
+  const orig = btn?.textContent;
+  clipboard(code, () => {
+    if (btn){btn.textContent='✓ Copied!';btn.classList.add('ok');setTimeout(()=>{btn.textContent=orig;btn.classList.remove('ok');},1500);}
+  });
+}
+
+async function applySlotAnswer(pid) {
+  const ta  = document.getElementById('slot-ans-'+pid);
+  const raw = ta?.value?.trim()||'';
+  if (!raw){llog('Paste the answer code first','var(--err)');return;}
+  await hostApplyAnswer(pid, raw);
+}
+
+async function hostApplyAnswer(pid, rawCode) {
+  const peer = peers.get(pid); if (!peer) return;
+  try {
+    const sdp = await decodeCode(rawCode);
+    await peer.pc.setRemoteDescription({type:'answer', sdp});
+    llog('Connecting to ' + peer.name + '…');
+    mlog('Connecting…');
+  } catch(e) {
+    llog('Bad answer code: '+e.message, 'var(--err)');
+    mlog('Error: '+e.message, 'var(--err)');
+  }
+}
+
+// ── JOIN ─────────────────────────────────────────────────────────
+async function doJoin() {
+  myName   = document.getElementById('my-name').value.trim()||'Guest';
+  myRole   = 'join';
+  const code = document.getElementById('join-code').value.trim().toUpperCase();
+  if (!code){llog('Enter a room code','var(--err)');return;}
+  roomCode = code;
+  document.getElementById('btn-join').disabled = true;
+  llog('Joining…');
+  initJoinPc();
+  openWS(code, () => {
+    wsSend({t:'hello', name:myName, room:code, from: myName+'-'+Date.now()});
+    llog('Waiting for host offer…');
+  });
+}
+
+function initJoinPc() {
+  joinAnsDone = false; joinBestCand = '';
+  joinPc = makePc(async (bestCand) => {
+    joinBestCand = bestCand;
+    if (!joinAnsDone) { joinAnsDone=true; await joinFinaliseAnswer(); }
+  });
+  joinPc.onconnectionstatechange = () => {
+    const s = joinPc.connectionState;
+    if (s==='connected') onJoinConnected();
+    if (['disconnected','failed','closed'].includes(s)) onJoinDC();
+  };
+  joinPc.ondatachannel = e => bindJoinDC(e.channel);
+}
+
+async function doManualGenAnswer() {
+  myName = document.getElementById('my-name').value.trim()||'Guest';
+  myRole = 'join';
+  const raw = document.getElementById('offer-paste')?.value?.trim()||'';
+  if (!raw){llog('Paste the offer code first','var(--err)');return;}
+  document.getElementById('btn-gen-ans').disabled = true;
+  joinAnsDone = false;
+  initJoinPc();
+  try {
+    const sdp = await decodeCode(raw);
+    await joinPc.setRemoteDescription({type:'offer', sdp});
+    await joinPc.setLocalDescription(await joinPc.createAnswer());
+    llog('Gathering ICE…');
+  } catch(e) {
+    llog('Error: '+e.message,'var(--err)');
+    document.getElementById('btn-gen-ans').disabled = false;
+  }
+}
+
+async function joinFinaliseAnswer() {
+  const desc = joinPc.localDescription;
+  if (relayOk && ws) {
+    wsSend({t:'answer', sdp:desc.sdp, name:myName});
+    llog('Answer sent — connecting…');
+  } else {
+    const code = await encodeCode(joinPc.localDescription.sdp);
+    document.getElementById('ans-code-el').textContent = code;
+    const lenEl = document.querySelector('#ans-out-wrap .code-len');
+    if(lenEl) lenEl.textContent = code.length+' chars';
+    sh('ans-out-wrap', true);
+    document.getElementById('ans-out-wrap').classList.remove('hidden');
+    llog('Copy the answer code — send it to the host');
+  }
+}
+
+// ── DC BINDING ───────────────────────────────────────────────────
+function bindDC(pid, ch) {
+  const peer = peers.get(pid); if (!peer) return;
+  peer.dc = ch; ch.binaryType='arraybuffer';
+  ch.onopen    = () => onPeerConnected(pid);
+  ch.onclose   = () => onPeerDC(pid);
+  ch.onerror   = e => console.error('DC',pid,e);
+  ch.onmessage = e => typeof e.data==='string'
+    ? handleCtrl(pid, JSON.parse(e.data))
+    : handleBin(pid, e.data);
+  if (ch.readyState==='open') onPeerConnected(pid);
+}
+
+function bindJoinDC(ch) {
+  joinDc = ch; ch.binaryType='arraybuffer';
+  ch.onopen    = onJoinConnected;
+  ch.onclose   = onJoinDC;
+  ch.onerror   = e => console.error('JoinDC',e);
+  ch.onmessage = e => typeof e.data==='string'
+    ? handleCtrl('host', JSON.parse(e.data))
+    : handleBin('host', e.data);
+  if (ch.readyState==='open') onJoinConnected();
+}
+
+// ── CONNECTED / DC ───────────────────────────────────────────────
+function onPeerConnected(pid) {
+  const peer = peers.get(pid); if (!peer) return;
+  if (peer.status==='connected') return;
+  peer.status='connected';
+  setPeerStatus(pid,'connected');
+
+  // If first peer, go to chat
+  if (document.getElementById('lobby').classList.contains('active')) {
+    enterChat();
+  }
+  addToPeerList(pid);
+  sysMsg('👋 ' + peer.name + ' joined');
+  // Exchange names
+  dcSend(pid, {t:'name', name:myName});
+}
+
+function onPeerDC(pid) {
+  const peer = peers.get(pid); if (!peer) return;
+  peer.status='dc';
+  setPeerStatus(pid,'dc');
+  sysMsg('⚡ ' + peer.name + ' disconnected');
+  updatePeerListDot(pid, false);
+}
+
+function onJoinConnected() {
+  if (document.getElementById('chat').classList.contains('active')) return;
+  enterChat();
+  sysMsg('🔗 Connected to session');
+  if (joinDc) dcSendJoin({t:'name', name:myName});
+}
+
+function onJoinDC() {
+  sysMsg('Connection lost.');
+  document.getElementById('conn-dot').className='dot';
+}
+
+function enterChat() {
+  showScreen('chat');
+  document.getElementById('sb-room').textContent = roomCode||'manual';
+  updateSubtitle();
+  // Show add-peer in sidebar for host (manual mode)
+  if (myRole==='host' && !relayOk) {
+    sh('add-peer-sidebar', true);
+    document.getElementById('add-peer-sidebar').classList.remove('hidden');
+  }
+}
+
+// ── PEER LIST UI ─────────────────────────────────────────────────
+function setPeerStatus(pid, status) {
+  const dot = document.getElementById('slot-dot-'+pid);
+  if (dot) { dot.className='peer-status-dot '+(status==='connected'?'connected':status==='waiting'?'waiting':''); }
+}
+
+function addToPeerList(pid) {
+  const peer = peers.get(pid); if (!peer) return;
+  const existing = document.getElementById('pl-'+pid);
+  if (existing) { existing.querySelector('.p-dot').className='p-dot on'; return; }
+  const list = document.getElementById('peer-list');
+  const div  = document.createElement('div');
+  div.className='peer-item'; div.id='pl-'+pid;
+  div.onclick = () => selectPeer(pid);
+  div.innerHTML =
+    `<div class="p-dot on"></div>` +
+    `<div class="p-name">${esc(peer.name)}</div>` +
+    `<div class="p-badge hidden" id="badge-${pid}"></div>`;
+  list.appendChild(div);
+  updateSubtitle();
+}
+
+function updatePeerListDot(pid, on) {
+  const item = document.getElementById('pl-'+pid);
+  if (item) item.querySelector('.p-dot').className='p-dot'+(on?' on':'');
+}
+
+function updateSubtitle() {
+  const n = myRole==='host' ? [...peers.values()].filter(p=>p.status==='connected').length
+                            : (joinDc&&joinDc.readyState==='open'?1:0);
+  document.getElementById('chat-subtitle').textContent = n + (n===1?' person':' people') + ' connected';
+}
+
+function selectPeer(pid) {
+  activePeer = pid;
+  document.querySelectorAll('.peer-item').forEach(el=>el.classList.remove('active-peer'));
+  const el = pid==='all' ? document.getElementById('peer-all-item') : document.getElementById('pl-'+pid);
+  if (el) el.classList.add('active-peer');
+  const title = pid==='all' ? 'Everyone' : (peers.get(pid)?.name||'Host');
+  document.getElementById('chat-title').textContent = title;
+  document.getElementById('msg-ta').placeholder = 'Message ' + (pid==='all'?'everyone…':title+'…');
+  // Clear unread
+  if (pid!=='all') {
+    unread.set(pid, 0);
+    const badge = document.getElementById('badge-'+pid);
+    if (badge) badge.classList.add('hidden');
+  }
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
+
+// ── ADD PERSON MODAL (host manual, from chat) ─────────────────────
+let modalPid = null;
+async function showAddModal() {
+  const pid  = 'm-' + (++peerSeq);
+  const name = 'Person ' + peerSeq;
+  modalPid   = pid;
+  document.getElementById('modal-offer-code').textContent = 'Generating…';
+  document.getElementById('modal-answer-paste').value = '';
+  mlog('');
+  document.getElementById('add-modal').classList.add('show');
+
+  const peer = await createHostPeer(pid, name, false);
+  peers.set(pid, peer);
+}
+
+function hideAddModal() {
+  document.getElementById('add-modal').classList.remove('show');
+  modalPid = null;
+}
+
+async function modalApplyAnswer() {
+  if (!modalPid) return;
+  const raw = document.getElementById('modal-answer-paste')?.value?.trim()||'';
+  if (!raw){mlog('Paste the answer code first','var(--err)');return;}
+  await hostApplyAnswer(modalPid, raw);
+  // On success, peer will connect and modal can close
+  setTimeout(hideAddModal, 1500);
+}
+
+// ── DC SEND ──────────────────────────────────────────────────────
+function dcSend(pid, obj) {
+  if (pid==='all') {
+    if (myRole==='host') {
+      peers.forEach((p,id) => { if (p.dc&&p.dc.readyState==='open') p.dc.send(JSON.stringify(obj)); });
+    } else {
+      if (joinDc&&joinDc.readyState==='open') joinDc.send(JSON.stringify(obj));
+    }
+  } else if (pid==='host') {
+    if (joinDc&&joinDc.readyState==='open') joinDc.send(JSON.stringify(obj));
+  } else {
+    const p = peers.get(pid);
+    if (p?.dc?.readyState==='open') p.dc.send(JSON.stringify(obj));
+  }
+}
+
+function dcSendJoin(obj) {
+  if (joinDc&&joinDc.readyState==='open') joinDc.send(JSON.stringify(obj));
+}
+
+// ── CTRL MESSAGES ────────────────────────────────────────────────
+function handleCtrl(pid, msg) {
+  if (msg.t==='name') {
+    if (pid==='host') { /* joiners already know 'host' */ return; }
+    const p = peers.get(pid);
+    if (p) {
+      p.name = msg.name;
+      const nameEl = document.getElementById('slot-name-'+pid);
+      if (nameEl) nameEl.textContent = msg.name;
+      const plName = document.querySelector('#pl-'+pid+' .p-name');
+      if (plName) plName.textContent = msg.name;
+    }
+  } else if (msg.t==='chat') {
+    const senderName = pid==='host' ? 'Host' : (peers.get(pid)?.name||'?');
+    // Host relays to others if target is 'all'
+    if (myRole==='host' && msg.to==='all') {
+      peers.forEach((p,id) => {
+        if (id!==pid && p.dc&&p.dc.readyState==='open')
+          p.dc.send(JSON.stringify({...msg, from:pid, fromName:senderName}));
+      });
+    }
+    addMsg(pid==='host'?'host':pid, msg.fromName||senderName, msg.text);
+  } else if (msg.t==='file-meta') {
+    const senderName = pid==='host' ? 'Host' : (peers.get(pid)?.name||'?');
+    // Relay file-meta to others if host
+    if (myRole==='host' && msg.to==='all') {
+      peers.forEach((p,id) => {
+        if (id!==pid && p.dc&&p.dc.readyState==='open')
+          p.dc.send(JSON.stringify({...msg, from:pid, fromName:senderName}));
+      });
+    }
+    const barEl = addFileBubble(pid, msg.fromName||senderName, msg);
+    inFlight.set(pid, {meta:msg, bufs:[], barEl});
+  } else if (msg.t==='file-done') {
+    assembleFile(pid);
+  }
+}
+
+// ── BINARY CHUNKS ────────────────────────────────────────────────
+function handleBin(pid, buf) {
+  const inf = inFlight.get(pid);
+  if (!inf) return;
+  inf.bufs.push(buf);
+  const got = inf.bufs.reduce((a,b)=>a+b.byteLength,0);
+  if (inf.barEl) inf.barEl.style.width = Math.round(got/inf.meta.size*100)+'%';
+}
+
+function assembleFile(pid) {
+  const inf = inFlight.get(pid); if (!inf) return;
+  const blob = new Blob(inf.bufs, {type:inf.meta.mime||'application/octet-stream'});
+  const url  = URL.createObjectURL(blob);
+  if (inf.barEl) {
+    inf.barEl.style.width='100%'; inf.barEl.classList.add('done');
+    const card = inf.barEl.closest('.msg-file');
+    if (card) {
+      const a=document.createElement('a'); a.href=url; a.download=inf.meta.name;
+      a.innerHTML='<button class="save-btn">↓ Save</button>';
+      card.appendChild(a);
+    }
+  }
+  inFlight.delete(pid);
+}
+
+// ── CHAT ─────────────────────────────────────────────────────────
+function taKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();} }
+function taResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,110)+'px'; }
+
+function sendChat() {
+  const ta   = document.getElementById('msg-ta');
+  const text = ta.value.trim(); if (!text) return;
+  const tgt  = activePeer==='all' ? 'all' : activePeer;
+  dcSend(tgt, {t:'chat', text, to:tgt, fromName:myName});
+  addMsg('me', myName, text);
+  ta.value=''; ta.style.height='auto';
+}
+
+// ── FILES ────────────────────────────────────────────────────────
+function handleFiles(files) { [...files].forEach(sendFile); document.getElementById('file-input').value=''; }
+function sendFile(file) {
+  const meta = {t:'file-meta', name:file.name, size:file.size, mime:file.type||'application/octet-stream', to:'all', fromName:myName};
+  dcSend('all', meta);
+  const barEl = addFileBubble('me', myName, meta);
+  function pump(pid, pdc) {
+    let off=0;
+    function go(){
+      if (!pdc||pdc.readyState!=='open') return;
+      if (pdc.bufferedAmount>BUF_MAX){setTimeout(go,50);return;}
+      if (off>=file.size){pdc.send(JSON.stringify({t:'file-done'}));barEl.style.width='100%';barEl.classList.add('done');return;}
+      file.slice(off,off+FILE_CHK).arrayBuffer().then(buf=>{pdc.send(buf);off+=buf.byteLength;barEl.style.width=Math.round(off/file.size*100)+'%';go();});
+    }
+    go();
+  }
+  if (myRole==='host') {
+    peers.forEach((p,id) => { if(p.dc&&p.dc.readyState==='open') pump(id,p.dc); });
+  } else {
+    if (joinDc&&joinDc.readyState==='open') pump('host',joinDc);
+  }
+}
+
+// Drag and drop
+document.addEventListener('dragenter', e=>{ if(document.getElementById('chat').classList.contains('active')) document.getElementById('drop-ov').classList.add('show'); });
+document.addEventListener('dragleave', e=>{ if(e.relatedTarget===null) document.getElementById('drop-ov').classList.remove('show'); });
+document.addEventListener('dragover',  e=>e.preventDefault());
+document.addEventListener('drop',      e=>{ e.preventDefault(); document.getElementById('drop-ov').classList.remove('show'); if(!document.getElementById('chat').classList.contains('active'))return; [...e.dataTransfer.files].forEach(sendFile); });
+
+// ── MESSAGE RENDERING ────────────────────────────────────────────
+const FICONS={pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',ppt:'📋',pptx:'📋',
+  zip:'🗜',rar:'🗜',gz:'🗜','7z':'🗜',tar:'🗜',mp4:'🎬',mov:'🎬',avi:'🎬',mkv:'🎬',
+  webm:'🎬',mp3:'🎵',wav:'🎵',flac:'🎵',aac:'🎵',m4a:'🎵',png:'🖼',jpg:'🖼',
+  jpeg:'🖼',gif:'🖼',svg:'🖼',webp:'🖼',heic:'🖼',txt:'📃',md:'📃',csv:'📊',
+  json:'📦',js:'⚙️',ts:'⚙️',html:'🌐',css:'🎨',py:'🐍',sh:'💻',exe:'⚙️',dmg:'💾',apk:'📱'};
+const ficon=n=>FICONS[n.split('.').pop().toLowerCase()]||'📦';
+const fmt=b=>b<1024?b+' B':b<1048576?(b/1024).toFixed(1)+' KB':b<1073741824?(b/1048576).toFixed(1)+' MB':(b/1073741824).toFixed(2)+' GB';
+const ts=()=>new Date().toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',hour12:true});
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+
+function getBox(){const b=document.getElementById('messages');document.getElementById('chat-empty')?.remove();return b;}
+function sb(b){b.scrollTop=b.scrollHeight;}
+
+function sysMsg(text){const b=getBox();const d=document.createElement('div');d.className='msg-sys';d.textContent=text;b.appendChild(d);sb(b);}
+
+function addMsg(pid, sender, text) {
+  const isMe = pid==='me';
+  const b = getBox();
+  const w = document.createElement('div');
+  w.className='msg-wrap '+(isMe?'me':'them');
+  w.innerHTML=`<div class="msg-who">${isMe?'you':esc(sender)}</div>`+
+    `<div class="msg-bubble">${esc(text)}</div>`+
+    `<div class="msg-ts">${ts()}</div>`;
+  b.appendChild(w); sb(b);
+  // Unread badge
+  if (!isMe && pid!==activePeer) {
+    unread.set(pid, (unread.get(pid)||0)+1);
+    const badge=document.getElementById('badge-'+pid);
+    if(badge){badge.textContent=unread.get(pid);badge.classList.remove('hidden');}
+  }
+}
+
+function addFileBubble(pid, sender, meta) {
+  const isMe=pid==='me';
+  const b=getBox();
+  const w=document.createElement('div');
+  w.className='msg-wrap '+(isMe?'me':'them');
+  const bid='fb-'+Date.now();
+  w.innerHTML=`<div class="msg-who">${isMe?'you':esc(sender)}</div>`+
+    `<div class="msg-file"><div class="msg-file-ico">${ficon(meta.name)}</div>`+
+    `<div class="msg-file-info"><div class="msg-file-name">${esc(meta.name)}</div>`+
+    `<div class="msg-file-meta">${fmt(meta.size)}</div>`+
+    `<div class="prog-track"><div class="prog-fill" id="${bid}"></div></div></div></div>`+
+    `<div class="msg-ts">${ts()}</div>`;
+  b.appendChild(w); sb(b);
+  return document.getElementById(bid);
+}
+
+// ── LEAVE ────────────────────────────────────────────────────────
+function doLeave() {
+  peers.forEach(p=>{try{p.dc?.close();}catch(_){}try{p.pc?.close();}catch(_){}});
+  peers.clear();
+  if(joinPc){try{joinPc.close();}catch(_){}}
+  if(joinDc){try{joinDc.close();}catch(_){}}
+  if(ws){try{ws.close();}catch(_){}}
+  joinPc=joinDc=ws=null; connected=false;
+  // Reset lobby
+  document.getElementById('btn-start').disabled=false;
+  document.getElementById('btn-join').disabled=false;
+  document.getElementById('btn-gen-ans').disabled=false;
+  document.getElementById('host-room-wrap').classList.add('hidden');
+  document.getElementById('ans-out-wrap').classList.add('hidden');
+  document.getElementById('peer-slots-list').innerHTML='';
+  peerSeq=0;
+  // Clear chat
+  document.getElementById('messages').innerHTML='<div class="chat-empty" id="chat-empty"><div class="chat-empty-ico">💬</div><div>Connected — say hello or drop a file</div></div>';
+  document.getElementById('peer-list').innerHTML='<div class="peer-item active-peer" id="peer-all-item" onclick="selectPeer(\'all\')"><div class="p-dot on"></div><div class="p-name">Everyone</div></div>';
+  showScreen('lobby');
+  llog('');
+}
+
+// ── INIT ─────────────────────────────────────────────────────────
+setTab('host');
+document.getElementById('my-name').focus();
+</script>
+</body>
+</html>
