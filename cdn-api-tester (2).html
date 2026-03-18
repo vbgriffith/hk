@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CDN & API Connection Tester</title>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0e;
+    --surface: #0a1520;
+    --surface2: #0f1f30;
+    --border: #1a3a55;
+    --accent: #00d4ff;
+    --accent2: #00ff9d;
+    --warn: #ffaa00;
+    --danger: #ff3a5c;
+    --muted: #3a6080;
+    --text: #c8e8f8;
+    --text2: #7aaccc;
+    --mono: 'Share Tech Mono', monospace;
+    --display: 'Barlow Condensed', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--display);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .wrapper { position: relative; z-index: 2; max-width: 1600px; margin: 0 auto; padding: 0 24px; }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+    position: sticky;
+    top: 0;
+    background: rgba(5,10,14,0.95);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .logo-main {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,212,255,0.5);
+  }
+  .logo-sub {
+    font-size: 11px;
+    font-weight: 300;
+    letter-spacing: 3px;
+    color: var(--text2);
+    text-transform: uppercase;
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .stat-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 16px;
+    min-width: 80px;
+  }
+  .stat-pill .val {
+    font-size: 22px;
+    font-weight: 700;
+    font-family: var(--mono);
+    line-height: 1;
+  }
+  .stat-pill .lbl {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin-top: 2px;
+  }
+  .stat-pill.ok .val { color: var(--accent2); }
+  .stat-pill.fail .val { color: var(--danger); }
+  .stat-pill.warn .val { color: var(--warn); }
+  .stat-pill.total .val { color: var(--accent); }
+  .stat-pill.speed .val { color: #b090ff; }
+
+  /* CONTROLS */
+  .controls {
+    padding: 20px 0 16px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .btn {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    padding: 10px 28px;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  }
+  .btn-primary:hover { background: #40e8ff; box-shadow: 0 0 20px rgba(0,212,255,0.5); }
+  .btn-primary:disabled { background: var(--muted); color: var(--surface); cursor: not-allowed; box-shadow: none; }
+  .btn-secondary {
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border);
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  .filter-group {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+  .filter-btn:hover, .filter-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,0.05); }
+  .filter-btn.f-ok.active { border-color: var(--accent2); color: var(--accent2); background: rgba(0,255,157,0.05); }
+  .filter-btn.f-fail.active { border-color: var(--danger); color: var(--danger); background: rgba(255,58,92,0.05); }
+  .filter-btn.f-warn.active { border-color: var(--warn); color: var(--warn); background: rgba(255,170,0,0.05); }
+
+  /* PROGRESS BAR */
+  .progress-track {
+    height: 3px;
+    background: var(--surface2);
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    width: 0%;
+    transition: width 0.3s;
+    box-shadow: 0 0 8px var(--accent);
+  }
+  .progress-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+  }
+
+  /* SEARCH */
+  .search-bar {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    max-width: 360px;
+  }
+  .search-bar input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 12px 8px 36px;
+    outline: none;
+    letter-spacing: 1px;
+  }
+  .search-bar input:focus { border-color: var(--accent); }
+  .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  /* CATEGORY HEADERS */
+  .category-section { margin-bottom: 32px; }
+  .cat-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .cat-name {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .cat-count {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text2);
+    background: var(--surface2);
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+  }
+  .cat-bar {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .cat-progress {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text2);
+  }
+
+  /* GRID */
+  .test-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 6px;
+  }
+
+  /* CARD */
+  .test-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    cursor: default;
+  }
+  .test-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+  .test-card.ok::before { background: var(--accent2); }
+  .test-card.fail::before { background: var(--danger); }
+  .test-card.warn::before { background: var(--warn); }
+  .test-card.pending::before { background: var(--muted); animation: pulse-bar 1s infinite; }
+  .test-card.testing::before { background: var(--accent); animation: pulse-bar 0.5s infinite; }
+
+  @keyframes pulse-bar {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .test-card:hover { border-color: var(--accent); background: var(--surface2); }
+  .test-card.hidden { display: none; }
+
+  .card-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+  .test-card.ok .card-status-dot { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+  .test-card.fail .card-status-dot { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+  .test-card.warn .card-status-dot { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+  .test-card.testing .card-status-dot { background: var(--accent); animation: spin-dot 0.8s linear infinite; }
+
+  @keyframes spin-dot {
+    0% { box-shadow: 2px 0 0 var(--accent); }
+    25% { box-shadow: 0 2px 0 var(--accent); }
+    50% { box-shadow: -2px 0 0 var(--accent); }
+    75% { box-shadow: 0 -2px 0 var(--accent); }
+  }
+
+  .card-info { flex: 1; min-width: 0; }
+  .card-name {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
+  }
+  .card-url {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+
+  .card-meta {
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .card-time {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text2);
+    transition: color 0.3s;
+  }
+  .test-card.ok .card-time { color: var(--accent2); }
+  .test-card.fail .card-time { color: var(--danger); }
+  .test-card.warn .card-time { color: var(--warn); }
+  .card-size {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 16px 0;
+    margin-top: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--muted);
+    letter-spacing: 1px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* SUMMARY ROW */
+  .summary-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+  }
+  .summary-item { display: flex; gap: 6px; align-items: center; }
+  .summary-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* Tooltip */
+  .test-card[title]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 8px;
+    white-space: nowrap;
+    z-index: 200;
+    pointer-events: none;
+  }
+
+  /* Responsive */
+  @media(max-width: 600px) {
+    .test-grid { grid-template-columns: 1fr; }
+    .logo-main { font-size: 20px; }
+    .header-stats { gap: 10px; }
+    .stat-pill { min-width: 60px; padding: 5px 10px; }
+    .stat-pill .val { font-size: 18px; }
+  }
+
+  /* Pulse animation for testing state */
+  .testing-pulse {
+    animation: glow-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 5px rgba(0,212,255,0.1); }
+    50% { box-shadow: 0 0 20px rgba(0,212,255,0.3); }
+  }
+
+  .elapsed {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrapper">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-main">NETPROBE</span>
+        <span class="logo-sub">CDN &amp; API Latency Tester</span>
+      </div>
+      <div class="header-stats">
+        <div class="stat-pill total"><span class="val" id="s-total">0</span><span class="lbl">Total</span></div>
+        <div class="stat-pill ok"><span class="val" id="s-ok">0</span><span class="lbl">Online</span></div>
+        <div class="stat-pill fail"><span class="val" id="s-fail">0</span><span class="lbl">Failed</span></div>
+        <div class="stat-pill warn"><span class="val" id="s-warn">0</span><span class="lbl">Slow</span></div>
+        <div class="stat-pill speed"><span class="val" id="s-avg">—</span><span class="lbl">Avg ms</span></div>
+        <div class="elapsed" id="elapsed-time">00:00</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrapper">
+  <div class="controls">
+    <button class="btn btn-primary" id="btn-run">▶ RUN ALL TESTS</button>
+    <button class="btn btn-secondary" id="btn-stop" disabled>■ STOP</button>
+    <button class="btn btn-secondary" id="btn-export">↓ EXPORT CSV</button>
+    <div class="search-bar">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="search-input" placeholder="Filter endpoints...">
+    </div>
+    <div class="filter-group">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn f-ok" data-filter="ok">Online</button>
+      <button class="filter-btn f-warn" data-filter="warn">Slow</button>
+      <button class="filter-btn f-fail" data-filter="fail">Failed</button>
+      <button class="filter-btn" data-filter="pending">Pending</button>
+    </div>
+  </div>
+
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+  <div class="progress-label" id="progress-label">Ready — <span id="total-count">0</span> endpoints loaded</div>
+
+  <div id="categories-container"></div>
+</div>
+
+<footer class="wrapper">
+  <span>NETPROBE v2.0 — 3-method probe: cors + no-cors + img ping</span>
+  <span id="last-run">—</span>
+  <span>Slow &gt;800ms · Timeout 8s · 3 methods: cors+no-cors+img</span>
+</footer>
+
+<script>
+// =====================================================================
+// ENDPOINT DATABASE — 500+ CDN & API endpoints
+// =====================================================================
+const ENDPOINTS = [
+{ cat:"Public APIs — REST Testing", name:"JSONPlaceholder Post", url:"https://jsonplaceholder.typicode.com/posts/1" },
+{ cat:"Public APIs — REST Testing", name:"JSONPlaceholder User", url:"https://jsonplaceholder.typicode.com/users/1" },
+{ cat:"Public APIs — REST Testing", name:"JSONPlaceholder Todo", url:"https://jsonplaceholder.typicode.com/todos/1" },
+{ cat:"Public APIs — REST Testing", name:"JSONPlaceholder Album", url:"https://jsonplaceholder.typicode.com/albums/1" },
+{ cat:"Public APIs — REST Testing", name:"JSONPlaceholder Comment", url:"https://jsonplaceholder.typicode.com/comments/1" },
+{ cat:"Public APIs — REST Testing", name:"HTTPBin GET", url:"https://httpbin.org/get" },
+{ cat:"Public APIs — REST Testing", name:"HTTPBin IP", url:"https://httpbin.org/ip" },
+{ cat:"Public APIs — REST Testing", name:"HTTPBin UUID", url:"https://httpbin.org/uuid" },
+{ cat:"Public APIs — REST Testing", name:"HTTPBin User-Agent", url:"https://httpbin.org/user-agent" },
+{ cat:"Public APIs — REST Testing", name:"HTTPBin Headers", url:"https://httpbin.org/headers" },
+{ cat:"Public APIs — REST Testing", name:"HTTPBin Status 200", url:"https://httpbin.org/status/200" },
+{ cat:"Public APIs — REST Testing", name:"HTTPBin Delay 1s", url:"https://httpbin.org/delay/1" },
+{ cat:"Public APIs — REST Testing", name:"ReqRes Users", url:"https://reqres.in/api/users?page=1" },
+{ cat:"Public APIs — REST Testing", name:"ReqRes Single User", url:"https://reqres.in/api/users/2" },
+{ cat:"Public APIs — REST Testing", name:"Mockbin", url:"https://mockbin.org/request" },
+{ cat:"Public APIs — REST Testing", name:"Postman Echo", url:"https://postman-echo.com/get?test=netprobe" },
+{ cat:"Public APIs — REST Testing", name:"Beeceptor", url:"https://beeceptor.com/" },
+{ cat:"Public APIs — IP & Geo", name:"ipify JSON", url:"https://api.ipify.org?format=json" },
+{ cat:"Public APIs — IP & Geo", name:"ipinfo.io", url:"https://ipinfo.io/json" },
+{ cat:"Public APIs — IP & Geo", name:"ip-api.com", url:"https://ip-api.com/json" },
+{ cat:"Public APIs — IP & Geo", name:"ipwho.is", url:"https://ipwho.is/" },
+{ cat:"Public APIs — IP & Geo", name:"freeipapi", url:"https://freeipapi.com/api/json" },
+{ cat:"Public APIs — IP & Geo", name:"ipapi.co", url:"https://ipapi.co/json/" },
+{ cat:"Public APIs — IP & Geo", name:"Geojs IP", url:"https://get.geojs.io/v1/ip.json" },
+{ cat:"Public APIs — IP & Geo", name:"BigDataCloud Client IP", url:"https://api.bigdatacloud.net/data/client-ip" },
+{ cat:"Public APIs — IP & Geo", name:"DB-IP", url:"https://api.db-ip.com/v2/free/self" },
+{ cat:"Public APIs — IP & Geo", name:"ipgeolocation.io", url:"https://api.ipgeolocation.io/ipgeo?apiKey=demo" },
+{ cat:"Public APIs — IP & Geo", name:"ipstack free", url:"https://api.ipstack.com/check?access_key=test" },
+{ cat:"Public APIs — IP & Geo", name:"Shodan InternetDB 8.8.8.8", url:"https://internetdb.shodan.io/8.8.8.8" },
+{ cat:"Public APIs — IP & Geo", name:"Nominatim London", url:"https://nominatim.openstreetmap.org/search?q=London&format=json&limit=1" },
+{ cat:"Public APIs — IP & Geo", name:"Nominatim Reverse", url:"https://nominatim.openstreetmap.org/reverse?lat=51.5&lon=-0.12&format=json" },
+{ cat:"Public APIs — IP & Geo", name:"OpenCage Geocoding", url:"https://api.opencagedata.com/geocode/v1/json?q=London&key=demo" },
+{ cat:"Public APIs — IP & Geo", name:"Zippopotamus US 90210", url:"https://api.zippopotam.us/us/90210" },
+{ cat:"Public APIs — IP & Geo", name:"Zippopotamus UK SW1A", url:"https://api.zippopotam.us/gb/SW1A" },
+{ cat:"Public APIs — IP & Geo", name:"Geocode.maps.co", url:"https://geocode.maps.co/search?q=Paris" },
+{ cat:"Public APIs — IP & Geo", name:"TimeZoneDB", url:"https://api.timezonedb.com/v2.1/get-time-zone?key=demo&format=json&by=zone&zone=America/New_York" },
+{ cat:"Public APIs — Weather", name:"Open-Meteo Forecast", url:"https://api.open-meteo.com/v1/forecast?latitude=40.71&longitude=-74.01&current_weather=true" },
+{ cat:"Public APIs — Weather", name:"Open-Meteo Air Quality", url:"https://air-quality-api.open-meteo.com/v1/air-quality?latitude=52.52&longitude=13.41&current=pm10" },
+{ cat:"Public APIs — Weather", name:"Open-Meteo Marine", url:"https://marine-api.open-meteo.com/v1/marine?latitude=54.54&longitude=10.22&hourly=wave_height" },
+{ cat:"Public APIs — Weather", name:"Open-Meteo Geocoding Berlin", url:"https://geocoding-api.open-meteo.com/v1/search?name=Berlin&count=1" },
+{ cat:"Public APIs — Weather", name:"Open-Meteo Historical", url:"https://archive-api.open-meteo.com/v1/archive?latitude=52.52&longitude=13.41&start_date=2023-01-01&end_date=2023-01-02&daily=temperature_2m_max" },
+{ cat:"Public APIs — Weather", name:"wttr.in London JSON", url:"https://wttr.in/London?format=j1" },
+{ cat:"Public APIs — Weather", name:"wttr.in Moon", url:"https://wttr.in/moon?format=j1" },
+{ cat:"Public APIs — Weather", name:"Open Elevation", url:"https://api.open-elevation.com/api/v1/lookup?locations=10,10" },
+{ cat:"Public APIs — Weather", name:"Sunrise-Sunset Today", url:"https://api.sunrise-sunset.org/json?lat=36.72&lng=-4.42&date=today" },
+{ cat:"Public APIs — Weather", name:"World Time UTC", url:"https://worldtimeapi.org/api/timezone/Etc/UTC" },
+{ cat:"Public APIs — Weather", name:"World Time NYC", url:"https://worldtimeapi.org/api/timezone/America/New_York" },
+{ cat:"Public APIs — Weather", name:"World Time Zones List", url:"https://worldtimeapi.org/api/timezone" },
+{ cat:"Public APIs — Weather", name:"USGS Earthquakes", url:"https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&limit=3&minmagnitude=5" },
+{ cat:"Public APIs — Weather", name:"NOAA Climate", url:"https://www.ncdc.noaa.gov/cdo-web/api/v2/datatypes?limit=3" },
+{ cat:"Public APIs — Space & Science", name:"NASA APOD", url:"https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY" },
+{ cat:"Public APIs — Space & Science", name:"NASA Mars Rover Photos", url:"https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/photos?sol=1000&api_key=DEMO_KEY&page=1" },
+{ cat:"Public APIs — Space & Science", name:"NASA NeoWs Asteroids", url:"https://api.nasa.gov/neo/rest/v1/feed/today?api_key=DEMO_KEY" },
+{ cat:"Public APIs — Space & Science", name:"NASA EPIC Earth Images", url:"https://api.nasa.gov/EPIC/api/natural?api_key=DEMO_KEY" },
+{ cat:"Public APIs — Space & Science", name:"NASA Tech Transfer", url:"https://api.nasa.gov/techtransfer/patent/?api_key=DEMO_KEY&engine" },
+{ cat:"Public APIs — Space & Science", name:"SpaceX Latest Launch", url:"https://api.spacexdata.com/v4/launches/latest" },
+{ cat:"Public APIs — Space & Science", name:"SpaceX Rockets", url:"https://api.spacexdata.com/v4/rockets" },
+{ cat:"Public APIs — Space & Science", name:"SpaceX Crew", url:"https://api.spacexdata.com/v4/crew" },
+{ cat:"Public APIs — Space & Science", name:"SpaceX Capsules", url:"https://api.spacexdata.com/v4/capsules" },
+{ cat:"Public APIs — Space & Science", name:"SpaceX Landpads", url:"https://api.spacexdata.com/v4/landpads" },
+{ cat:"Public APIs — Space & Science", name:"ISS Location", url:"https://api.wheretheiss.at/v1/satellites/25544" },
+{ cat:"Public APIs — Space & Science", name:"Open Notify ISS", url:"http://api.open-notify.org/iss-now.json" },
+{ cat:"Public APIs — Space & Science", name:"Open Notify Astronauts", url:"http://api.open-notify.org/astros.json" },
+{ cat:"Public APIs — Space & Science", name:"arXiv Electron Query", url:"https://export.arxiv.org/api/query?search_query=all:electron&max_results=1" },
+{ cat:"Public APIs — Space & Science", name:"PubMed Search", url:"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=cancer&retmax=3&format=json" },
+{ cat:"Public APIs — Space & Science", name:"Crossref Works", url:"https://api.crossref.org/works?rows=1&query=javascript" },
+{ cat:"Public APIs — Space & Science", name:"MathJS Evaluate", url:"https://api.mathjs.org/v4/?expr=2%5E10" },
+{ cat:"Public APIs — Space & Science", name:"Numbers API Math 42", url:"https://numbersapi.com/42/math" },
+{ cat:"Public APIs — Space & Science", name:"Numbers API Year 1969", url:"https://numbersapi.com/1969/year" },
+{ cat:"Public APIs — Games & Entertainment", name:"PokéAPI Bulbasaur", url:"https://pokeapi.co/api/v2/pokemon/bulbasaur" },
+{ cat:"Public APIs — Games & Entertainment", name:"PokéAPI Charmander", url:"https://pokeapi.co/api/v2/pokemon/charmander" },
+{ cat:"Public APIs — Games & Entertainment", name:"PokéAPI Fire Type", url:"https://pokeapi.co/api/v2/type/fire" },
+{ cat:"Public APIs — Games & Entertainment", name:"PokéAPI Berry 1", url:"https://pokeapi.co/api/v2/berry/1" },
+{ cat:"Public APIs — Games & Entertainment", name:"PokéAPI Move 1", url:"https://pokeapi.co/api/v2/move/1" },
+{ cat:"Public APIs — Games & Entertainment", name:"PokéAPI Ability 1", url:"https://pokeapi.co/api/v2/ability/1" },
+{ cat:"Public APIs — Games & Entertainment", name:"SWAPI Luke Skywalker", url:"https://swapi.dev/api/people/1/" },
+{ cat:"Public APIs — Games & Entertainment", name:"SWAPI Film 1", url:"https://swapi.dev/api/films/1/" },
+{ cat:"Public APIs — Games & Entertainment", name:"SWAPI Planets", url:"https://swapi.dev/api/planets/1/" },
+{ cat:"Public APIs — Games & Entertainment", name:"Rick & Morty Character 1", url:"https://rickandmortyapi.com/api/character/1" },
+{ cat:"Public APIs — Games & Entertainment", name:"Rick & Morty Locations", url:"https://rickandmortyapi.com/api/location" },
+{ cat:"Public APIs — Games & Entertainment", name:"Rick & Morty Episodes", url:"https://rickandmortyapi.com/api/episode" },
+{ cat:"Public APIs — Games & Entertainment", name:"GoT Characters", url:"https://anapioficeandfire.com/api/characters?pageSize=3" },
+{ cat:"Public APIs — Games & Entertainment", name:"GoT Houses", url:"https://anapioficeandfire.com/api/houses?pageSize=3" },
+{ cat:"Public APIs — Games & Entertainment", name:"GoT Books", url:"https://anapioficeandfire.com/api/books" },
+{ cat:"Public APIs — Games & Entertainment", name:"Harry Potter Characters", url:"https://hp-api.onrender.com/api/characters" },
+{ cat:"Public APIs — Games & Entertainment", name:"Harry Potter Houses", url:"https://hp-api.onrender.com/api/characters/house/gryffindor" },
+{ cat:"Public APIs — Games & Entertainment", name:"Superhero API #1", url:"https://akabab.github.io/superhero-api/api/id/1.json" },
+{ cat:"Public APIs — Games & Entertainment", name:"Open Trivia 3 Questions", url:"https://opentdb.com/api.php?amount=3" },
+{ cat:"Public APIs — Games & Entertainment", name:"Open Trivia Categories", url:"https://opentdb.com/api_category.php" },
+{ cat:"Public APIs — Games & Entertainment", name:"Joke API Programming", url:"https://v2.jokeapi.dev/joke/Programming" },
+{ cat:"Public APIs — Games & Entertainment", name:"Joke API Any (SFW)", url:"https://v2.jokeapi.dev/joke/Any?blacklistFlags=nsfw" },
+{ cat:"Public APIs — Games & Entertainment", name:"Official Joke API", url:"https://official-joke-api.appspot.com/random_joke" },
+{ cat:"Public APIs — Games & Entertainment", name:"icanhazdadjoke", url:"https://icanhazdadjoke.com/slack" },
+{ cat:"Public APIs — Games & Entertainment", name:"Chuck Norris Joke", url:"https://api.chucknorris.io/jokes/random" },
+{ cat:"Public APIs — Games & Entertainment", name:"Chuck Norris Categories", url:"https://api.chucknorris.io/jokes/categories" },
+{ cat:"Public APIs — Games & Entertainment", name:"Bored API Activity", url:"https://www.boredapi.com/api/activity" },
+{ cat:"Public APIs — Games & Entertainment", name:"Advice Slip", url:"https://api.adviceslip.com/advice" },
+{ cat:"Public APIs — Games & Entertainment", name:"Quotable Random", url:"https://api.quotable.io/random" },
+{ cat:"Public APIs — Games & Entertainment", name:"Quotable Authors", url:"https://api.quotable.io/authors?limit=3" },
+{ cat:"Public APIs — Animals & Nature", name:"Cat Facts", url:"https://catfact.ninja/fact" },
+{ cat:"Public APIs — Animals & Nature", name:"Cat Facts List", url:"https://catfact.ninja/facts?limit=5" },
+{ cat:"Public APIs — Animals & Nature", name:"Dog CEO Random Image", url:"https://dog.ceo/api/breeds/image/random" },
+{ cat:"Public APIs — Animals & Nature", name:"Dog CEO Breeds List", url:"https://dog.ceo/api/breeds/list/all" },
+{ cat:"Public APIs — Animals & Nature", name:"The Dog API Breeds", url:"https://api.thedogapi.com/v1/breeds?limit=3" },
+{ cat:"Public APIs — Animals & Nature", name:"The Cat API Breeds", url:"https://api.thecatapi.com/v1/breeds?limit=3" },
+{ cat:"Public APIs — Animals & Nature", name:"RandomFox", url:"https://randomfox.ca/floof/" },
+{ cat:"Public APIs — Animals & Nature", name:"Shibe Online Dog", url:"https://shibe.online/api/shibes?count=1" },
+{ cat:"Public APIs — Animals & Nature", name:"Shibe Online Cat", url:"https://shibe.online/api/cats?count=1" },
+{ cat:"Public APIs — Animals & Nature", name:"Shibe Online Bird", url:"https://shibe.online/api/birds?count=1" },
+{ cat:"Public APIs — Animals & Nature", name:"FishWatch NOAA", url:"https://www.fishwatch.gov/api/species" },
+{ cat:"Public APIs — Food & Drink", name:"TheMealDB Search Arrabiata", url:"https://www.themealdb.com/api/json/v1/1/search.php?s=Arrabiata" },
+{ cat:"Public APIs — Food & Drink", name:"TheMealDB Random Meal", url:"https://www.themealdb.com/api/json/v1/1/random.php" },
+{ cat:"Public APIs — Food & Drink", name:"TheMealDB Categories", url:"https://www.themealdb.com/api/json/v1/1/categories.php" },
+{ cat:"Public APIs — Food & Drink", name:"TheCocktailDB Margarita", url:"https://www.thecocktaildb.com/api/json/v1/1/search.php?s=margarita" },
+{ cat:"Public APIs — Food & Drink", name:"TheCocktailDB Random", url:"https://www.thecocktaildb.com/api/json/v1/1/random.php" },
+{ cat:"Public APIs — Food & Drink", name:"Open Brewery DB List", url:"https://api.openbrewerydb.org/v1/breweries?per_page=3" },
+{ cat:"Public APIs — Food & Drink", name:"Open Brewery Random", url:"https://api.openbrewerydb.org/v1/breweries/random" },
+{ cat:"Public APIs — Food & Drink", name:"Open Food Facts Product", url:"https://world.openfoodfacts.org/api/v0/product/737628064502.json" },
+{ cat:"Public APIs — Food & Drink", name:"Open Food Facts Search", url:"https://world.openfoodfacts.org/cgi/search.pl?search_terms=chocolate&search_simple=1&action=process&json=1&page_size=3" },
+{ cat:"Public APIs — Food & Drink", name:"USDA FoodData Central", url:"https://api.nal.usda.gov/fdc/v1/foods/list?dataType=Branded&pageSize=1&api_key=DEMO_KEY" },
+{ cat:"Public APIs — Food & Drink", name:"Bacon Ipsum", url:"https://baconipsum.com/api/?type=meat-and-filler&paras=1&format=json" },
+{ cat:"Public APIs — Countries & World", name:"REST Countries Germany", url:"https://restcountries.com/v3.1/name/germany" },
+{ cat:"Public APIs — Countries & World", name:"REST Countries US Alpha", url:"https://restcountries.com/v3.1/alpha/us" },
+{ cat:"Public APIs — Countries & World", name:"REST Countries Europe", url:"https://restcountries.com/v3.1/region/europe?fields=name" },
+{ cat:"Public APIs — Countries & World", name:"REST Countries by Currency", url:"https://restcountries.com/v3.1/currency/eur?fields=name" },
+{ cat:"Public APIs — Countries & World", name:"REST Countries by Language", url:"https://restcountries.com/v3.1/lang/spanish?fields=name" },
+{ cat:"Public APIs — Countries & World", name:"Country Flags US", url:"https://flagcdn.com/w80/us.png" },
+{ cat:"Public APIs — Countries & World", name:"Country Flags DE", url:"https://flagcdn.com/w80/de.png" },
+{ cat:"Public APIs — Countries & World", name:"Free Dictionary Hello", url:"https://api.dictionaryapi.dev/api/v2/entries/en/hello" },
+{ cat:"Public APIs — Countries & World", name:"Free Dictionary Code", url:"https://api.dictionaryapi.dev/api/v2/entries/en/code" },
+{ cat:"Public APIs — Countries & World", name:"Wikidata Q42 Entity", url:"https://www.wikidata.org/wiki/Special:EntityData/Q42.json" },
+{ cat:"Public APIs — Countries & World", name:"Wikipedia JS Summary", url:"https://en.wikipedia.org/api/rest_v1/page/summary/JavaScript" },
+{ cat:"Public APIs — Countries & World", name:"Wikipedia Random Page", url:"https://en.wikipedia.org/api/rest_v1/page/random/summary" },
+{ cat:"Public APIs — Countries & World", name:"MediaWiki OpenSearch", url:"https://en.wikipedia.org/w/api.php?action=opensearch&search=python&limit=3&format=json" },
+{ cat:"Public APIs — Countries & World", name:"Agify Name Michael", url:"https://api.agify.io?name=michael" },
+{ cat:"Public APIs — Countries & World", name:"Genderize Name Peter", url:"https://api.genderize.io?name=peter" },
+{ cat:"Public APIs — Countries & World", name:"Nationalize Name Nathaniel", url:"https://api.nationalize.io?name=nathaniel" },
+{ cat:"Public APIs — Finance & Crypto", name:"CoinGecko Ping", url:"https://api.coingecko.com/api/v3/ping" },
+{ cat:"Public APIs — Finance & Crypto", name:"CoinGecko Bitcoin Price", url:"https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd" },
+{ cat:"Public APIs — Finance & Crypto", name:"CoinGecko Ethereum Price", url:"https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd" },
+{ cat:"Public APIs — Finance & Crypto", name:"CoinGecko Top 5 Coins", url:"https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&per_page=5" },
+{ cat:"Public APIs — Finance & Crypto", name:"CoinGecko Trending", url:"https://api.coingecko.com/api/v3/search/trending" },
+{ cat:"Public APIs — Finance & Crypto", name:"CoinGecko Global", url:"https://api.coingecko.com/api/v3/global" },
+{ cat:"Public APIs — Finance & Crypto", name:"CoinGecko Exchange Rates", url:"https://api.coingecko.com/api/v3/exchange_rates" },
+{ cat:"Public APIs — Finance & Crypto", name:"Exchange Rates USD", url:"https://open.er-api.com/v6/latest/USD" },
+{ cat:"Public APIs — Finance & Crypto", name:"Exchange Rates EUR", url:"https://open.er-api.com/v6/latest/EUR" },
+{ cat:"Public APIs — Finance & Crypto", name:"Frankfurter USD Latest", url:"https://api.frankfurter.app/latest?from=USD" },
+{ cat:"Public APIs — Finance & Crypto", name:"Frankfurter Currencies", url:"https://api.frankfurter.app/currencies" },
+{ cat:"Public APIs — Finance & Crypto", name:"Frankfurter Historical", url:"https://api.frankfurter.app/2023-01-01" },
+{ cat:"Public APIs — Finance & Crypto", name:"World Bank GDP US", url:"https://api.worldbank.org/v2/country/us/indicator/NY.GDP.MKTP.CD?format=json&mrv=1" },
+{ cat:"Public APIs — Finance & Crypto", name:"World Bank Countries", url:"https://api.worldbank.org/v2/country?format=json&per_page=5" },
+{ cat:"Public APIs — Finance & Crypto", name:"World Bank Topics", url:"https://api.worldbank.org/v2/topic?format=json" },
+{ cat:"Public APIs — Finance & Crypto", name:"BLS Employment Data", url:"https://api.bls.gov/publicAPI/v2/timeseries/data/LNS14000000" },
+{ cat:"Public APIs — Media & Entertainment", name:"TV Maze Show 1", url:"https://api.tvmaze.com/shows/1" },
+{ cat:"Public APIs — Media & Entertainment", name:"TV Maze Breaking Bad", url:"https://api.tvmaze.com/search/shows?q=breaking+bad" },
+{ cat:"Public APIs — Media & Entertainment", name:"TV Maze Schedule", url:"https://api.tvmaze.com/schedule?country=US" },
+{ cat:"Public APIs — Media & Entertainment", name:"TV Maze Episodes S1", url:"https://api.tvmaze.com/shows/1/episodes" },
+{ cat:"Public APIs — Media & Entertainment", name:"MusicBrainz Radiohead", url:"https://musicbrainz.org/ws/2/artist/?query=radiohead&fmt=json" },
+{ cat:"Public APIs — Media & Entertainment", name:"MusicBrainz Artist ID", url:"https://musicbrainz.org/ws/2/artist/5b11f4ce-a62d-471e-81fc-a69a8278c7da?fmt=json" },
+{ cat:"Public APIs — Media & Entertainment", name:"iTunes Jack Johnson", url:"https://itunes.apple.com/search?term=jack+johnson&limit=3" },
+{ cat:"Public APIs — Media & Entertainment", name:"iTunes Lookup ID", url:"https://itunes.apple.com/lookup?id=909253" },
+{ cat:"Public APIs — Media & Entertainment", name:"Google Books JS", url:"https://www.googleapis.com/books/v1/volumes?q=javascript&maxResults=1" },
+{ cat:"Public APIs — Media & Entertainment", name:"Open Library Search", url:"https://openlibrary.org/search.json?q=javascript&limit=1" },
+{ cat:"Public APIs — Media & Entertainment", name:"Open Library Books", url:"https://openlibrary.org/api/books?bibkeys=ISBN:0201558025&format=json" },
+{ cat:"Public APIs — Media & Entertainment", name:"Gutenberg Books", url:"https://gutendex.com/books/?page=1" },
+{ cat:"Public APIs — Media & Entertainment", name:"Gutenberg Dickens", url:"https://gutendex.com/books/?search=dickens" },
+{ cat:"Public APIs — Media & Entertainment", name:"Archive.org Search", url:"https://archive.org/advancedsearch.php?q=javascript&output=json&rows=3" },
+{ cat:"Public APIs — Media & Entertainment", name:"Lorem Picsum List", url:"https://picsum.photos/v2/list?page=1&limit=3" },
+{ cat:"Public APIs — Media & Entertainment", name:"DiceBear Avataaars", url:"https://api.dicebear.com/8.x/avataaars/svg?seed=Felix" },
+{ cat:"Public APIs — Media & Entertainment", name:"DiceBear Pixel Art", url:"https://api.dicebear.com/8.x/pixel-art/svg?seed=test" },
+{ cat:"Public APIs — Dev & Registries", name:"GitHub Events", url:"https://api.github.com/events?per_page=1" },
+{ cat:"Public APIs — Dev & Registries", name:"GitHub Repos List", url:"https://api.github.com/repositories?since=1" },
+{ cat:"Public APIs — Dev & Registries", name:"GitHub User Torvalds", url:"https://api.github.com/users/torvalds" },
+{ cat:"Public APIs — Dev & Registries", name:"GitHub Rate Limit", url:"https://api.github.com/rate_limit" },
+{ cat:"Public APIs — Dev & Registries", name:"GitHub Top Stars Search", url:"https://api.github.com/search/repositories?q=stars:>10000&sort=stars&per_page=1" },
+{ cat:"Public APIs — Dev & Registries", name:"GitHub Octocat", url:"https://api.github.com/octocat" },
+{ cat:"Public APIs — Dev & Registries", name:"npm jQuery Package", url:"https://registry.npmjs.org/jquery/latest" },
+{ cat:"Public APIs — Dev & Registries", name:"npm React Package", url:"https://registry.npmjs.org/react/latest" },
+{ cat:"Public APIs — Dev & Registries", name:"npm Lodash Package", url:"https://registry.npmjs.org/lodash/latest" },
+{ cat:"Public APIs — Dev & Registries", name:"npm Downloads React", url:"https://api.npmjs.org/downloads/point/last-month/react" },
+{ cat:"Public APIs — Dev & Registries", name:"npm Downloads jQuery", url:"https://api.npmjs.org/downloads/point/last-month/jquery" },
+{ cat:"Public APIs — Dev & Registries", name:"PyPI Flask", url:"https://pypi.org/pypi/flask/json" },
+{ cat:"Public APIs — Dev & Registries", name:"PyPI Requests", url:"https://pypi.org/pypi/requests/json" },
+{ cat:"Public APIs — Dev & Registries", name:"PyPI Django", url:"https://pypi.org/pypi/django/json" },
+{ cat:"Public APIs — Dev & Registries", name:"crates.io Serde", url:"https://crates.io/api/v1/crates/serde" },
+{ cat:"Public APIs — Dev & Registries", name:"crates.io Tokio", url:"https://crates.io/api/v1/crates/tokio" },
+{ cat:"Public APIs — Dev & Registries", name:"Packagist Laravel", url:"https://packagist.org/packages/laravel/laravel.json" },
+{ cat:"Public APIs — Dev & Registries", name:"NuGet Newtonsoft", url:"https://api.nuget.org/v3/registration5-semver1/newtonsoft.json/index.json" },
+{ cat:"Public APIs — Dev & Registries", name:"RubyGems Rails", url:"https://rubygems.org/api/v1/gems/rails.json" },
+{ cat:"Public APIs — Dev & Registries", name:"Hex Ecto (Elixir)", url:"https://hex.pm/api/packages/ecto" },
+{ cat:"Public APIs — Dev & Registries", name:"Docker Hub Ubuntu", url:"https://hub.docker.com/v2/repositories/library/ubuntu/" },
+{ cat:"Public APIs — Dev & Registries", name:"Docker Hub Nginx", url:"https://hub.docker.com/v2/repositories/library/nginx/" },
+{ cat:"Public APIs — Dev & Registries", name:"Homebrew Formula Git", url:"https://formulae.brew.sh/api/formula/git.json" },
+{ cat:"Public APIs — Dev & Registries", name:"Homebrew Formula Node", url:"https://formulae.brew.sh/api/formula/node.json" },
+{ cat:"Public APIs — Dev & Registries", name:"SSL Labs API Info", url:"https://api.ssllabs.com/api/v3/info" },
+{ cat:"Public APIs — Government & Open Data", name:"FDA Drug Labels", url:"https://api.fda.gov/drug/label.json?limit=1" },
+{ cat:"Public APIs — Government & Open Data", name:"FDA Food Enforcement", url:"https://api.fda.gov/food/enforcement.json?limit=1" },
+{ cat:"Public APIs — Government & Open Data", name:"FDA Device Events", url:"https://api.fda.gov/device/event.json?limit=1" },
+{ cat:"Public APIs — Government & Open Data", name:"US Census 2020", url:"https://api.census.gov/data/2020/dec/pl?get=P1_001N&for=state:*" },
+{ cat:"Public APIs — Government & Open Data", name:"USAspending Agency", url:"https://api.usaspending.gov/api/v2/references/agency/456/" },
+{ cat:"Public APIs — Government & Open Data", name:"Data.gov USDA FDC", url:"https://api.nal.usda.gov/fdc/v1/foods/list?dataType=Branded&pageSize=1&api_key=DEMO_KEY" },
+{ cat:"Public APIs — Government & Open Data", name:"World Bank Indicators", url:"https://api.worldbank.org/v2/indicator?format=json&per_page=5" },
+{ cat:"Public APIs — Government & Open Data", name:"UN Comtrade", url:"https://comtradeapi.un.org/data/v1/getDa/C/A/2022?cmdCode=01&reporterCode=4&flowCode=M&partnerCode=0&partner2Code=0" },
+{ cat:"Public APIs — Government & Open Data", name:"EPA AQS Monitors", url:"https://aqs.epa.gov/data/api/list/states?email=test@test.com&key=test" },
+{ cat:"Public APIs — Government & Open Data", name:"Disease.sh COVID Global", url:"https://disease.sh/v3/covid-19/all" },
+{ cat:"Public APIs — Government & Open Data", name:"Disease.sh Countries", url:"https://disease.sh/v3/covid-19/countries?limit=3" },
+{ cat:"Public APIs — Government & Open Data", name:"Disease.sh Vaccine", url:"https://disease.sh/v3/covid-19/vaccine/coverage" },
+{ cat:"Public APIs — Transport & Maps", name:"OpenSky Network Flights", url:"https://opensky-network.org/api/states/all?lamin=45.8&lomin=5.9&lamax=47.8&lomax=10.5" },
+{ cat:"Public APIs — Transport & Maps", name:"ADS-B Exchange Military", url:"https://api.adsb.lol/api/0/mil" },
+{ cat:"Public APIs — Transport & Maps", name:"CityBikes Networks", url:"https://api.citybik.es/v2/networks" },
+{ cat:"Public APIs — Transport & Maps", name:"CityBikes London", url:"https://api.citybik.es/v2/networks/santander-cycles" },
+{ cat:"Public APIs — Transport & Maps", name:"OpenChargeMap EV", url:"https://api.openchargemap.io/v3/poi/?output=json&countrycode=US&maxresults=3&key=test" },
+{ cat:"Public APIs — Transport & Maps", name:"Overpass OSM Pubs", url:"https://overpass-api.de/api/interpreter?data=[out:json];node[amenity=pub](51.5,-0.1,51.52,0.0);out%203;" },
+{ cat:"Public APIs — Transport & Maps", name:"Open Elevation API", url:"https://api.open-elevation.com/api/v1/lookup?locations=40.7128,-74.0060" },
+{ cat:"Public APIs — Transport & Maps", name:"Mapbox Static API", url:"https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/1/0/0?access_token=demo" },
+{ cat:"Public APIs — Social & People", name:"RandomUser.me Single", url:"https://randomuser.me/api/" },
+{ cat:"Public APIs — Social & People", name:"RandomUser.me 5 Users", url:"https://randomuser.me/api/?results=5" },
+{ cat:"Public APIs — Social & People", name:"Gravatar Profile", url:"https://en.gravatar.com/205e460b479e2e5b48aec07710c08d50.json" },
+{ cat:"Public APIs — Social & People", name:"Clearbit Logo Google", url:"https://logo.clearbit.com/google.com" },
+{ cat:"Public APIs — Social & People", name:"Clearbit Logo GitHub", url:"https://logo.clearbit.com/github.com" },
+{ cat:"Public APIs — Social & People", name:"DuckDuckGo Search", url:"https://api.duckduckgo.com/?q=python&format=json&no_html=1" },
+{ cat:"Public APIs — Social & People", name:"Hacker News Top Stories", url:"https://hacker-news.firebaseio.com/v0/topstories.json?limitToFirst=5&orderBy=%22$key%22" },
+{ cat:"Public APIs — Social & People", name:"Hacker News Item 1", url:"https://hacker-news.firebaseio.com/v0/item/1.json" },
+{ cat:"Public APIs — Social & People", name:"Hacker News Best", url:"https://hacker-news.firebaseio.com/v0/beststories.json?limitToFirst=5&orderBy=%22$key%22" },
+{ cat:"Public APIs — Social & People", name:"Reddit r/programming JSON", url:"https://www.reddit.com/r/programming/top.json?limit=3&t=day" },
+{ cat:"Public APIs — Social & People", name:"Reddit r/technology JSON", url:"https://www.reddit.com/r/technology/hot.json?limit=3" },
+{ cat:"Public APIs — Social & People", name:"DEV.to Articles", url:"https://dev.to/api/articles?top=3" },
+{ cat:"Public APIs — Social & People", name:"DEV.to Tags", url:"https://dev.to/api/tags?per_page=5" },
+{ cat:"Public APIs — Social & People", name:"Lobsters Newest", url:"https://lobste.rs/newest.json" },
+{ cat:"Public APIs — Security & Utilities", name:"Have I Been Pwned Adobe", url:"https://haveibeenpwned.com/api/v3/breacheddomain/adobe.com" },
+{ cat:"Public APIs — Security & Utilities", name:"URLScan.io Search", url:"https://urlscan.io/api/v1/search/?q=domain:google.com&size=1" },
+{ cat:"Public APIs — Security & Utilities", name:"PwnedPasswords Range", url:"https://api.pwnedpasswords.com/range/21BD1" },
+{ cat:"Public APIs — Security & Utilities", name:"UUID Generator", url:"https://httpbin.org/uuid" },
+{ cat:"Public APIs — Security & Utilities", name:"Random.org Integers", url:"https://www.random.org/integers/?num=5&min=1&max=100&col=1&base=10&format=plain&rnd=new" },
+{ cat:"Public APIs — Security & Utilities", name:"QR Server Generate", url:"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=hello" },
+{ cat:"Public APIs — Security & Utilities", name:"CleanURI Expand", url:"https://cleanuri.com/api/v1/shorten?url=https://example.com" },
+{ cat:"Public APIs — Security & Utilities", name:"Is It Up? Example.com", url:"https://isitup.org/example.com.json" },
+{ cat:"Public APIs — Security & Utilities", name:"URLhaus Lookup", url:"https://urlhaus-api.abuse.ch/v1/host/" },
+{ cat:"Public APIs — Security & Utilities", name:"VirusTotal API Info", url:"https://www.virustotal.com/api/v3/urls" },
+{ cat:"Google Services", name:"Google Fonts API CSS2", url:"https://fonts.googleapis.com/css2?family=Roboto&display=swap" },
+{ cat:"Google Services", name:"Google AJAX jQuery", url:"https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js" },
+{ cat:"Google Services", name:"Google AJAX AngularJS", url:"https://ajax.googleapis.com/ajax/libs/angularjs/1.8.3/angular.min.js" },
+{ cat:"Google Services", name:"Google Maps JS API", url:"https://maps.googleapis.com/maps/api/js" },
+{ cat:"Google Services", name:"Google Charts Loader", url:"https://www.gstatic.com/charts/loader.js" },
+{ cat:"Google Services", name:"Google reCAPTCHA v2", url:"https://www.google.com/recaptcha/api.js" },
+{ cat:"Google Services", name:"Google Tag Manager", url:"https://www.googletagmanager.com/gtm.js?id=GTM-XXXX" },
+{ cat:"Google Services", name:"Firebase App CDN", url:"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js" },
+{ cat:"Google Services", name:"Firebase Auth CDN", url:"https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js" },
+{ cat:"Google Services", name:"Firebase Firestore CDN", url:"https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js" },
+{ cat:"Google Services", name:"YouTube iFrame API", url:"https://www.youtube.com/iframe_api" },
+{ cat:"Google Services", name:"Google Pay JS", url:"https://pay.google.com/gp/p/js/pay.js" },
+{ cat:"Google Services", name:"Google Font Open Sans", url:"https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Font Lato", url:"https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Font Montserrat", url:"https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Font Inter", url:"https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Font Poppins", url:"https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" },
+{ cat:"Google Services", name:"Google Font Nunito", url:"https://fonts.googleapis.com/css2?family=Nunito&display=swap" },
+{ cat:"Google Services", name:"Google Font Raleway", url:"https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Font Rubik", url:"https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Font Ubuntu", url:"https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Google Font DM Sans", url:"https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700&display=swap" },
+{ cat:"Google Services", name:"Material Icons CSS", url:"https://fonts.googleapis.com/icon?family=Material+Icons" },
+{ cat:"Google Services", name:"Books API Search", url:"https://www.googleapis.com/books/v1/volumes?q=python&maxResults=1" },
+{ cat:"Google Services", name:"YouTube Data API Channels", url:"https://www.googleapis.com/youtube/v3/channels?part=snippet&id=UC_x5XG1OV2P6uZZ5FSM9Ttw&key=DEMO_KEY" },
+{ cat:"Google Services", name:"Places API Autocomplete", url:"https://maps.googleapis.com/maps/api/place/autocomplete/json?input=London&key=DEMO_KEY" },
+{ cat:"Cloud & Commerce APIs", name:"Stripe.js", url:"https://js.stripe.com/v3/" },
+{ cat:"Cloud & Commerce APIs", name:"PayPal SDK", url:"https://www.paypalobjects.com/api/checkout.js" },
+{ cat:"Cloud & Commerce APIs", name:"Braintree Client", url:"https://js.braintreegateway.com/web/3.97.3/js/client.min.js" },
+{ cat:"Cloud & Commerce APIs", name:"Square Web Payments", url:"https://web.squarecdn.com/v1/square.js" },
+{ cat:"Cloud & Commerce APIs", name:"Shopify Storefront API", url:"https://cdn.shopify.com/s/files/1/0/status.json" },
+{ cat:"Cloud & Commerce APIs", name:"Open Exchange Rates", url:"https://openexchangerates.org/api/latest.json?app_id=demo" },
+{ cat:"Cloud & Commerce APIs", name:"CurrencyLayer Free", url:"https://api.currencylayer.com/live?access_key=demo" },
+{ cat:"Cloud & Commerce APIs", name:"Sentry Browser SDK", url:"https://browser.sentry-cdn.com/7.91.0/bundle.tracing.replay.min.js" },
+{ cat:"Cloud & Commerce APIs", name:"New Relic Browser Agent", url:"https://js-agent.newrelic.com/nr-loader-rum-1.261.0.min.js" },
+{ cat:"Cloud & Commerce APIs", name:"Datadog RUM", url:"https://www.datadoghq-browser-agent.com/us1/v5/datadog-rum.js" },
+{ cat:"Cloud & Commerce APIs", name:"Bugsnag JS", url:"https://d2wy8f7a9ursnm.cloudfront.net/v7/bugsnag.min.js" },
+{ cat:"Cloud & Commerce APIs", name:"Mixpanel CDN", url:"https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js" },
+{ cat:"Cloud & Commerce APIs", name:"Auth0 JS", url:"https://cdn.auth0.com/js/auth0/9.23.3/auth0.min.js" },
+{ cat:"Cloud & Commerce APIs", name:"Intercom SDK", url:"https://js.intercomcdn.com/intercom.v5.js" },
+{ cat:"Cloud & Commerce APIs", name:"AWS SDK Browser", url:"https://sdk.amazonaws.com/js/aws-sdk-2.1518.0.min.js" },
+{ cat:"Cloud & Commerce APIs", name:"Azure CDN jQuery", url:"https://ajax.aspnetcdn.com/ajax/jquery/jquery-3.7.1.min.js" },
+{ cat:"Cloud & Commerce APIs", name:"Cloudinary Upload Widget", url:"https://widget.cloudinary.com/v2.0/global/all.js" },
+{ cat:"Cloud & Commerce APIs", name:"Netlify Status", url:"https://www.netlifystatus.com/api/v2/status.json" },
+{ cat:"Cloud & Commerce APIs", name:"GitHub Status", url:"https://www.githubstatus.com/api/v2/status.json" },
+{ cat:"Cloud & Commerce APIs", name:"Atlassian Status", url:"https://jira-software.status.atlassian.com/api/v2/status.json" },
+{ cat:"Cloud & Commerce APIs", name:"Twilio Status", url:"https://status.twilio.com/api/v2/status.json" },
+{ cat:"Cloud & Commerce APIs", name:"Heroku Status", url:"https://status.heroku.com/api/v4/current-status" },
+{ cat:"Cloud & Commerce APIs", name:"Cloudflare Status", url:"https://www.cloudflarestatus.com/api/v2/status.json" },
+{ cat:"Cloud & Commerce APIs", name:"Fastly Status", url:"https://www.fastlystatus.com/api/v2/status.json" },
+{ cat:"Cloud & Commerce APIs", name:"AWS Status", url:"https://health.aws.amazon.com/health/status" },
+{ cat:"Cloud & Commerce APIs", name:"Vercel Status", url:"https://www.vercel-status.com/api/v2/status.json" },
+{ cat:"Cloud & Commerce APIs", name:"Render Status", url:"https://status.render.com/api/v2/status.json" },
+];
+
+
+// =====================================================================
+// PRELOAD ALL LINKS
+// =====================================================================
+(function preloadLinks() {
+  ENDPOINTS.forEach(ep => {
+    try {
+      const link = document.createElement('link');
+      link.rel = 'preconnect';
+      const url = new URL(ep.url);
+      link.href = url.origin;
+      link.crossOrigin = 'anonymous';
+      document.head.appendChild(link);
+    } catch(e) {}
+  });
+})();
+
+// =====================================================================
+// STATE
+// =====================================================================
+let state = {
+  results: {},
+  running: false,
+  filter: 'all',
+  searchTerm: '',
+  abortControllers: [],
+  startTime: null,
+  timerInterval: null,
+  totalTests: ENDPOINTS.length
+};
+
+// =====================================================================
+// INIT UI
+// =====================================================================
+document.getElementById('s-total').textContent = ENDPOINTS.length;
+document.getElementById('total-count').textContent = ENDPOINTS.length;
+
+function buildUI() {
+  const container = document.getElementById('categories-container');
+  container.innerHTML = '';
+
+  const byCategory = {};
+  ENDPOINTS.forEach((ep, i) => {
+    ep._id = i;
+    if (!byCategory[ep.cat]) byCategory[ep.cat] = [];
+    byCategory[ep.cat].push(ep);
+  });
+
+  for (const [cat, endpoints] of Object.entries(byCategory)) {
+    const section = document.createElement('div');
+    section.className = 'category-section';
+    section.id = `cat-${cat.replace(/\s+/g,'_')}`;
+
+    section.innerHTML = `
+      <div class="cat-header">
+        <span class="cat-name">${cat}</span>
+        <span class="cat-count" id="count-${cat.replace(/\s+/g,'_')}">${endpoints.length} endpoints</span>
+        <div class="cat-bar"></div>
+        <span class="cat-progress" id="prog-${cat.replace(/\s+/g,'_')}">—</span>
+      </div>
+      <div class="test-grid" id="grid-${cat.replace(/\s+/g,'_')}"></div>
+    `;
+
+    const grid = section.querySelector('.test-grid');
+    endpoints.forEach(ep => {
+      const card = document.createElement('div');
+      card.className = 'test-card pending';
+      card.id = `card-${ep._id}`;
+      card.dataset.cat = cat;
+      card.dataset.name = ep.name.toLowerCase();
+      card.dataset.url = ep.url.toLowerCase();
+
+      const shortUrl = ep.url.replace('https://','').replace('http://','');
+      card.innerHTML = `
+        <div class="card-status-dot"></div>
+        <div class="card-info">
+          <div class="card-name">${ep.name}</div>
+          <div class="card-url">${shortUrl}</div>
+        </div>
+        <div class="card-meta">
+          <div class="card-time" id="time-${ep._id}">—</div>
+          <div class="card-size" id="size-${ep._id}">—</div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    container.appendChild(section);
+  }
+}
+
+// =====================================================================
+// TEST RUNNER
+// =====================================================================
+// =====================================================================
+// MULTI-METHOD PROBE (from browser-fetch-guide)
+// Each endpoint is tested with three methods in parallel:
+//   1. fetch() no-cors  — broadest reach, can't read response but won't
+//                         throw for CORS reasons. If this fails = network blocked.
+//   2. fetch() cors     — checks if CORS headers are present (readable).
+//                         Fails silently if CORS missing but server is up.
+//   3. <img> ping       — bypasses CORS entirely for reachability signal.
+//                         onload/onerror fires even for non-image responses.
+// Status shown: ok (cors readable) | reachable (opaque/img only) | blocked
+// =====================================================================
+
+function imgPing(url, timeoutMs) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const tid = setTimeout(() => { img.src = ''; resolve({ ok: false, reason: 'timeout' }); }, timeoutMs);
+    img.onload  = () => { clearTimeout(tid); resolve({ ok: true }); };
+    img.onerror = () => { clearTimeout(tid); resolve({ ok: true, reason: 'non-image-response' }); };
+    img.src = url + (url.includes('?') ? '&' : '?') + '_np=' + Date.now();
+  });
+}
+
+async function testEndpoint(ep) {
+  const card   = document.getElementById(`card-${ep._id}`);
+  const timeEl = document.getElementById(`time-${ep._id}`);
+  const sizeEl = document.getElementById(`size-${ep._id}`);
+
+  card.className = 'test-card testing';
+
+  const TIMEOUT        = 8000;
+  const SLOW_THRESHOLD = 800;
+  const start          = performance.now();
+
+  // ── Method 1: fetch no-cors (never throws for CORS reasons) ──────────
+  const ctrl1 = new AbortController();
+  state.abortControllers.push(ctrl1);
+  const t1 = setTimeout(() => ctrl1.abort(), TIMEOUT);
+
+  let noCorsOk = false;
+  try {
+    await fetch(ep.url, {
+      method:      'GET',
+      mode:        'no-cors',
+      cache:       'no-store',
+      credentials: 'omit',
+      signal:      ctrl1.signal,
+    });
+    noCorsOk = true;
+  } catch(_) {}
+  clearTimeout(t1);
+
+  // ── Method 2: fetch cors (can we read the response?) ─────────────────
+  const ctrl2 = new AbortController();
+  state.abortControllers.push(ctrl2);
+  const t2 = setTimeout(() => ctrl2.abort(), TIMEOUT);
+
+  let corsOk = false, corsStatus = 0, corsMs = 0;
+  try {
+    const r = await fetch(ep.url, {
+      method:      'GET',
+      mode:        'cors',
+      cache:       'no-store',
+      credentials: 'omit',
+      signal:      ctrl2.signal,
+    });
+    corsOk     = r.ok;
+    corsStatus = r.status;
+    corsMs     = Math.round(performance.now() - start);
+  } catch(_) {}
+  clearTimeout(t2);
+
+  // ── Method 3: image ping (broadest reach signal) ──────────────────────
+  const imgResult = await imgPing(ep.url, TIMEOUT);
+
+  const elapsed = Math.round(performance.now() - start);
+
+  // ── Interpret combined results ────────────────────────────────────────
+  // imgPing || noCors → server responded at all
+  const reachable = imgResult.ok || noCorsOk;
+  const isWarn    = elapsed > SLOW_THRESHOLD;
+  let finalStatus, label, detail;
+
+  if (corsOk) {
+    // Best case: CORS headers present, full response readable
+    finalStatus = isWarn ? 'warn' : 'ok';
+    label       = `${corsMs}ms`;
+    detail      = `HTTP ${corsStatus}`;
+  } else if (reachable) {
+    // Server up, but CORS blocks reading — still counts as reachable
+    finalStatus = isWarn ? 'warn' : 'ok';
+    label       = `${elapsed}ms`;
+    detail      = corsStatus ? `${corsStatus} no-cors` : 'opaque';
+  } else {
+    // Nothing got through
+    finalStatus = 'fail';
+    label       = '✕ blocked';
+    detail      = `${elapsed}ms`;
+  }
+
+  card.className = `test-card ${finalStatus}`;
+  timeEl.textContent = label;
+  sizeEl.textContent = detail;
+
+  state.results[ep._id] = {
+    status: finalStatus, elapsed, url: ep.url, name: ep.name, cat: ep.cat,
+    corsOk, reachable, corsStatus,
+  };
+
+  applyVisibility(document.getElementById(`card-${ep._id}`));
+  updateStats();
+  updateProgress();
+}
+
+// =====================================================================
+// RUN ALL
+// =====================================================================
+async function runAll() {
+  state.results = {};
+  state.abortControllers = [];
+  state.running = true;
+  state.startTime = Date.now();
+
+  document.getElementById('btn-run').disabled = true;
+  document.getElementById('btn-stop').disabled = false;
+
+  // Reset all cards
+  ENDPOINTS.forEach(ep => {
+    const card = document.getElementById(`card-${ep._id}`);
+    card.className = 'test-card pending';
+    const timeEl = document.getElementById(`time-${ep._id}`);
+    const sizeEl = document.getElementById(`size-${ep._id}`);
+    timeEl.textContent = '—';
+    sizeEl.textContent = '—';
+  });
+
+  document.getElementById('s-ok').textContent = '0';
+  document.getElementById('s-fail').textContent = '0';
+  document.getElementById('s-warn').textContent = '0';
+  document.getElementById('s-avg').textContent = '—';
+  document.getElementById('progress-fill').style.width = '0%';
+
+  // Start timer
+  state.timerInterval = setInterval(updateElapsed, 500);
+
+  // Run in parallel batches of 30
+  const BATCH = 30;
+  for (let i = 0; i < ENDPOINTS.length; i += BATCH) {
+    if (!state.running) break;
+    const batch = ENDPOINTS.slice(i, i + BATCH);
+    await Promise.allSettled(batch.map(ep => testEndpoint(ep)));
+  }
+
+  state.running = false;
+  clearInterval(state.timerInterval);
+  document.getElementById('btn-run').disabled = false;
+  document.getElementById('btn-stop').disabled = true;
+  document.getElementById('last-run').textContent = `Last run: ${new Date().toLocaleTimeString()}`;
+  document.getElementById('progress-label').textContent = `Complete — ${ENDPOINTS.length} endpoints tested`;
+}
+
+function stopTests() {
+  state.running = false;
+  state.abortControllers.forEach(c => { try { c.abort(); } catch(e){} });
+  clearInterval(state.timerInterval);
+  document.getElementById('btn-run').disabled = false;
+  document.getElementById('btn-stop').disabled = true;
+  document.getElementById('progress-label').textContent = `Stopped — ${Object.keys(state.results).length} tested`;
+}
+
+// =====================================================================
+// STATS & UI
+// =====================================================================
+function updateStats() {
+  const vals = Object.values(state.results);
+  const ok = vals.filter(v => v.status === 'ok').length;
+  const fail = vals.filter(v => v.status === 'fail').length;
+  const warn = vals.filter(v => v.status === 'warn').length;
+  const times = vals.filter(v => v.status !== 'fail').map(v => v.elapsed);
+  const avg = times.length ? Math.round(times.reduce((a,b) => a+b, 0) / times.length) : null;
+
+  document.getElementById('s-ok').textContent = ok;
+  document.getElementById('s-fail').textContent = fail;
+  document.getElementById('s-warn').textContent = warn;
+  document.getElementById('s-avg').textContent = avg !== null ? avg : '—';
+}
+
+function updateProgress() {
+  const tested = Object.keys(state.results).length;
+  const pct = Math.round((tested / ENDPOINTS.length) * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = `Testing… ${tested} / ${ENDPOINTS.length} (${pct}%)`;
+}
+
+function updateElapsed() {
+  if (!state.startTime) return;
+  const elapsed = Date.now() - state.startTime;
+  const s = Math.floor((elapsed / 1000) % 60).toString().padStart(2,'0');
+  const m = Math.floor(elapsed / 60000).toString().padStart(2,'0');
+  document.getElementById('elapsed-time').textContent = `${m}:${s}`;
+}
+
+// =====================================================================
+// FILTER & SEARCH
+// =====================================================================
+function applyVisibility(card) {
+  const filter = state.filter;
+  const search = state.searchTerm.toLowerCase();
+  const result = state.results[parseInt(card.id.split('-')[1])];
+  const currentStatus = result ? result.status : 'pending';
+
+  let show = true;
+
+  if (filter !== 'all' && currentStatus !== filter) show = false;
+
+  if (search) {
+    const name = card.dataset.name || '';
+    const url = card.dataset.url || '';
+    const cat = (card.dataset.cat || '').toLowerCase();
+    if (!name.includes(search) && !url.includes(search) && !cat.includes(search)) show = false;
+  }
+
+  card.classList.toggle('hidden', !show);
+}
+
+function applyAllFilters() {
+  document.querySelectorAll('.test-card').forEach(card => applyVisibility(card));
+}
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.filter = btn.dataset.filter;
+    applyAllFilters();
+  });
+});
+
+document.getElementById('search-input').addEventListener('input', e => {
+  state.searchTerm = e.target.value;
+  applyAllFilters();
+});
+
+// =====================================================================
+// EXPORT CSV
+// =====================================================================
+document.getElementById('btn-export').addEventListener('click', () => {
+  const rows = [['Name','Category','URL','Status','Time (ms)']];
+  ENDPOINTS.forEach(ep => {
+    const r = state.results[ep._id];
+    rows.push([
+      `"${ep.name}"`,
+      `"${ep.cat}"`,
+      `"${ep.url}"`,
+      r ? r.status : 'pending',
+      r ? r.elapsed : ''
+    ]);
+  });
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `netprobe-${Date.now()}.csv`;
+  a.click();
+});
+
+// =====================================================================
+// WIRE BUTTONS
+// =====================================================================
+document.getElementById('btn-run').addEventListener('click', runAll);
+document.getElementById('btn-stop').addEventListener('click', stopTests);
+
+// =====================================================================
+// INIT
+// =====================================================================
+buildUI();
+document.getElementById('s-total').textContent = ENDPOINTS.length;
+document.getElementById('total-count').textContent = ENDPOINTS.length;
+</script>
+</body>
+</html>
