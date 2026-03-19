@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LAN Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--s1:#0c1018;--s2:#111620;--s3:#16202e;
+  --b1:#1c2a3a;--b2:#233450;--b3:#2a4060;
+  --t1:#c8e0ff;--t2:#7aa0cc;--t3:#3e6090;--t4:#1e3050;
+  --ac:#00c8ff;--ac2:#00e89a;--ac3:#ff6b35;--ac4:#b794f4;
+  --err:#ff4466;--warn:#ffaa00;
+  --mono:'JetBrains Mono',monospace;--sans:'Outfit',sans-serif;
+}
+html,body{min-height:100%;background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;}
+body{
+  background-image:
+    radial-gradient(ellipse 100% 60% at 50% -5%,rgba(0,200,255,.07) 0%,transparent 60%),
+    linear-gradient(180deg,#07090f 0%,#080c14 100%);
+  min-height:100vh;
+}
+
+/* ── LAYOUT ── */
+.shell{max-width:960px;margin:0 auto;padding:0 20px 48px;}
+
+/* ── HEADER ── */
+header{padding:28px 0 20px;border-bottom:1px solid var(--b1);}
+.header-inner{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.logo-mark{font-family:var(--mono);font-size:11px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--ac);background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.2);
+  padding:4px 10px;border-radius:4px;}
+.logo-title{font-size:24px;font-weight:800;letter-spacing:-0.5px;}
+.logo-title span{color:var(--ac);}
+.logo-sub{font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:1px;flex:1;}
+.my-ip-pill{font-family:var(--mono);font-size:11px;color:var(--ac2);
+  background:rgba(0,232,154,.08);border:1px solid rgba(0,232,154,.2);
+  padding:5px 12px;border-radius:20px;white-space:nowrap;}
+
+/* ── CONTROLS ── */
+.controls{padding:18px 0 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.btn{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.3px;
+  padding:9px 20px;border:none;border-radius:5px;cursor:pointer;transition:all .15s;
+  display:inline-flex;align-items:center;gap:7px;}
+.btn-primary{background:var(--ac);color:#000;}
+.btn-primary:hover{background:#20d8ff;} .btn-primary:disabled{opacity:.3;cursor:not-allowed;}
+.btn-ghost{background:transparent;color:var(--t3);border:1px solid var(--b2);}
+.btn-ghost:hover{border-color:var(--b3);color:var(--t2);}
+
+/* subnet input */
+.subnet-wrap{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;color:var(--t3);}
+.subnet-input{background:var(--s2);border:1px solid var(--b1);border-radius:5px;color:var(--t1);
+  font-family:var(--mono);font-size:12px;padding:7px 10px;outline:none;width:160px;transition:border-color .15s;}
+.subnet-input:focus{border-color:var(--ac);}
+
+/* ── PROGRESS ── */
+.progress-area{margin-bottom:16px;}
+.progress-track{height:2px;background:var(--b1);border-radius:1px;overflow:hidden;margin-bottom:8px;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--ac),var(--ac2));width:0%;transition:width .2s;box-shadow:0 0 6px var(--ac);}
+.progress-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+.progress-label{font-family:var(--mono);font-size:10px;color:var(--t3);}
+.stats-row{display:flex;gap:16px;flex-wrap:wrap;}
+.stat{font-family:var(--mono);font-size:10px;display:flex;gap:5px;align-items:center;}
+.stat-dot{width:6px;height:6px;border-radius:50%;}
+.stat-dot.found{background:var(--ac2);}
+.stat-dot.scan{background:var(--ac);}
+.stat-dot.done{background:var(--t3);}
+
+/* ── RESULTS ── */
+.section-head{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--t3);padding:14px 0 8px;border-bottom:1px solid var(--b1);margin-bottom:12px;
+  display:flex;align-items:center;gap:10px;}
+.section-head .count-badge{background:var(--s2);border:1px solid var(--b1);border-radius:3px;
+  padding:1px 7px;font-size:9px;color:var(--t2);}
+
+/* ── SERVER CARDS ── */
+.results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:24px;}
+
+.server-card{background:var(--s2);border:1px solid var(--b1);border-radius:8px;overflow:hidden;
+  transition:border-color .2s,transform .2s;animation:card-in .2s ease;}
+@keyframes card-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.server-card:hover{border-color:var(--b2);}
+.server-card.local{border-color:rgba(0,200,255,.3);}
+.server-card.found{border-color:rgba(0,232,154,.25);}
+
+.card-top{padding:12px 14px 10px;display:flex;align-items:flex-start;gap:10px;}
+.service-icon{font-size:22px;flex-shrink:0;margin-top:1px;}
+.card-info{flex:1;min-width:0;}
+.service-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.service-desc{font-size:11px;color:var(--t3);margin-top:1px;line-height:1.4;}
+.card-badge{font-family:var(--mono);font-size:9px;padding:3px 7px;border-radius:20px;
+  border:1px solid;white-space:nowrap;flex-shrink:0;align-self:flex-start;}
+.card-badge.localhost{color:var(--ac4);border-color:rgba(183,148,244,.3);background:rgba(183,148,244,.07);}
+.card-badge.lan{color:var(--ac2);border-color:rgba(0,232,154,.3);background:rgba(0,232,154,.07);}
+.card-badge.self{color:var(--ac);border-color:rgba(0,200,255,.3);background:rgba(0,200,255,.07);}
+
+.card-url-row{padding:0 14px 12px;display:flex;align-items:center;gap:8px;}
+.card-url{font-family:var(--mono);font-size:11px;color:var(--t2);flex:1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.open-btn{font-family:var(--mono);font-size:10px;font-weight:600;padding:5px 12px;
+  background:var(--ac2);color:#000;border:none;border-radius:4px;cursor:pointer;
+  flex-shrink:0;transition:background .15s;text-decoration:none;display:inline-block;}
+.open-btn:hover{background:#00ffaa;}
+
+.card-ports{padding:0 14px 12px;display:flex;gap:5px;flex-wrap:wrap;}
+.port-chip{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;
+  background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.15);color:var(--ac);}
+.port-chip.service{background:rgba(0,232,154,.08);border-color:rgba(0,232,154,.2);color:var(--ac2);}
+
+.card-latency{font-family:var(--mono);font-size:9px;color:var(--t3);padding:0 14px 10px;}
+
+/* ── SCAN LOG ── */
+.scan-log-wrap{background:rgba(0,0,0,.4);border:1px solid var(--b1);border-radius:8px;overflow:hidden;margin-bottom:16px;}
+.scan-log-head{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--t4);padding:7px 12px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--b1);}
+.scan-log{height:80px;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;
+  gap:2px;scroll-behavior:smooth;}
+.scan-log::-webkit-scrollbar{width:3px;} .scan-log::-webkit-scrollbar-thumb{background:var(--b1);}
+.log-line{font-family:var(--mono);font-size:10px;color:var(--t4);animation:log-in .15s ease;}
+@keyframes log-in{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:none}}
+.log-line.hit{color:var(--ac2);}
+.log-line.info{color:var(--ac);}
+.log-line.warn{color:var(--warn);}
+
+/* ── INSTRUCTIONS ── */
+.instructions{background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:16px 18px;margin-bottom:20px;}
+.inst-title{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--ac);margin-bottom:10px;}
+.inst-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;}
+.inst-item{display:flex;gap:9px;align-items:flex-start;}
+.inst-num{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--ac);background:rgba(0,200,255,.1);
+  border:1px solid rgba(0,200,255,.2);border-radius:3px;padding:2px 6px;flex-shrink:0;margin-top:1px;}
+.inst-text{font-size:12px;color:var(--t2);line-height:1.5;}
+.inst-text strong{color:var(--t1);}
+
+/* ── WHAT NEXT BOX ── */
+.what-next{background:rgba(0,232,154,.05);border:1px solid rgba(0,232,154,.15);border-radius:8px;padding:14px 16px;}
+.wn-title{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--ac2);margin-bottom:8px;}
+.wn-text{font-size:12px;color:var(--t2);line-height:1.6;}
+.wn-text code{font-family:var(--mono);font-size:11px;color:var(--ac);background:rgba(0,200,255,.08);
+  padding:1px 5px;border-radius:3px;}
+.wn-text a{color:var(--ac2);text-decoration:none;} .wn-text a:hover{text-decoration:underline;}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:40px 20px;color:var(--t3);}
+.empty-icon{font-size:36px;opacity:.4;margin-bottom:10px;}
+.empty-text{font-size:13px;}
+
+/* ── FOOTER ── */
+footer{border-top:1px solid var(--b1);padding:14px 0;display:flex;justify-content:space-between;
+  font-family:var(--mono);font-size:10px;color:var(--t4);flex-wrap:wrap;gap:6px;}
+
+.hidden{display:none!important;}
+::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px;}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.scanning-pulse{animation:pulse 1s infinite;}
+
+/* accent line */
+.al{height:2px;background:linear-gradient(90deg,var(--ac),var(--ac2),var(--ac3));
+  background-size:200%;animation:al-slide 3s linear infinite;flex-shrink:0;}
+@keyframes al-slide{0%{background-position:0%}100%{background-position:200%}}
+</style>
+</head>
+<body>
+<div class="al"></div>
+<div class="shell">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-inner">
+      <div class="logo-mark">NETFIND</div>
+      <div>
+        <div class="logo-title"><span>LAN</span> Server Scanner</div>
+        <div class="logo-sub">Finds HTTP servers on your local network — no install required</div>
+      </div>
+      <div class="my-ip-pill" id="my-ip-pill">Detecting IP…</div>
+    </div>
+  </header>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <button class="btn btn-primary" id="btn-scan" onclick="startScan()">⚡ Scan Network</button>
+    <button class="btn btn-ghost" id="btn-stop" onclick="stopScan()" disabled>■ Stop</button>
+    <button class="btn btn-ghost" onclick="scanLocalhost()">🖥 Check Localhost Only</button>
+    <div class="subnet-wrap">
+      <span>Subnet:</span>
+      <input class="subnet-input" id="subnet-input" placeholder="192.168.1" value="">
+      <span>.1–254</span>
+    </div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-area">
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="progress-row">
+      <div class="progress-label" id="progress-label">Ready — click Scan to find servers on your network</div>
+      <div class="stats-row">
+        <div class="stat"><div class="stat-dot found"></div><span id="stat-found">0 found</span></div>
+        <div class="stat"><div class="stat-dot scan"></div><span id="stat-scanned">0 scanned</span></div>
+        <div class="stat"><div class="stat-dot done"></div><span id="stat-elapsed">0s</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INSTRUCTIONS -->
+  <div class="instructions">
+    <div class="inst-title">How it works</div>
+    <div class="inst-grid">
+      <div class="inst-item"><div class="inst-num">1</div><div class="inst-text"><strong>Detects your IP</strong> using WebRTC — no server needed. Derives your subnet automatically.</div></div>
+      <div class="inst-item"><div class="inst-num">2</div><div class="inst-text"><strong>Probes every IP</strong> on 192.168.x.0/24 across common server ports using parallel image pings.</div></div>
+      <div class="inst-item"><div class="inst-num">3</div><div class="inst-text"><strong>Identifies services</strong> — Cockpit, Jupyter, Apache, Node, Flask, Webmin and more.</div></div>
+      <div class="inst-item"><div class="inst-num">4</div><div class="inst-text"><strong>Gives you a link</strong> — click Open on any result to navigate straight to that server.</div></div>
+    </div>
+  </div>
+
+  <!-- LOCALHOST RESULTS -->
+  <div id="localhost-section" class="hidden">
+    <div class="section-head">
+      🖥 This Machine (localhost)
+      <span class="count-badge" id="localhost-count">0</span>
+    </div>
+    <div class="results-grid" id="localhost-results"></div>
+  </div>
+
+  <!-- LAN RESULTS -->
+  <div id="lan-section" class="hidden">
+    <div class="section-head">
+      📡 Network Devices
+      <span class="count-badge" id="lan-count">0</span>
+    </div>
+    <div class="results-grid" id="lan-results"></div>
+  </div>
+
+  <!-- EMPTY STATE -->
+  <div id="empty-state" class="empty-state hidden">
+    <div class="empty-icon">🔍</div>
+    <div class="empty-text">No servers found. They may be on a different subnet or all ports are blocked.</div>
+  </div>
+
+  <!-- SCAN LOG -->
+  <div class="scan-log-wrap">
+    <div class="scan-log-head">Scan Log</div>
+    <div class="scan-log" id="scan-log"></div>
+  </div>
+
+  <!-- WHAT NEXT -->
+  <div class="what-next" id="what-next">
+    <div class="wn-title">What to do with results</div>
+    <div class="wn-text">
+      If <strong>Cockpit</strong> is found at port 9090 — open it for a full browser-based terminal and file manager.<br>
+      If <strong>Jupyter</strong> is found — you have a terminal and can run <code>python3 -m http.server 8000</code> to serve files to the whole network.<br>
+      If <strong>Apache / Nginx</strong> is found on port 80 — files in <code>/var/www/html</code> are accessible to everyone on the LAN.<br>
+      If <strong>nothing is found</strong> — the network may have a firewall blocking cross-device connections, or servers may be running on non-standard ports.
+    </div>
+  </div>
+
+  <footer>
+    <span>NETFIND — pure browser, no server, no install</span>
+    <span id="footer-time">—</span>
+    <span>Probing via img ping + fetch no-cors</span>
+  </footer>
+
+</div><!-- .shell -->
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════
+//  SERVICE FINGERPRINT DATABASE
+//  Each entry: port, path to probe, title, description, icon
+//  Detected by img ping success on port, then optional path probe
+// ═══════════════════════════════════════════════════════════
+const SERVICES = [
+  // High-value admin tools first
+  { port: 9090,  path: '/',              name: 'Cockpit',            desc: 'Linux web console — has terminal, file manager, services', icon: '🐚', priority: 1 },
+  { port: 10000, path: '/',              name: 'Webmin',             desc: 'Web-based Linux administration panel',                     icon: '⚙️', priority: 1 },
+  { port: 8888,  path: '/api',           name: 'Jupyter Notebook',   desc: 'Python notebooks — includes browser terminal',             icon: '📓', priority: 1 },
+  { port: 8889,  path: '/api',           name: 'Jupyter (alt port)', desc: 'Python notebooks — includes browser terminal',             icon: '📓', priority: 1 },
+  { port: 1880,  path: '/ui',            name: 'Node-RED',           desc: 'Flow-based automation tool with dashboard',                icon: '🔴', priority: 1 },
+  { port: 8123,  path: '/',             name: 'Home Assistant',     desc: 'Home automation dashboard',                               icon: '🏠', priority: 1 },
+  // Standard web servers
+  { port: 80,    path: '/',              name: 'HTTP Server',        desc: 'Web server on port 80 — likely Apache or Nginx',          icon: '🌐', priority: 2 },
+  { port: 443,   path: '/',             name: 'HTTPS Server',       desc: 'Encrypted web server — Apache, Nginx, or Caddy',          icon: '🔒', priority: 2 },
+  { port: 8080,  path: '/',             name: 'HTTP Server :8080',  desc: 'Alternate HTTP — Python http.server, Tomcat, proxies',     icon: '🌐', priority: 2 },
+  { port: 8000,  path: '/',             name: 'HTTP Server :8000',  desc: 'Python http.server default port or Django dev',           icon: '🐍', priority: 2 },
+  { port: 8008,  path: '/',             name: 'HTTP Server :8008',  desc: 'Alternate HTTP server port',                              icon: '🌐', priority: 2 },
+  { port: 8081,  path: '/',             name: 'HTTP Server :8081',  desc: 'Alternate HTTP server port',                              icon: '🌐', priority: 2 },
+  // Dev servers
+  { port: 3000,  path: '/',             name: 'Node / React Dev',   desc: 'Node.js, React, Express, or Next.js dev server',          icon: '⬡',  priority: 3 },
+  { port: 3001,  path: '/',             name: 'Node Dev :3001',     desc: 'Node.js alternate dev port',                              icon: '⬡',  priority: 3 },
+  { port: 4000,  path: '/',             name: 'Dev Server :4000',   desc: 'Phoenix, Gatsby, or other dev server',                    icon: '🛠', priority: 3 },
+  { port: 4200,  path: '/',             name: 'Angular Dev',        desc: 'Angular CLI development server',                          icon: '🅰',  priority: 3 },
+  { port: 5000,  path: '/',             name: 'Flask / Dev :5000',  desc: 'Flask, .NET, or other framework dev server',              icon: '🐍', priority: 3 },
+  { port: 5001,  path: '/',             name: 'Dev Server :5001',   desc: 'Alternate dev server port',                               icon: '🛠', priority: 3 },
+  { port: 5173,  path: '/',             name: 'Vite Dev Server',    desc: 'Vite (Vue, React, Svelte) development server',            icon: '⚡', priority: 3 },
+  { port: 4321,  path: '/',             name: 'Astro Dev Server',   desc: 'Astro framework dev server',                              icon: '🚀', priority: 3 },
+  { port: 7000,  path: '/',             name: 'Server :7000',       desc: 'Various services use this port',                          icon: '🔌', priority: 3 },
+  // Databases & tools with web UIs
+  { port: 5984,  path: '/',             name: 'CouchDB',            desc: 'Apache CouchDB web interface',                            icon: '🛋',  priority: 3 },
+  { port: 27017, path: '/',             name: 'MongoDB',            desc: 'MongoDB (usually no HTTP UI)',                            icon: '🍃', priority: 4 },
+  { port: 6379,  path: '/',             name: 'Redis',              desc: 'Redis server (no HTTP UI)',                               icon: '🔴', priority: 4 },
+  { port: 9200,  path: '/',             name: 'Elasticsearch',      desc: 'Elasticsearch REST API',                                  icon: '🔍', priority: 3 },
+  { port: 5601,  path: '/',             name: 'Kibana',             desc: 'Kibana data visualisation',                               icon: '📊', priority: 3 },
+  { port: 3306,  path: '/',             name: 'MySQL',              desc: 'MySQL database (no HTTP UI)',                             icon: '🐬', priority: 4 },
+  { port: 8200,  path: '/v1/sys/health',name: 'Vault (HashiCorp)',  desc: 'HashiCorp Vault secrets manager',                         icon: '🔐', priority: 3 },
+  { port: 4646,  path: '/',             name: 'Nomad',              desc: 'HashiCorp Nomad workload orchestrator',                   icon: '🏗',  priority: 4 },
+  { port: 8500,  path: '/',             name: 'Consul',             desc: 'HashiCorp Consul service mesh',                           icon: '🔗', priority: 4 },
+  // Monitoring
+  { port: 9100,  path: '/metrics',      name: 'Prometheus Node',    desc: 'Prometheus Node Exporter metrics endpoint',               icon: '📈', priority: 3 },
+  { port: 9090,  path: '/graph',        name: 'Prometheus',         desc: 'Prometheus monitoring server',                            icon: '📈', priority: 3 },
+  { port: 3001,  path: '/api/health',   name: 'Grafana',            desc: 'Grafana metrics dashboard',                               icon: '📊', priority: 3 },
+  // Misc
+  { port: 8096,  path: '/',             name: 'Jellyfin',           desc: 'Jellyfin media server',                                   icon: '🎬', priority: 3 },
+  { port: 32400, path: '/',             name: 'Plex',               desc: 'Plex Media Server',                                       icon: '🎬', priority: 3 },
+  { port: 8888,  path: '/web',          name: 'JupyterLab',         desc: 'JupyterLab interface',                                    icon: '🧪', priority: 2 },
+  { port: 4848,  path: '/',             name: 'GlassFish Admin',    desc: 'GlassFish application server admin console',              icon: '🐟', priority: 4 },
+  { port: 8161,  path: '/',             name: 'ActiveMQ',           desc: 'Apache ActiveMQ message broker',                          icon: '📨', priority: 4 },
+  { port: 15672, path: '/',             name: 'RabbitMQ',           desc: 'RabbitMQ management console',                             icon: '🐇', priority: 3 },
+  { port: 9000,  path: '/',             name: 'Server :9000',       desc: 'Various services (Portainer, SonarQube, etc.)',            icon: '🔌', priority: 3 },
+  { port: 2375,  path: '/version',      name: 'Docker API',         desc: 'Docker daemon REST API (unprotected!)',                   icon: '🐳', priority: 2 },
+  { port: 2376,  path: '/version',      name: 'Docker API TLS',     desc: 'Docker daemon REST API (TLS)',                            icon: '🐳', priority: 3 },
+  { port: 9090,  path: '/',             name: 'Portainer',          desc: 'Docker/K8s container management UI',                      icon: '🐳', priority: 2 },
+  { port: 8080,  path: '/jenkins',      name: 'Jenkins',            desc: 'Jenkins CI/CD server',                                    icon: '🔧', priority: 3 },
+  { port: 3000,  path: '/api/health',   name: 'Gitea',              desc: 'Gitea self-hosted Git service',                           icon: '🐙', priority: 3 },
+];
+
+// Deduplicate by port — keep highest priority (lowest number)
+const PORT_MAP = new Map();
+SERVICES.forEach(s => {
+  if (!PORT_MAP.has(s.port) || s.priority < PORT_MAP.get(s.port).priority) {
+    PORT_MAP.set(s.port, s);
+  }
+});
+const UNIQUE_PORTS = [...PORT_MAP.values()].sort((a,b) => a.priority - b.priority || a.port - b.port);
+const SCAN_PORTS   = UNIQUE_PORTS.map(s => s.port);
+
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+let myIP       = null;
+let mySubnet   = null;
+let scanning   = false;
+let stopped    = false;
+let found      = 0;
+let scanned    = 0;
+let startTime  = null;
+let timerInt   = null;
+let totalTargets = 0;
+
+// ═══════════════════════════════════════════════════════════
+//  IP DETECTION via WebRTC ICE candidate
+//  This is the standard trick — creates a peer connection,
+//  gathers ICE candidates, extracts the host IP from them.
+//  No server, no API, no permission needed.
+// ═══════════════════════════════════════════════════════════
+function detectMyIP() {
+  return new Promise(resolve => {
+    const candidates = [];
+    const pc = new RTCPeerConnection({ iceServers: [] });
+    // Create a data channel to trigger ICE gathering
+    pc.createDataChannel('ip-detect');
+    pc.createOffer().then(o => pc.setLocalDescription(o));
+
+    pc.onicecandidate = e => {
+      if (!e.candidate) {
+        pc.close();
+        // Pick best private IP from candidates
+        const priv = candidates.find(ip =>
+          /^192\.168\./.test(ip) || /^10\./.test(ip) || /^172\.(1[6-9]|2\d|3[01])\./.test(ip)
+        );
+        resolve(priv || candidates[0] || null);
+        return;
+      }
+      const m = e.candidate.candidate.match(/\b(\d{1,3}(?:\.\d{1,3}){3})\b/);
+      if (m && !candidates.includes(m[1]) && m[1] !== '0.0.0.0') {
+        candidates.push(m[1]);
+      }
+    };
+
+    // Timeout fallback
+    setTimeout(() => { try { pc.close(); } catch(_) {} resolve(candidates[0] || null); }, 3000);
+  });
+}
+
+function subnetOf(ip) {
+  // Return first 3 octets e.g. "192.168.1"
+  return ip.split('.').slice(0, 3).join('.');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PROBE — image ping (broadest reach, bypasses CORS)
+// ═══════════════════════════════════════════════════════════
+function imgProbe(url, timeoutMs = 2000) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const start = performance.now();
+    const tid = setTimeout(() => {
+      img.onload = img.onerror = null;
+      img.src = '';
+      resolve({ reachable: false, ms: Math.round(performance.now() - start) });
+    }, timeoutMs);
+
+    const done = (reachable) => {
+      clearTimeout(tid);
+      img.onload = img.onerror = null;
+      resolve({ reachable, ms: Math.round(performance.now() - start) });
+    };
+
+    // onload fires for images; onerror fires for any other response (HTML, JSON, 404)
+    // Both mean the server IS responding — only a timeout/connection-refused means it's not
+    img.onload  = () => done(true);
+    img.onerror = () => done(true);  // Server responded (even with error) = reachable
+    img.src = url + '?_t=' + Date.now();
+  });
+}
+
+// fetch no-cors probe (secondary confirmation)
+function fetchProbe(url, timeoutMs = 2500) {
+  return new Promise(resolve => {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => { ctrl.abort(); resolve(false); }, timeoutMs);
+    fetch(url, { method: 'GET', mode: 'no-cors', cache: 'no-store', signal: ctrl.signal })
+      .then(() => { clearTimeout(tid); resolve(true); })
+      .catch(() => { clearTimeout(tid); resolve(false); });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PROBE HOST — check all ports on one IP
+// ═══════════════════════════════════════════════════════════
+async function probeHost(ip) {
+  const results = [];
+  // Run all port checks in parallel for this host
+  const checks = await Promise.all(
+    SCAN_PORTS.map(async port => {
+      const proto = (port === 443 || port === 8443) ? 'https' : 'http';
+      const url   = `${proto}://${ip}:${port}/`;
+      const r     = await imgProbe(url, 1800);
+      return { port, reachable: r.reachable, ms: r.ms, url };
+    })
+  );
+  checks.forEach(c => { if (c.reachable) results.push(c); });
+  return results;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  IDENTIFY SERVICE from open port
+// ═══════════════════════════════════════════════════════════
+function identifyService(port) {
+  return PORT_MAP.get(port) || {
+    port, name: `Server :${port}`, desc: 'Unknown service', icon: '🔌', priority: 5
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER RESULT CARD
+// ═══════════════════════════════════════════════════════════
+function renderCard(ip, port, ms, isLocal) {
+  const svc   = identifyService(port);
+  const proto = (port === 443 || port === 8443) ? 'https' : 'http';
+  const url   = `${proto}://${ip}:${port}/`;
+  const badge = isLocal === 'localhost' ? 'localhost' : isLocal === 'self' ? 'self' : 'lan';
+  const badgeTxt = badge === 'localhost' ? 'localhost' : badge === 'self' ? 'this machine' : 'LAN';
+
+  const div = document.createElement('div');
+  div.className = `server-card ${badge === 'localhost' ? 'local' : 'found'}`;
+  div.innerHTML = `
+    <div class="card-top">
+      <div class="service-icon">${svc.icon}</div>
+      <div class="card-info">
+        <div class="service-name">${svc.name}</div>
+        <div class="service-desc">${svc.desc}</div>
+      </div>
+      <div class="card-badge ${badge}">${badgeTxt}</div>
+    </div>
+    <div class="card-url-row">
+      <div class="card-url">${url}</div>
+      <a href="${url}" target="_blank" rel="noopener" class="open-btn">Open →</a>
+    </div>
+    <div class="card-latency">Response: ${ms}ms</div>
+  `;
+  return div;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LOGGING
+// ═══════════════════════════════════════════════════════════
+function slog(msg, cls = '') {
+  const el = document.getElementById('scan-log');
+  const d  = document.createElement('div');
+  d.className = 'log-line ' + cls;
+  d.textContent = msg;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+  // Keep log manageable
+  while (el.children.length > 120) el.removeChild(el.firstChild);
+}
+
+function updateStats() {
+  document.getElementById('stat-found').textContent   = found + ' found';
+  document.getElementById('stat-scanned').textContent = scanned + ' scanned';
+}
+
+function updateProgress(done, total, label) {
+  document.getElementById('progress-fill').style.width = Math.round(done / total * 100) + '%';
+  document.getElementById('progress-label').textContent = label;
+}
+
+function updateTimer() {
+  if (!startTime) return;
+  const s = Math.round((Date.now() - startTime) / 1000);
+  document.getElementById('stat-elapsed').textContent = s + 's';
+  document.getElementById('footer-time').textContent  = 'Last scan: ' + new Date().toLocaleTimeString();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SCAN LOCALHOST
+// ═══════════════════════════════════════════════════════════
+async function scanLocalhost() {
+  document.getElementById('localhost-section').classList.remove('hidden');
+  document.getElementById('localhost-results').innerHTML = '';
+  let count = 0;
+
+  slog('Checking localhost ports…', 'info');
+
+  const checks = await Promise.all(
+    SCAN_PORTS.map(async port => {
+      const proto = (port === 443) ? 'https' : 'http';
+      const url   = `${proto}://localhost:${port}/`;
+      const r     = await imgProbe(url, 2000);
+      return { port, reachable: r.reachable, ms: r.ms };
+    })
+  );
+
+  checks.filter(c => c.reachable).forEach(c => {
+    const card = renderCard('localhost', c.port, c.ms, 'localhost');
+    document.getElementById('localhost-results').appendChild(card);
+    found++; count++;
+    slog(`✓ localhost:${c.port} — ${identifyService(c.port).name} (${c.ms}ms)`, 'hit');
+  });
+
+  document.getElementById('localhost-count').textContent = count;
+
+  if (count === 0) {
+    slog('No services found on localhost.', 'warn');
+    document.getElementById('localhost-results').innerHTML =
+      '<div style="font-size:12px;color:var(--t3);padding:8px 0;">No servers responding on localhost.</div>';
+  }
+
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FULL NETWORK SCAN
+// ═══════════════════════════════════════════════════════════
+async function startScan() {
+  if (scanning) return;
+  scanning = true; stopped = false; found = 0; scanned = 0;
+
+  document.getElementById('btn-scan').disabled = true;
+  document.getElementById('btn-stop').disabled = false;
+  document.getElementById('lan-section').classList.add('hidden');
+  document.getElementById('localhost-section').classList.add('hidden');
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('lan-results').innerHTML = '';
+  document.getElementById('localhost-results').innerHTML = '';
+  document.getElementById('scan-log').innerHTML = '';
+
+  startTime = Date.now();
+  timerInt  = setInterval(updateTimer, 500);
+
+  // Step 1: detect IP
+  slog('Detecting local IP address via WebRTC…', 'info');
+  let subnet = document.getElementById('subnet-input').value.trim();
+
+  if (!subnet) {
+    if (!myIP) myIP = await detectMyIP();
+    if (myIP) {
+      mySubnet = subnetOf(myIP);
+      subnet   = mySubnet;
+      document.getElementById('subnet-input').value = subnet;
+      document.getElementById('my-ip-pill').textContent = 'My IP: ' + myIP;
+      slog('Detected IP: ' + myIP + '  Subnet: ' + subnet + '.0/24', 'info');
+    } else {
+      slog('Could not detect IP. Enter subnet manually.', 'warn');
+      document.getElementById('my-ip-pill').textContent = 'IP unknown';
+    }
+  }
+
+  if (!subnet) {
+    slog('No subnet to scan. Enter one above.', 'warn');
+    finish(false);
+    return;
+  }
+
+  // Step 2: scan localhost first (fast)
+  await scanLocalhost();
+  if (stopped) { finish(true); return; }
+
+  // Step 3: generate IP list (.1 to .254)
+  const ips = [];
+  for (let i = 1; i <= 254; i++) ips.push(`${subnet}.${i}`);
+  // Prioritise likely router (.1) and common host IPs
+  ips.sort((a, b) => {
+    const pa = parseInt(a.split('.').pop());
+    const pb = parseInt(b.split('.').pop());
+    if (pa === 1) return -1; if (pb === 1) return 1;
+    return pa - pb;
+  });
+
+  totalTargets = ips.length;
+  slog(`Scanning ${totalTargets} hosts on ${subnet}.0/24…`, 'info');
+  document.getElementById('lan-section').classList.remove('hidden');
+
+  // Step 4: scan in parallel batches
+  const BATCH   = 20; // 20 hosts at a time
+  let lanCount  = 0;
+
+  for (let i = 0; i < ips.length && !stopped; i += BATCH) {
+    const batch = ips.slice(i, i + BATCH);
+
+    await Promise.all(batch.map(async ip => {
+      if (stopped) return;
+      const openPorts = await probeHost(ip);
+      scanned++;
+
+      if (openPorts.length > 0) {
+        slog(`✓ ${ip} — ports: ${openPorts.map(p=>p.port).join(', ')}`, 'hit');
+
+        openPorts.forEach(p => {
+          const isSelf = (myIP && ip === myIP) ? 'self' : 'lan';
+          const card   = renderCard(ip, p.port, p.ms, isSelf);
+          document.getElementById('lan-results').appendChild(card);
+          found++; lanCount++;
+        });
+
+        document.getElementById('lan-count').textContent = lanCount;
+      }
+
+      updateProgress(scanned, totalTargets,
+        `Scanning… ${scanned}/${totalTargets} hosts checked  ·  ${found} services found`);
+      updateStats();
+    }));
+  }
+
+  finish(false);
+}
+
+function finish(early) {
+  scanning = false;
+  clearInterval(timerInt);
+  document.getElementById('btn-scan').disabled = false;
+  document.getElementById('btn-stop').disabled = true;
+
+  const elapsed = Math.round((Date.now() - startTime) / 1000);
+  const msg = early
+    ? `Stopped after ${scanned} hosts · ${found} services found`
+    : `Complete — ${scanned} hosts scanned in ${elapsed}s · ${found} services found`;
+
+  updateProgress(scanned || totalTargets, totalTargets || 1, msg);
+  slog(msg, found > 0 ? 'hit' : 'info');
+
+  if (found === 0) {
+    document.getElementById('empty-state').classList.remove('hidden');
+  }
+}
+
+function stopScan() {
+  stopped = true;
+  document.getElementById('btn-stop').disabled = true;
+  slog('Stopping scan…');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT — detect IP on load
+// ═══════════════════════════════════════════════════════════
+(async function init() {
+  slog('Detecting local IP…', 'info');
+  myIP = await detectMyIP();
+  if (myIP) {
+    mySubnet = subnetOf(myIP);
+    document.getElementById('my-ip-pill').textContent = 'My IP: ' + myIP;
+    document.getElementById('subnet-input').value = mySubnet;
+    slog('Local IP: ' + myIP + '  (subnet ' + mySubnet + '.0/24)', 'info');
+  } else {
+    document.getElementById('my-ip-pill').textContent = 'IP not detected';
+    slog('Could not auto-detect IP — enter subnet manually and click Scan.', 'warn');
+  }
+})();
+</script>
+</body>
+</html>
