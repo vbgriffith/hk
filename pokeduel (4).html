@@ -1,0 +1,1958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PokéDuel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Exo+2:ital,wght@0,300;0,400;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{height:100%;}
+body{min-height:100%;font-family:'Exo 2',sans-serif;background:#0a0e1a;color:#e8f0ff;overflow-x:hidden;}
+:root{
+  --r:10px;--gold:#ffd700;--gold2:#b8860b;
+  --fire:#ff6b35;--water:#4fc3f7;--grass:#66bb6a;--electric:#ffee58;
+  --psychic:#f48fb1;--ice:#80deea;--dragon:#7e57c2;--dark:#795548;
+  --fairy:#f8bbd0;--normal:#9e9e9e;--fighting:#ef5350;--poison:#ab47bc;
+  --ground:#ffa726;--flying:#90caf9;--bug:#aed581;--rock:#8d6e63;
+  --ghost:#7986cb;--steel:#90a4ae;
+}
+
+/* ── SCREENS ── */
+.screen{display:none;min-height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* ── SHARED ── */
+.top-bar{display:flex;align-items:center;gap:12px;padding:10px 18px;
+  background:rgba(0,0,0,.4);border-bottom:1px solid rgba(255,255,255,.06);
+  position:sticky;top:0;z-index:50;backdrop-filter:blur(8px);}
+.tb-logo{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;}
+.tb-coins{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--gold);
+  background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);
+  padding:5px 12px;border-radius:20px;display:flex;align-items:center;gap:6px;}
+.tb-nav{display:flex;gap:6px;margin-left:auto;}
+.tb-btn{font-family:'Press Start 2P',monospace;font-size:7px;letter-spacing:.5px;
+  padding:7px 12px;border:1px solid rgba(255,255,255,.15);background:transparent;
+  color:#8aaccc;border-radius:5px;cursor:pointer;transition:all .15s;}
+.tb-btn:hover,.tb-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(255,215,0,.06);}
+
+/* ── WELCOME / START SCREEN ── */
+#screen-welcome{background:
+  radial-gradient(ellipse 80% 50% at 50% -10%,rgba(255,215,0,.18) 0%,transparent 55%),
+  radial-gradient(ellipse 40% 30% at 80% 80%,rgba(255,107,53,.1) 0%,transparent 50%),
+  #060a14;align-items:center;justify-content:center;}
+.welcome-card{max-width:500px;width:100%;padding:40px 28px;text-align:center;display:flex;flex-direction:column;gap:20px;}
+.big-logo{font-family:'Press Start 2P',monospace;font-size:clamp(18px,4vw,28px);letter-spacing:2px;
+  background:linear-gradient(135deg,#ffd700,#ff6b35,#f48fb1,#4fc3f7);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 30px rgba(255,215,0,.3));}
+.welcome-sub{font-size:13px;color:#5a7a9a;line-height:1.7;}
+.welcome-features{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left;}
+.wf-item{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+  border-radius:8px;padding:12px;display:flex;gap:8px;align-items:flex-start;}
+.wf-icon{font-size:18px;flex-shrink:0;}
+.wf-text{font-size:11px;color:#8aaccc;line-height:1.5;}
+.wf-text strong{color:#e8f0ff;display:block;margin-bottom:2px;}
+
+/* ── BUTTONS ── */
+.btn{font-family:'Press Start 2P',monospace;font-size:8px;letter-spacing:1px;
+  padding:11px 20px;border:none;border-radius:7px;cursor:pointer;transition:all .15s;
+  display:inline-flex;align-items:center;gap:8px;}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000;}
+.btn-gold:hover{filter:brightness(1.1);transform:translateY(-1px);}
+.btn-ghost{background:transparent;color:#6a8aaa;border:1px solid rgba(255,255,255,.12);}
+.btn-ghost:hover{border-color:rgba(255,255,255,.3);color:#e8f0ff;}
+.btn-danger{background:rgba(239,83,80,.2);color:#ef5350;border:1px solid rgba(239,83,80,.3);}
+.btn-danger:hover{background:rgba(239,83,80,.35);}
+.btn-w{width:100%;justify-content:center;}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important;filter:none!important;}
+
+/* ── DECK BUILDER SCREEN ── */
+#screen-deck{background:#080c18;}
+.deck-layout{display:flex;gap:0;flex:1;min-height:0;}
+
+/* sidebar */
+.deck-sidebar{width:260px;flex-shrink:0;background:rgba(0,0,0,.35);border-right:1px solid rgba(255,255,255,.06);
+  display:flex;flex-direction:column;overflow:hidden;}
+.sidebar-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.06);}
+.stab{flex:1;font-family:'Press Start 2P',monospace;font-size:7px;padding:10px 4px;
+  background:transparent;border:none;color:#4a6080;cursor:pointer;transition:all .15s;letter-spacing:.5px;}
+.stab:hover{color:#8aaccc;} .stab.on{color:var(--gold);border-bottom:2px solid var(--gold);}
+.sidebar-content{flex:1;overflow-y:auto;padding:12px;}
+.sidebar-content::-webkit-scrollbar{width:3px;}
+.sidebar-content::-webkit-scrollbar-thumb{background:#1a3050;}
+
+/* region section */
+.region-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;margin-top:12px;}
+.region-name{font-family:'Press Start 2P',monospace;font-size:8px;color:var(--gold);letter-spacing:1px;}
+.region-lock{font-size:11px;}
+.region-unlock-btn{font-family:'Press Start 2P',monospace;font-size:6px;padding:4px 8px;
+  background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:var(--gold);
+  border-radius:4px;cursor:pointer;margin-left:auto;white-space:nowrap;transition:all .15s;}
+.region-unlock-btn:hover{background:rgba(255,215,0,.2);}
+.region-unlock-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+/* mini card in sidebar */
+.mini-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:8px;padding:8px;display:flex;align-items:center;gap:8px;
+  cursor:pointer;transition:all .2s;margin-bottom:6px;position:relative;}
+.mini-card:hover{border-color:rgba(255,215,0,.4);background:rgba(255,215,0,.05);}
+.mini-card.in-deck{border-color:rgba(0,255,157,.4);background:rgba(0,255,157,.04);}
+.mini-card.locked{opacity:.4;cursor:not-allowed;filter:grayscale(.8);}
+.mini-card img{width:52px;height:52px;object-fit:contain;flex-shrink:0;}
+.mini-info{flex:1;min-width:0;}
+.mini-name{font-size:11px;font-weight:700;text-transform:capitalize;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mini-type{font-size:9px;color:#6a8aaa;text-transform:capitalize;margin-top:1px;}
+.mini-badge{font-family:'Press Start 2P',monospace;font-size:6px;
+  padding:2px 5px;border-radius:3px;margin-left:auto;flex-shrink:0;}
+.mini-badge.owned{background:rgba(0,255,157,.15);color:#00ff9d;border:1px solid rgba(0,255,157,.3);}
+.mini-badge.buy{background:rgba(255,215,0,.12);color:var(--gold);border:1px solid rgba(255,215,0,.25);}
+.mini-badge.locked-badge{background:rgba(100,100,120,.2);color:#6a8aaa;border:1px solid rgba(100,100,120,.3);}
+.evo-chain{display:flex;align-items:center;gap:4px;margin-bottom:8px;padding:6px;
+  background:rgba(0,0,0,.3);border-radius:6px;border:1px solid rgba(255,255,255,.05);}
+.evo-arrow{font-size:10px;color:#3a5070;flex-shrink:0;}
+.evo-stage{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;cursor:pointer;
+  padding:4px;border-radius:5px;transition:all .15s;border:1px solid transparent;}
+.evo-stage:hover{background:rgba(255,215,0,.08);border-color:rgba(255,215,0,.2);}
+.evo-stage.owned{border-color:rgba(0,255,157,.3);}
+.evo-stage img{width:44px;height:44px;object-fit:contain;}
+.evo-stage-name{font-size:9px;text-transform:capitalize;text-align:center;color:#8aaccc;}
+.evo-stage-cost{font-family:'Press Start 2P',monospace;font-size:6px;color:var(--gold);}
+
+/* deck slots */
+.deck-slots-header{font-family:'Press Start 2P',monospace;font-size:7px;color:#4a6080;
+  letter-spacing:2px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.06);}
+.deck-slots{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;}
+.deck-slot{aspect-ratio:.72;background:rgba(255,255,255,.03);border:1px dashed rgba(255,255,255,.1);
+  border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.deck-slot.filled{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);}
+.deck-slot.filled:hover{border-color:rgba(239,83,80,.5);}
+.deck-slot img{width:64px;height:64px;object-fit:contain;}
+.deck-slot-name{font-size:8px;font-weight:700;text-transform:capitalize;text-align:center;padding:0 2px;
+  line-height:1.3;overflow:hidden;max-width:100%;}
+.deck-slot-remove{position:absolute;top:3px;right:3px;font-size:10px;color:rgba(239,83,80,.6);
+  background:rgba(0,0,0,.5);width:16px;height:16px;border-radius:50%;display:flex;
+  align-items:center;justify-content:center;font-weight:700;opacity:0;transition:opacity .15s;}
+.deck-slot.filled:hover .deck-slot-remove{opacity:1;}
+.deck-slot-empty-icon{font-size:16px;opacity:.3;}
+.deck-slot-empty-txt{font-size:8px;color:#2a4060;text-align:center;padding:0 4px;}
+.deck-slot-evolvable{position:absolute;bottom:3px;left:3px;
+  font-family:'Press Start 2P',monospace;font-size:5px;color:var(--gold);
+  background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.3);
+  padding:2px 4px;border-radius:3px;}
+
+/* main panel */
+.deck-main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.deck-main-header{padding:14px 18px 10px;border-bottom:1px solid rgba(255,255,255,.06);}
+.deck-main-title{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--gold);margin-bottom:4px;}
+.deck-main-sub{font-size:12px;color:#5a7a9a;}
+.deck-actions{display:flex;gap:8px;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap;}
+.deck-canvas{flex:1;overflow-y:auto;padding:16px 18px;}
+.deck-canvas::-webkit-scrollbar{width:4px;}
+.deck-canvas::-webkit-scrollbar-thumb{background:#1a3050;}
+
+/* preview card in main area */
+.preview-section{display:flex;flex-direction:column;align-items:center;gap:14px;}
+.preview-card-wrap{position:relative;}
+.detail-card{width:260px;border-radius:14px;overflow:hidden;box-shadow:0 20px 60px -10px rgba(0,0,0,.5);}
+.detail-card-inner{padding:13px;border-radius:14px;display:flex;flex-direction:column;gap:9px;
+  background:var(--card-bg,linear-gradient(160deg,#1a1f35,#0d1225));
+  border:2px solid var(--card-border,rgba(255,215,0,.3));}
+.detail-header{display:flex;justify-content:space-between;align-items:flex-start;}
+.detail-name{font-family:'Press Start 2P',monospace;font-size:9px;color:#e8f0ff;text-transform:capitalize;line-height:1.4;}
+.detail-hp{font-family:'Press Start 2P',monospace;font-size:7px;color:#ef5350;
+  background:rgba(0,0,0,.4);padding:3px 6px;border-radius:4px;}
+.detail-types{display:flex;gap:4px;}
+.type-badge{font-size:8px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
+  padding:2px 7px;border-radius:20px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+.detail-art{background:rgba(0,0,0,.3);border-radius:8px;display:flex;align-items:center;justify-content:center;aspect-ratio:1;}
+.detail-art img{width:96%;height:96%;object-fit:contain;filter:drop-shadow(0 6px 18px rgba(0,0,0,.5));}
+.detail-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;}
+.stat-cell{background:rgba(0,0,0,.3);border-radius:5px;padding:4px 5px;text-align:center;}
+.stat-name{font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#4a6080;}
+.stat-val{font-family:'Press Start 2P',monospace;font-size:10px;color:#8aaccc;margin-top:1px;}
+.detail-moves{display:flex;flex-direction:column;gap:4px;}
+.move-row{background:rgba(0,0,0,.3);border-radius:5px;padding:5px 8px;
+  display:flex;justify-content:space-between;align-items:center;
+  border:1px solid rgba(255,255,255,.06);}
+.move-row .move-name{font-size:9px;font-weight:600;}
+.move-row .move-power{font-family:'Press Start 2P',monospace;font-size:7px;color:var(--gold);}
+.move-row .move-type-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* evolution panel */
+.evo-panel{background:rgba(0,0,0,.3);border:1px solid rgba(255,215,0,.15);border-radius:10px;padding:14px;width:220px;}
+.evo-panel-title{font-family:'Press Start 2P',monospace;font-size:7px;color:var(--gold);margin-bottom:10px;letter-spacing:1px;}
+.evo-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+.evo-img{width:52px;height:52px;object-fit:contain;}
+.evo-btn{font-family:'Press Start 2P',monospace;font-size:6px;padding:6px 10px;
+  background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.3);color:var(--gold);
+  border-radius:5px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.evo-btn:hover:not(:disabled){background:rgba(255,215,0,.25);transform:translateY(-1px);}
+.evo-btn:disabled{opacity:.4;cursor:not-allowed;}
+.evo-btn.done{background:rgba(0,255,157,.12);border-color:rgba(0,255,157,.3);color:#00ff9d;cursor:default;}
+.no-preview{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  padding:40px 20px;color:#3a5070;text-align:center;}
+.no-preview-icon{font-size:40px;opacity:.3;}
+.no-preview-txt{font-size:13px;}
+
+/* ── SHOP SCREEN ── */
+#screen-shop{background:#080c18;}
+.shop-layout{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.shop-header{padding:16px 18px 10px;border-bottom:1px solid rgba(255,255,255,.06);}
+.shop-title{font-family:'Press Start 2P',monospace;font-size:11px;color:var(--gold);margin-bottom:4px;}
+.shop-sub{font-size:12px;color:#5a7a9a;}
+.shop-filters{display:flex;gap:6px;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap;}
+.shop-filter{font-family:'Press Start 2P',monospace;font-size:6px;padding:6px 10px;
+  background:transparent;border:1px solid rgba(255,255,255,.1);color:#4a6080;
+  border-radius:5px;cursor:pointer;transition:all .15s;letter-spacing:.5px;}
+.shop-filter:hover{border-color:rgba(255,215,0,.3);color:var(--gold);}
+.shop-filter.on{border-color:var(--gold);color:var(--gold);background:rgba(255,215,0,.07);}
+.shop-grid{flex:1;overflow-y:auto;padding:14px 18px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+.shop-grid::-webkit-scrollbar{width:4px;}
+.shop-grid::-webkit-scrollbar-thumb{background:#1a3050;}
+.shop-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:10px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:6px;
+  cursor:pointer;transition:all .2s;position:relative;}
+.shop-card:hover{border-color:rgba(255,215,0,.4);background:rgba(255,215,0,.04);transform:translateY(-2px);}
+.shop-card.owned{border-color:rgba(0,255,157,.25);background:rgba(0,255,157,.03);}
+.shop-card.owned::after{content:'OWNED';position:absolute;top:6px;right:6px;
+  font-family:'Press Start 2P',monospace;font-size:5px;color:#00ff9d;
+  background:rgba(0,255,157,.15);border:1px solid rgba(0,255,157,.3);padding:2px 5px;border-radius:3px;}
+.shop-card.locked{opacity:.5;}
+.shop-card img{width:90px;height:90px;object-fit:contain;}
+.shop-card-name{font-size:13px;font-weight:700;text-transform:capitalize;text-align:center;}
+.shop-card-type{font-size:9px;color:#6a8aaa;text-transform:capitalize;}
+.shop-card-region{font-family:'Press Start 2P',monospace;font-size:5px;color:#4a6080;letter-spacing:.5px;}
+.shop-card-price{font-family:'Press Start 2P',monospace;font-size:8px;color:var(--gold);
+  background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.2);
+  padding:4px 8px;border-radius:4px;width:100%;text-align:center;}
+.shop-card-price.cant-afford{color:#ef5350;background:rgba(239,83,80,.08);border-color:rgba(239,83,80,.2);}
+.region-unlock-banner{background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.2);
+  border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px;
+  grid-column:1/-1;cursor:pointer;transition:all .15s;}
+.region-unlock-banner:hover{background:rgba(255,215,0,.12);}
+.rub-icon{font-size:24px;}
+.rub-info{flex:1;}
+.rub-name{font-family:'Press Start 2P',monospace;font-size:8px;color:var(--gold);}
+.rub-desc{font-size:11px;color:#6a8aaa;margin-top:3px;}
+.rub-cost{font-family:'Press Start 2P',monospace;font-size:9px;color:var(--gold);}
+
+/* ── BATTLE SCREEN ── */
+#screen-battle{
+  background:
+    radial-gradient(ellipse 120% 60% at 50% 110%,rgba(79,195,247,.12) 0%,transparent 60%),
+    radial-gradient(ellipse 80% 40% at 20% 20%,rgba(102,187,106,.08) 0%,transparent 50%),
+    linear-gradient(180deg,#060a14 0%,#0a0e1a 40%,#0d1520 100%);}
+.battle-grid-bg{position:fixed;inset:0;z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='52'%3E%3Cpolygon points='30,2 58,17 58,35 30,50 2,35 2,17' fill='none' stroke='rgba(255,255,255,0.025)' stroke-width='1'/%3E%3C/svg%3E");
+  background-size:60px 52px;pointer-events:none;}
+.battle-wrap{position:relative;z-index:1;max-width:960px;margin:0 auto;width:100%;flex:1;display:flex;flex-direction:column;}
+.battle-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 16px;flex-shrink:0;}
+.battle-score-group{display:flex;gap:14px;}
+.b-score{display:flex;flex-direction:column;align-items:center;gap:1px;}
+.b-score-lbl{font-family:'Press Start 2P',monospace;font-size:6px;color:#3a5080;letter-spacing:1px;}
+.b-score-val{font-family:'Press Start 2P',monospace;font-size:13px;color:var(--gold);}
+.b-score-val.green{color:#66bb6a;} .b-score-val.red{color:#ef5350;}
+.turn-pill{font-family:'Press Start 2P',monospace;font-size:8px;color:#e8f0ff;
+  padding:6px 14px;border-radius:5px;border:1px solid rgba(79,195,247,.3);
+  background:rgba(79,195,247,.1);}
+.battlefield{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:start;padding:0 12px 12px;flex-shrink:0;}
+.player-zone{display:flex;flex-direction:column;gap:10px;}
+.player-zone.enemy{align-items:flex-end;} .player-zone.player{align-items:flex-start;}
+.zone-lbl{font-family:'Press Start 2P',monospace;font-size:7px;letter-spacing:1px;color:#2a4060;}
+.hp-track{width:100%;max-width:260px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:3px;}
+.hp-fill{height:9px;border-radius:20px;transition:width .5s cubic-bezier(.4,0,.2,1),background .5s;background:linear-gradient(90deg,#66bb6a,#aed581);}
+.hp-fill.warn{background:linear-gradient(90deg,#ffee58,#ffa726);} .hp-fill.danger{background:linear-gradient(90deg,#ef5350,#ff6b35);}
+.hp-txt{font-family:'Press Start 2P',monospace;font-size:7px;color:#5a7a9a;margin-top:3px;text-align:right;}
+.bcard{width:230px;position:relative;border-radius:14px;overflow:hidden;flex-shrink:0;}
+.bcard::before{content:'';position:absolute;inset:0;z-index:5;border-radius:14px;
+  background:repeating-linear-gradient(45deg,rgba(255,255,255,0) 0px,rgba(255,255,255,.03) 1px,rgba(255,255,255,0) 2px,rgba(255,255,255,0) 8px);pointer-events:none;}
+.bcard.active-bcard{transform:translateY(-8px) scale(1.03);
+  box-shadow:0 20px 60px -10px var(--card-glow,rgba(255,215,0,.4)),0 0 0 2px var(--card-border,rgba(255,215,0,.6));}
+.bcard.enemy-bcard.active-bcard{transform:rotate(180deg) translateY(-8px) scale(1.03);}
+.bcard.enemy-bcard{transform:rotate(180deg);}
+.bcard.shake{animation:bshake .4s ease;}
+@keyframes bshake{0%,100%{transform:translateY(-8px) scale(1.03);}20%{transform:translateY(-8px) scale(1.03) translateX(-8px);}40%{transform:translateY(-8px) scale(1.03) translateX(8px);}60%{transform:translateY(-8px) scale(1.03) translateX(-5px);}80%{transform:translateY(-8px) scale(1.03) translateX(5px);}}
+.bcard-inner{background:var(--bcard-bg,linear-gradient(160deg,#1a1f35,#0d1225));
+  border:2px solid var(--bcard-border,rgba(255,215,0,.3));border-radius:14px;padding:11px;
+  display:flex;flex-direction:column;gap:7px;position:relative;overflow:hidden;}
+.bcard-inner::after{content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 50% 30%,var(--btype-color,rgba(255,215,0,.12)) 0%,transparent 70%);pointer-events:none;}
+.bcard-header{display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:2;}
+.bcard-name{font-family:'Press Start 2P',monospace;font-size:9px;color:#e8f0ff;text-transform:capitalize;line-height:1.4;max-width:130px;}
+.bcard-hpb{font-family:'Press Start 2P',monospace;font-size:9px;color:#ef5350;
+  background:rgba(0,0,0,.4);padding:3px 6px;border-radius:4px;white-space:nowrap;}
+.bcard-types{display:flex;gap:3px;position:relative;z-index:2;}
+.bcard-art{position:relative;background:rgba(0,0,0,.3);border-radius:8px;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;aspect-ratio:1;z-index:2;}
+.bcard-art::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 80%,var(--btype-color,rgba(255,215,0,.15)) 0%,transparent 70%);}
+.bcard-img{width:90%;height:90%;object-fit:contain;position:relative;z-index:1;
+  filter:drop-shadow(0 4px 12px rgba(0,0,0,.4));transition:filter .3s;}
+.bcard-img.hit{animation:hit-flash .4s ease;}
+@keyframes hit-flash{0%,100%{filter:drop-shadow(0 4px 12px rgba(0,0,0,.4));}30%{filter:brightness(3) sepia(1) hue-rotate(-20deg) drop-shadow(0 0 20px #ff6b35);}}
+.bcard-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;position:relative;z-index:2;}
+.bcard-moves{display:flex;flex-direction:column;gap:3px;position:relative;z-index:2;}
+.bmove-btn{font-family:'Press Start 2P',monospace;font-size:8px;letter-spacing:.3px;padding:7px 8px;
+  border:none;border-radius:5px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;
+  background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.08);color:#c8d8ee;transition:all .15s;}
+.bmove-btn:hover:not(:disabled){background:rgba(255,255,255,.1);transform:translateX(2px);}
+.bmove-btn:disabled{opacity:.4;cursor:not-allowed;}
+.bmove-pp{font-size:5px;color:#3a5060;} .bmove-power{font-size:5px;color:var(--gold);}
+.vs-col{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding-top:50px;}
+.vs-badge{font-family:'Press Start 2P',monospace;font-size:16px;color:var(--gold);
+  text-shadow:0 0 20px rgba(255,215,0,.5);}
+.vs-div{width:2px;height:50px;background:linear-gradient(180deg,rgba(255,215,0,.4),transparent);}
+.blog-wrap{background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.06);border-radius:var(--r);overflow:hidden;margin:0 12px 10px;flex-shrink:0;}
+.blog-head{font-family:'Press Start 2P',monospace;font-size:7px;letter-spacing:1px;color:#2a4060;
+  padding:7px 13px;background:rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.04);}
+.blog{height:90px;overflow-y:auto;padding:8px 13px;display:flex;flex-direction:column;gap:3px;}
+.blog::-webkit-scrollbar{width:3px;} .blog::-webkit-scrollbar-thumb{background:#1a3050;}
+.blog-entry{font-size:11px;line-height:1.4;animation:blog-in .2s ease;}
+@keyframes blog-in{from{opacity:0;transform:translateX(-5px);}to{opacity:1;transform:none;}}
+.blog-entry.pa{color:#4fc3f7;} .blog-entry.ea{color:#ef5350;} .blog-entry.sys{color:#4a6080;font-style:italic;}
+.blog-entry.crit{color:var(--gold);} .blog-entry.faint{color:#ab47bc;}
+.hand-section{padding:0 12px 12px;flex-shrink:0;}
+.hand-lbl{font-family:'Press Start 2P',monospace;font-size:7px;letter-spacing:1px;color:#2a4060;margin-bottom:7px;}
+.hand{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;}
+.hand::-webkit-scrollbar{height:3px;} .hand::-webkit-scrollbar-thumb{background:#1a3050;}
+.hcard{flex-shrink:0;width:80px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);
+  border-radius:7px;padding:6px;cursor:pointer;transition:all .2s;
+  display:flex;flex-direction:column;align-items:center;gap:4px;}
+.hcard:hover{background:rgba(255,255,255,.08);border-color:rgba(255,215,0,.4);transform:translateY(-3px);}
+.hcard.selected{border-color:var(--gold);background:rgba(255,215,0,.07);}
+.hcard.played{opacity:.3;pointer-events:none;}
+.hcard img{width:60px;height:60px;object-fit:contain;}
+.hcard-name{font-family:'Press Start 2P',monospace;font-size:7px;color:#8aaccc;text-align:center;text-transform:capitalize;line-height:1.5;}
+.b-actions{padding:0 12px 10px;display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;}
+.b-hint{font-family:'Press Start 2P',monospace;font-size:7px;color:#2a4060;align-self:center;}
+
+/* ── MODAL ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);
+  z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal-bg.hidden{display:none;}
+.modal{background:linear-gradient(160deg,#131928,#0a0e1a);border:1px solid rgba(255,215,0,.3);
+  border-radius:16px;padding:28px 32px;max-width:460px;width:100%;text-align:center;
+  box-shadow:0 0 60px rgba(255,215,0,.12);}
+.modal-icon{font-size:44px;margin-bottom:10px;}
+.modal-title{font-family:'Press Start 2P',monospace;font-size:12px;color:var(--gold);margin-bottom:10px;
+  filter:drop-shadow(0 0 10px rgba(255,215,0,.4));}
+.modal-sub{font-size:13px;color:#5a7a9a;margin-bottom:20px;line-height:1.6;}
+.modal-reward{font-family:'Press Start 2P',monospace;font-size:10px;color:var(--gold);
+  background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.25);
+  padding:8px 16px;border-radius:6px;margin-bottom:20px;display:inline-block;}
+.modal-stats{display:flex;justify-content:center;gap:20px;margin-bottom:20px;}
+.mstat{display:flex;flex-direction:column;gap:3px;align-items:center;}
+.mstat-val{font-family:'Press Start 2P',monospace;font-size:11px;color:var(--gold);}
+.mstat-lbl{font-family:'Press Start 2P',monospace;font-size:6px;color:#3a5080;}
+.modal-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+
+/* ── DAMAGE FLOATS ── */
+.dmg-float{position:fixed;font-family:'Press Start 2P',monospace;font-size:18px;font-weight:900;
+  pointer-events:none;z-index:999;animation:dfloat .9s ease-out forwards;}
+.dmg-float.ph{color:#ef5350;text-shadow:0 0 10px #ef5350;}
+.dmg-float.eh{color:var(--gold);text-shadow:0 0 10px var(--gold);}
+.dmg-float.cr{color:#ff6b35;font-size:24px;text-shadow:0 0 15px #ff6b35;}
+@keyframes dfloat{0%{opacity:1;transform:translateY(0) scale(1);}50%{opacity:1;transform:translateY(-40px) scale(1.1);}100%{opacity:0;transform:translateY(-80px) scale(.8);}}
+
+/* ── LOADER ── */
+.loader{position:fixed;inset:0;background:#06090f;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;z-index:999;}
+.loader-logo{font-family:'Press Start 2P',monospace;font-size:16px;
+  background:linear-gradient(135deg,#ffd700,#ff6b35,#f48fb1,#4fc3f7);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.loader-track{width:220px;height:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:4px;overflow:hidden;}
+.loader-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--gold),#ff6b35);width:0%;transition:width .3s;}
+.loader-txt{font-family:'Press Start 2P',monospace;font-size:7px;color:#3a5060;letter-spacing:1px;}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  font-family:'Press Start 2P',monospace;font-size:8px;letter-spacing:.5px;
+  background:rgba(0,0,0,.9);border:1px solid rgba(255,215,0,.4);color:var(--gold);
+  padding:10px 20px;border-radius:6px;z-index:600;
+  animation:toast-in .3s ease,toast-out .3s ease 2.2s forwards;}
+@keyframes toast-in{from{opacity:0;transform:translateX(-50%) translateY(10px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+@keyframes toast-out{to{opacity:0;transform:translateX(-50%) translateY(10px);}}
+
+.hidden{display:none!important;}
+@media(max-width:640px){
+  .battlefield{grid-template-columns:1fr 1fr;} .vs-col{grid-column:1/-1;flex-direction:row;padding-top:0;justify-content:center;} .vs-div{width:50px;height:2px;background:linear-gradient(90deg,rgba(255,215,0,.4),transparent);}
+  .bcard{width:160px;} .welcome-features{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div class="loader" id="loader">
+  <div class="loader-logo">PokéDuel</div>
+  <div class="loader-track"><div class="loader-fill" id="lbar"></div></div>
+  <div class="loader-txt" id="ltxt">Loading…</div>
+</div>
+
+<!-- WELCOME SCREEN -->
+<div id="screen-welcome" class="screen">
+  <div class="welcome-card">
+    <div class="big-logo">PokéDuel</div>
+    <div class="welcome-sub">Build your deck. Train your team. Battle to earn coins.</div>
+    <div class="welcome-features">
+      <div class="wf-item"><div class="wf-icon">🃏</div><div class="wf-text"><strong>Deck Builder</strong>Build a 5-card deck from starters across 5 regions</div></div>
+      <div class="wf-item"><div class="wf-icon">⬆️</div><div class="wf-text"><strong>Evolutions</strong>Evolve your Pokémon to unlock more powerful forms</div></div>
+      <div class="wf-item"><div class="wf-icon">🪙</div><div class="wf-text"><strong>Currency</strong>Earn coins from battles. Spend them in the shop</div></div>
+      <div class="wf-item"><div class="wf-icon">⚔️</div><div class="wf-text"><strong>Turn-Based Battle</strong>Type effectiveness, STAB, crits & PP system</div></div>
+    </div>
+    <button class="btn btn-gold btn-w" id="btn-start-game">▶ START ADVENTURE</button>
+  </div>
+</div>
+
+<!-- DECK BUILDER SCREEN -->
+<div id="screen-deck" class="screen">
+  <div class="top-bar">
+    <div class="tb-logo">PokéDuel</div>
+    <div class="tb-coins">🪙 <span id="coins-deck">0</span></div>
+    <div class="tb-nav">
+      <button class="tb-btn active" onclick="showScreen('deck')">📋 Deck</button>
+      <button class="tb-btn" onclick="showScreen('shop')">🛒 Shop</button>
+      <button class="tb-btn" onclick="startBattle()" id="btn-battle-go">⚔️ Battle</button>
+    </div>
+  </div>
+  <div class="deck-layout">
+    <!-- Sidebar: collection + deck slots -->
+    <div class="deck-sidebar">
+      <div class="sidebar-tabs">
+        <button class="stab on" id="stab-collection" onclick="showSideTab('collection')">Collection</button>
+        <button class="stab" id="stab-deck" onclick="showSideTab('deck')">Deck (</button>
+      </div>
+      <div class="sidebar-content" id="sidebar-collection">
+        <!-- Populated by JS -->
+      </div>
+      <div class="sidebar-content hidden" id="sidebar-deck">
+        <div class="deck-slots-header">YOUR DECK — <span id="deck-count">0</span>/5</div>
+        <div class="deck-slots" id="deck-slots"></div>
+      </div>
+    </div>
+    <!-- Main panel -->
+    <div class="deck-main">
+      <div class="deck-main-header">
+        <div class="deck-main-title">Deck Builder</div>
+        <div class="deck-main-sub" id="deck-main-sub">Select a Pokémon to view details</div>
+      </div>
+      <div class="deck-actions">
+        <button class="btn btn-gold" id="btn-add-to-deck" onclick="addToDeck()" disabled>＋ Add to Deck</button>
+        <button class="btn btn-ghost" id="btn-evolve-main" onclick="evolveSelected()" disabled>⬆ Evolve</button>
+        <button class="btn btn-ghost" onclick="startBattle()" id="btn-quick-battle">⚔️ Battle Now</button>
+      </div>
+      <div class="deck-canvas" id="deck-canvas">
+        <div class="no-preview"><div class="no-preview-icon">👆</div><div class="no-preview-txt">Click any Pokémon in your collection to preview</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SHOP SCREEN -->
+<div id="screen-shop" class="screen">
+  <div class="top-bar">
+    <div class="tb-logo">PokéDuel</div>
+    <div class="tb-coins">🪙 <span id="coins-shop">0</span></div>
+    <div class="tb-nav">
+      <button class="tb-btn" onclick="showScreen('deck')">📋 Deck</button>
+      <button class="tb-btn active" onclick="showScreen('shop')">🛒 Shop</button>
+      <button class="tb-btn" onclick="startBattle()">⚔️ Battle</button>
+    </div>
+  </div>
+  <div class="shop-layout">
+    <div class="shop-header">
+      <div class="shop-title">Card Shop</div>
+      <div class="shop-sub">Buy starter Pokémon and unlock new regions</div>
+    </div>
+    <div class="shop-filters" id="shop-filters"></div>
+    <div class="shop-grid" id="shop-grid"></div>
+  </div>
+</div>
+
+<!-- BATTLE SCREEN -->
+<div id="screen-battle" class="screen">
+  <div class="battle-grid-bg"></div>
+  <div class="battle-wrap">
+    <div class="battle-topbar">
+      <div class="battle-score-group">
+        <div class="b-score"><div class="b-score-lbl">WINS</div><div class="b-score-val green" id="b-wins">0</div></div>
+        <div class="b-score"><div class="b-score-lbl">LOSS</div><div class="b-score-val red" id="b-losses">0</div></div>
+      </div>
+      <div class="turn-pill" id="turn-pill">YOUR TURN</div>
+      <div class="battle-score-group">
+        <div class="b-score"><div class="b-score-lbl">ROUND</div><div class="b-score-val" id="b-round">1</div></div>
+        <div class="b-score"><div class="tb-coins" style="font-size:8px;">🪙 <span id="b-coins">0</span></div></div>
+      </div>
+    </div>
+
+    <div class="battlefield">
+      <div class="player-zone enemy" id="enemy-zone">
+        <div class="zone-lbl">OPPONENT</div>
+        <div class="hp-track"><div class="hp-fill" id="ehp-bar" style="width:100%"></div></div>
+        <div class="hp-txt" id="ehp-txt">— / —</div>
+        <div id="enemy-mount"></div>
+      </div>
+      <div class="vs-col">
+        <div class="vs-div"></div>
+        <div class="vs-badge">VS</div>
+        <div class="vs-div" style="background:linear-gradient(0deg,rgba(255,215,0,.4),transparent);"></div>
+      </div>
+      <div class="player-zone player" id="player-zone">
+        <div class="zone-lbl">YOU</div>
+        <div class="hp-track"><div class="hp-fill" id="php-bar" style="width:100%"></div></div>
+        <div class="hp-txt" id="php-txt">— / —</div>
+        <div id="player-mount"></div>
+      </div>
+    </div>
+
+    <div class="blog-wrap">
+      <div class="blog-head">⚔ BATTLE LOG</div>
+      <div class="blog" id="battle-log"></div>
+    </div>
+
+    <div class="hand-section hidden" id="hand-section">
+      <div class="hand-lbl">YOUR HAND — choose next Pokémon</div>
+      <div class="hand" id="hand-container"></div>
+    </div>
+
+    <div class="b-actions">
+      <button class="btn btn-ghost hidden" id="btn-switch" onclick="Battle.showHand()" style="font-size:7px;">⇄ SWITCH</button>
+      <div class="b-hint" id="b-hint">Choose a move</div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULT MODAL -->
+<div class="modal-bg hidden" id="result-modal">
+  <div class="modal">
+    <div class="modal-icon" id="res-icon"></div>
+    <div class="modal-title" id="res-title"></div>
+    <div class="modal-sub" id="res-sub"></div>
+    <div class="modal-reward" id="res-reward"></div>
+    <div class="modal-stats">
+      <div class="mstat"><div class="mstat-val" id="res-dmg">0</div><div class="mstat-lbl">DAMAGE</div></div>
+      <div class="mstat"><div class="mstat-val" id="res-turns">0</div><div class="mstat-lbl">TURNS</div></div>
+      <div class="mstat"><div class="mstat-val" id="res-crits">0</div><div class="mstat-lbl">CRITS</div></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-gold" onclick="Battle.newRound()">▶ Next Battle</button>
+      <button class="btn btn-ghost" onclick="showScreen('deck')">📋 Deck</button>
+      <button class="btn btn-ghost" onclick="showScreen('shop')">🛒 Shop</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════════════════
+//  CONSTANTS & DATA
+// ═══════════════════════════════════════════════════════════════════
+const API     = 'https://pokeapi.co/api/v2/pokemon/';
+const SPRITES  = 'https://cdn.jsdelivr.net/gh/PokeAPI/sprites@master/sprites/pokemon/';
+const ART      = 'https://cdn.jsdelivr.net/gh/PokeAPI/sprites@master/sprites/pokemon/other/official-artwork/';
+
+// Evolution chains: [stage1_id, ...evolutions]
+// 301 chains covering ~518 Pokémon across 5 regions
+const EVO_CHAINS = [
+  // Kanto
+  [1,2,3],
+  [4,5,6],
+  [7,8,9],
+  [25,26],
+  [39,40],
+  [52,53],
+  [54,55],
+  [58,59],
+  [60,61,62],
+  [63,64,65],
+  [66,67,68],
+  [74,75,76],
+  [77,78],
+  [79,80],
+  [92,93,94],
+  [104,105],
+  [108],
+  [111,112],
+  [113],
+  [115],
+  [116,117],
+  [118,119],
+  [122],
+  [123],
+  [124],
+  [125],
+  [126],
+  [127],
+  [128],
+  [130],
+  [131],
+  [133,134],
+  [135],
+  [136],
+  [137],
+  [138,139],
+  [140,141],
+  [142],
+  [143],
+  [144],
+  [145],
+  [146],
+  [147,148,149],
+  [150],
+  [151],
+  // Johto
+  [152,153,154],
+  [155,156,157],
+  [158,159,160],
+  [161,162],
+  [163,164],
+  [165,166],
+  [167,168],
+  [170,171],
+  [172],
+  [175,176],
+  [177,178],
+  [179,180,181],
+  [183,184],
+  [185],
+  [186],
+  [190],
+  [191,192],
+  [193,194],
+  [196],
+  [197],
+  [198],
+  [199],
+  [200],
+  [202],
+  [203],
+  [207],
+  [208],
+  [209,210],
+  [212],
+  [213],
+  [214],
+  [215],
+  [216,217],
+  [218,219],
+  [220,221],
+  [225],
+  [226],
+  [227],
+  [228,229],
+  [231,232],
+  [233],
+  [234],
+  [237],
+  [241],
+  [242],
+  [243],
+  [244],
+  [245],
+  [246,247,248],
+  [249],
+  [250],
+  [251],
+  // Hoenn
+  [252,253,254],
+  [255,256,257],
+  [258,259,260],
+  [261,262],
+  [263,264],
+  [270,271,272],
+  [273,274,275],
+  [276,277],
+  [278,279],
+  [280,281,282],
+  [283,284],
+  [285,286],
+  [287,288,289],
+  [290,291],
+  [293,294,295],
+  [296,297],
+  [299,302],
+  [304,305,306],
+  [307,308],
+  [309,310],
+  [311],
+  [312],
+  [313,314],
+  [315,316,317],
+  [318,319],
+  [320,321],
+  [322,323],
+  [324],
+  [325,326],
+  [327],
+  [328,329,330],
+  [331,332],
+  [333,334],
+  [335],
+  [336],
+  [337],
+  [338],
+  [340,341,342],
+  [343,344],
+  [349,350],
+  [351],
+  [352],
+  [353,354],
+  [355,356],
+  [357],
+  [358],
+  [359],
+  [361,362],
+  [363,364,365],
+  [370,371,372,373],
+  [374,375,376],
+  [377],
+  [378],
+  [379],
+  [380],
+  [381],
+  [382],
+  [383],
+  [384],
+  [385],
+  [386],
+  // Sinnoh
+  [387,388,389],
+  [390,391,392],
+  [393,394,395],
+  [396,397,398],
+  [399,400],
+  [401,402],
+  [403,404,405],
+  [406,407],
+  [408,409],
+  [410,411],
+  [412,413],
+  [415,416],
+  [417],
+  [418,419],
+  [420,421],
+  [422,423],
+  [425,426],
+  [427,428],
+  [429],
+  [430],
+  [431,432],
+  [433,440],
+  [434,435],
+  [436,437],
+  [441],
+  [442],
+  [443,444,445],
+  [446,143],
+  [447,448],
+  [449,450],
+  [451,452],
+  [453,454],
+  [455],
+  [456,457],
+  [458,226],
+  [459,460],
+  [461],
+  [462],
+  [463],
+  [464],
+  [465],
+  [466],
+  [467],
+  [468],
+  [469],
+  [470],
+  [471],
+  [472],
+  [473],
+  [474],
+  [475],
+  [476],
+  [477],
+  [478],
+  [479],
+  [480],
+  [481],
+  [482],
+  [483],
+  [484],
+  [485],
+  [486],
+  [487],
+  [488],
+  [491],
+  [492],
+  [493],
+  // Unova
+  [495,496,497],
+  [498,499,500],
+  [501,502,503],
+  [504,505],
+  [506,507,508],
+  [509,510],
+  [511,512],
+  [513,514],
+  [515,516],
+  [517,518],
+  [519,520,521],
+  [522,523],
+  [524,525,526],
+  [527,528],
+  [529,530],
+  [532,533,534],
+  [535,536,537],
+  [538],
+  [539],
+  [540,541,542],
+  [546,547],
+  [548,549],
+  [551,552,553],
+  [554,555],
+  [556],
+  [557,558],
+  [559,560],
+  [561],
+  [562,563],
+  [564,565],
+  [566,567],
+  [568,569],
+  [570,571],
+  [572,573],
+  [574,575,576],
+  [577,578,579],
+  [580,581],
+  [582,583,584],
+  [585,586],
+  [587],
+  [588,589],
+  [590,591],
+  [592,593],
+  [595,596],
+  [599,600,601],
+  [602,603,604],
+  [605,606],
+  [607,608,609],
+  [610,611,612],
+  [613,614],
+  [615],
+  [616,617],
+  [618],
+  [619,620],
+  [621],
+  [622,623],
+  [624,625],
+  [626],
+  [627,628],
+  [629,630],
+  [631],
+  [632],
+  [633,634,635],
+  [636,637],
+  [638],
+  [639],
+  [640],
+  [641],
+  [642],
+  [643],
+  [644],
+  [645],
+  [646],
+  [647],
+  [648],
+  [649]
+];
+
+// Which ID is stage 1/2/3
+const EVO_STAGE = {};  // id -> 0/1/2 (stage index)
+const EVO_NEXT  = {};  // id -> next_id or null
+const EVO_PREV  = {};  // id -> prev_id or null
+EVO_CHAINS.forEach(chain => {
+  chain.forEach((id, i) => {
+    EVO_STAGE[id] = i;
+    EVO_NEXT[id]  = chain[i+1] || null;
+    EVO_PREV[id]  = chain[i-1] || null;
+  });
+});
+
+// REGION_CHAIN_RANGES: [start_chain_index, end_chain_index] in EVO_CHAINS
+const REGION_RANGES = [
+  { name:'Kanto',  icon:'🔴', start:0,   end:45,  starters:[1,4,7],       unlocked:true,  unlockCost:0,    cardCost:80  },
+  { name:'Johto',  icon:'🌿', start:45,  end:97,  starters:[152,155,158], unlocked:false, unlockCost:500,  cardCost:120 },
+  { name:'Hoenn',  icon:'🌊', start:97,  end:158, starters:[252,255,258], unlocked:false, unlockCost:1000, cardCost:180 },
+  { name:'Sinnoh', icon:'⭐', start:158, end:225, starters:[387,390,393], unlocked:false, unlockCost:2000, cardCost:260 },
+  { name:'Unova',  icon:'⚡', start:225, end:301, starters:[495,498,501], unlocked:false, unlockCost:4000, cardCost:360 },
+];
+const REGIONS = REGION_RANGES; // alias
+const EVO_COST = [0, 200, 500]; // cost to reach stage 0/1/2
+
+// Gym leaders per region — each has a team of Pokemon IDs
+const GYM_LEADERS = {
+  Johto: {
+    name:'Falkner',    title:'Violet City Gym',   icon:'🦅',
+    team:[16,17,18,    // Pidgey/Pidgeotto/Pidgeot
+          276,277,     // Taillow/Swellow
+          198],        // Murkrow
+    badge:'Zephyr Badge', type:'Flying',
+  },
+  Hoenn: {
+    name:'Roxanne',   title:'Rustboro City Gym',  icon:'🪨',
+    team:[74,75,76,   // Geodude line
+          111,112,    // Rhyhorn/Rhydon
+          304,305],   // Aron/Lairon
+    badge:'Stone Badge', type:'Rock',
+  },
+  Sinnoh: {
+    name:'Roark',     title:'Oreburgh City Gym',  icon:'⛏',
+    team:[408,409,    // Cranidos/Rampardos
+          410,411,    // Shieldon/Bastiodon
+          74,75,76],  // Geodude line
+    badge:'Coal Badge', type:'Rock',
+  },
+  Unova: {
+    name:'Cilan',     title:'Striaton City Gym',  icon:'🌿',
+    team:[511,512,    // Pansage/Simisage
+          513,514,    // Pansear/Simisear
+          515,516],   // Panpour/Simipour
+    badge:'Trio Badge', type:'Grass/Fire/Water',
+  },
+};
+
+// All purchaseable IDs
+const ALL_SHOP_IDS = [...new Set(EVO_CHAINS.flat())];
+
+// ── TYPE SYSTEM ──────────────────────────────────────────────────
+const TC = {
+  fire:{grass:2,ice:2,bug:2,steel:2,water:.5,fire:.5,rock:.5,dragon:.5},
+  water:{fire:2,ground:2,rock:2,water:.5,grass:.5,dragon:.5},
+  grass:{water:2,ground:2,rock:2,fire:.5,grass:.5,poison:.5,flying:.5,bug:.5,dragon:.5,steel:.5},
+  electric:{water:2,flying:2,electric:.5,grass:.5,dragon:.5,ground:0},
+  ice:{grass:2,ground:2,flying:2,dragon:2,fire:.5,water:.5,ice:.5,steel:.5},
+  fighting:{normal:2,ice:2,rock:2,dark:2,steel:2,poison:.5,flying:.5,psychic:.5,bug:.5,fairy:.5,ghost:0},
+  poison:{grass:2,fairy:2,poison:.5,ground:.5,rock:.5,ghost:.5,steel:0},
+  ground:{fire:2,electric:2,poison:2,rock:2,steel:2,grass:.5,bug:.5,flying:0},
+  flying:{grass:2,fighting:2,bug:2,electric:.5,rock:.5,steel:.5},
+  psychic:{fighting:2,poison:2,psychic:.5,steel:.5,dark:0},
+  bug:{grass:2,psychic:2,dark:2,fire:.5,fighting:.5,poison:.5,flying:.5,ghost:.5,steel:.5,fairy:.5},
+  rock:{fire:2,ice:2,flying:2,bug:2,fighting:.5,ground:.5,steel:.5},
+  ghost:{ghost:2,psychic:2,normal:0,dark:.5},
+  dragon:{dragon:2,steel:.5,fairy:0},
+  dark:{ghost:2,psychic:2,fighting:.5,dark:.5,fairy:.5},
+  steel:{ice:2,rock:2,fairy:2,fire:.5,water:.5,electric:.5,steel:.5},
+  fairy:{fighting:2,dragon:2,dark:2,fire:.5,poison:.5,steel:.5},
+  normal:{},
+};
+const TC_COLOR = {
+  fire:'#ff6b35',water:'#4fc3f7',grass:'#66bb6a',electric:'#ffee58',
+  psychic:'#f48fb1',ice:'#80deea',dragon:'#7e57c2',dark:'#795548',
+  fairy:'#f8bbd0',normal:'#9e9e9e',fighting:'#ef5350',poison:'#ab47bc',
+  ground:'#ffa726',flying:'#90caf9',bug:'#aed581',rock:'#8d6e63',
+  ghost:'#7986cb',steel:'#90a4ae',
+};
+function tc(t){return TC_COLOR[t]||'#9e9e9e';}
+function typeEff(atk,defTypes){let m=1;const ch=TC[atk]||{};defTypes.forEach(dt=>m*=(ch[dt]??1));return m;}
+
+// ── POKEMON CACHE & BUILD ────────────────────────────────────────
+const pkCache = new Map();
+async function getPokemon(id) {
+  if (pkCache.has(id)) return pkCache.get(id);
+  const r = await fetch(API+id);
+  if (!r.ok) throw new Error('API '+r.status);
+  const d = await r.json();
+  const p = buildPoke(d);
+  pkCache.set(id, p);
+  return p;
+}
+function fixImg(url,id){
+  if (!url) return ART+id+'.png';
+  if (url.includes('cdn.jsdelivr')) return url;
+  const m1=url.match(/official-artwork\/(\d+)\.png/); if(m1) return ART+m1[1]+'.png';
+  const m2=url.match(/\/pokemon\/(\d+)\.png/); if(m2) return SPRITES+m2[1]+'.png';
+  return ART+id+'.png';
+}
+function buildPoke(d){
+  const id=d.id, types=d.types.map(t=>t.type.name);
+  const sv={}; d.stats.forEach(s=>sv[s.stat.name]=s.base_stat);
+  const hp=Math.round((sv['hp']||45)*1.5+50);
+  const atk=sv['attack']||50, def=sv['defense']||50;
+  const spA=sv['special-attack']||50, spD=sv['special-defense']||50, spd=sv['speed']||50;
+  const art=fixImg(d.sprites?.other?.['official-artwork']?.front_default, id);
+  const front=fixImg(d.sprites?.front_default, id);
+  const moves=makeMoves(d.name,types,atk,def,spA,spD,spd);
+  return {id, name:d.name, types, hp, atk, def, spA, spD, spd, art, front, moves,
+    stage: EVO_STAGE[id]??0};
+}
+function makeMoves(name,types,atk,def,spA,spD,spd){
+  const t1=types[0], t2=types[1]||types[0];
+  return [
+    {name:t1.toUpperCase()+' BLAST', type:t1, power:70+Math.floor(spA/10), pp:15,maxPP:15,kind:'special',acc:95},
+    {name:'BODY SLAM',               type:t2, power:55+Math.floor(atk/10), pp:20,maxPP:20,kind:'physical',acc:100},
+    {name:name.slice(0,4).toUpperCase()+' SURGE',type:t1,power:120+Math.floor(spA/8),pp:8,maxPP:8,kind:'special',acc:75},
+    {name:'QUICK STRIKE',            type:'normal',power:40,pp:30,maxPP:30,kind:'physical',acc:100,prio:1},
+  ];
+}
+function calcDmg(move,atkr,defr){
+  if(Math.random()*100>move.acc) return {damage:0,miss:true};
+  const a=move.kind==='special'?atkr.spA:atkr.atk;
+  const d2=move.kind==='special'?defr.spD:defr.def;
+  const eff=typeEff(move.type,defr.types);
+  const stab=atkr.types.includes(move.type)?1.5:1;
+  const crit=Math.random()<.1;
+  const roll=.85+Math.random()*.15;
+  const dmg=Math.max(1,Math.round(((2*50/5+2)*move.power*(a/d2)/50+2)*stab*eff*(crit?2:1)*roll));
+  return {damage:dmg,miss:false,crit,eff};
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SAVE STATE  (localStorage)
+// ═══════════════════════════════════════════════════════════════════
+function saveState(){
+  try {
+    localStorage.setItem('pokeduel_v3', JSON.stringify({
+      coins: State.coins,
+      owned: [...State.owned],
+      deck:  State.deck,
+      regions: REGION_RANGES.map(r=>r.unlocked),
+      wins: State.wins, losses: State.losses, round: State.round,
+    }));
+  } catch(_){}
+}
+function loadState(){
+  try {
+    const raw = localStorage.getItem('pokeduel_v3');
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    State.coins = s.coins || 0;
+    State.owned = new Set(s.owned||[]);
+    State.deck  = s.deck||[];
+    State.wins  = s.wins||0;
+    State.losses= s.losses||0;
+    State.round = s.round||1;
+    if (s.regions) s.regions.forEach((u,i)=>{ if(REGION_RANGES[i]) REGION_RANGES[i].unlocked=u; });
+  } catch(_){}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  GLOBAL STATE
+// ═══════════════════════════════════════════════════════════════════
+const State = {
+  coins: 0,
+  owned: new Set(),        // set of pokemon IDs owned
+  deck:  [],               // array of pokemon IDs (max 5)
+  wins: 0, losses: 0, round: 1,
+  selectedId: null,        // currently previewed in deck builder
+  pendingGymRegion: null,  // region being challenged at gym
+};
+
+function addCoins(n){
+  State.coins += n;
+  updateCoinsUI();
+  if(n>0) toast('+'+n+' 🪙');
+}
+function spendCoins(n){
+  if(State.coins < n) return false;
+  State.coins -= n;
+  updateCoinsUI();
+  return true;
+}
+function updateCoinsUI(){
+  ['coins-deck','coins-shop','b-coins'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.textContent=State.coins.toLocaleString();
+  });
+  saveState();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SCREEN NAVIGATION
+// ═══════════════════════════════════════════════════════════════════
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.querySelectorAll('.tb-btn').forEach(b=>{
+    b.classList.toggle('active', b.textContent.toLowerCase().includes(name));
+  });
+  if(name==='deck') renderDeckBuilder();
+  if(name==='shop') renderShop();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════════════════════
+function toast(msg){
+  const old = document.querySelector('.toast');
+  if(old) old.remove();
+  const d = document.createElement('div');
+  d.className='toast'; d.textContent=msg;
+  document.body.appendChild(d);
+  setTimeout(()=>d.remove(), 2600);
+}
+
+// Reusable confirm dialog — returns Promise<boolean>
+function confirm3(title, body, confirmTxt='Confirm', cancelTxt='Cancel') {
+  return new Promise(resolve => {
+    const bg = document.createElement('div');
+    bg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:800;display:flex;align-items:center;justify-content:center;padding:20px;';
+    bg.innerHTML = `
+      <div style="background:linear-gradient(160deg,#131928,#0a0e1a);border:1px solid rgba(255,215,0,.3);border-radius:14px;padding:24px 28px;max-width:380px;width:100%;text-align:center;box-shadow:0 0 40px rgba(0,0,0,.5);">
+        <div style="font-family:'Press Start 2P',monospace;font-size:11px;color:var(--gold);margin-bottom:10px;">${title}</div>
+        <div style="font-size:13px;color:#7a9abb;margin-bottom:20px;line-height:1.6;white-space:pre-line;">${body}</div>
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <button id="c3-ok"  class="btn btn-gold"  style="font-size:7px;">${confirmTxt}</button>
+          <button id="c3-no"  class="btn btn-ghost" style="font-size:7px;">${cancelTxt}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(bg);
+    bg.querySelector('#c3-ok').onclick  = () => { bg.remove(); resolve(true);  };
+    bg.querySelector('#c3-no').onclick  = () => { bg.remove(); resolve(false); };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  DECK BUILDER
+// ═══════════════════════════════════════════════════════════════════
+function renderDeckBuilder(){
+  updateCoinsUI();
+  renderCollection();
+  renderDeckSlots();
+  document.getElementById('deck-count').textContent = State.deck.length;
+  document.getElementById('stab-deck').textContent = `Deck (${State.deck.length}/5)`;
+  const canBattle = State.deck.length >= 1;
+  document.getElementById('btn-quick-battle').disabled = !canBattle;
+  document.getElementById('btn-battle-go').disabled = !canBattle;
+}
+
+function renderCollection(){
+  const el = document.getElementById('sidebar-collection');
+  el.innerHTML = '';
+  // Lazy-load any unlocked regions not yet loaded
+  REGIONS.filter(r => r.unlocked && !regionLoaded.has(r.name)).forEach(r => {
+    lazyLoadRegion(r).then(() => renderCollection());
+  });
+
+  REGIONS.forEach(region => {
+    const header = document.createElement('div');
+    header.className = 'region-header';
+    header.innerHTML = `<div class="region-name">${region.icon} ${region.name.toUpperCase()}</div>`;
+    if (!region.unlocked) {
+      const ub = document.createElement('button');
+      ub.className = 'region-unlock-btn';
+      ub.textContent = '⚔ Gym Battle';
+      ub.style.background = 'rgba(255,107,53,.15)';
+      ub.style.borderColor = 'rgba(255,107,53,.4)';
+      ub.style.color = '#ff6b35';
+      ub.onclick = () => challengeGym(region);
+      header.appendChild(ub);
+    }
+    el.appendChild(header);
+
+    // Show ALL chains for this region using range index
+    const regionChains = EVO_CHAINS.slice(region.start, region.end);
+    regionChains.forEach(chain => {
+      const evoRow = document.createElement('div');
+      evoRow.className = 'evo-chain';
+      chain.forEach((id, i) => {
+        if (i > 0) {
+          const arr = document.createElement('div');
+          arr.className = 'evo-arrow'; arr.textContent = '▸';
+          evoRow.appendChild(arr);
+        }
+        const stage = document.createElement('div');
+        stage.className = 'evo-stage';
+        const owned = State.owned.has(id);
+        if (owned) stage.classList.add('owned');
+        const poke = pkCache.get(id);
+        const name = poke ? poke.name : '???';
+        const img = poke ? poke.front : SPRITES+id+'.png';
+        let costTxt = '';
+        if (!owned) {
+          if (i === 0) costTxt = region.unlocked ? region.cardCost+'🪙' : '🔒';
+          else costTxt = EVO_COST[i]+'🪙';
+        }
+        stage.innerHTML = `<img src="${img}" alt="${name}" onerror="this.src='${SPRITES+id}.png'">
+          <div class="evo-stage-name">${name.slice(0,8)}</div>
+          ${costTxt ? `<div class="evo-stage-cost">${costTxt}</div>` : '<div class="evo-stage-cost" style="color:#00ff9d">✓</div>'}`;
+        stage.onclick = () => selectPokemon(id);
+        evoRow.appendChild(stage);
+      });
+      el.appendChild(evoRow);
+    });
+  });
+}
+
+function renderDeckSlots(){
+  const el = document.getElementById('deck-slots');
+  el.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const slot = document.createElement('div');
+    const id = State.deck[i];
+    if (id) {
+      slot.className = 'deck-slot filled';
+      const poke = pkCache.get(id);
+      const name = poke ? poke.name : '?';
+      const img  = poke ? poke.front : SPRITES+id+'.png';
+      const canEvo = poke && EVO_NEXT[id] && State.owned.has(id);
+      slot.innerHTML = `
+        <img src="${img}" alt="${name}" onerror="this.src='${SPRITES+id}.png'">
+        <div class="deck-slot-name">${name}</div>
+        <div class="deck-slot-remove">✕</div>
+        ${canEvo ? '<div class="deck-slot-evolvable">EVO▸</div>' : ''}`;
+      slot.onclick = () => removeFromDeck(i);
+    } else {
+      slot.className = 'deck-slot';
+      slot.innerHTML = `<div class="deck-slot-empty-icon">＋</div>
+        <div class="deck-slot-empty-txt">Empty</div>`;
+      slot.onclick = () => showSideTab('collection');
+    }
+    el.appendChild(slot);
+  }
+}
+
+function selectPokemon(id){
+  State.selectedId = id;
+  const poke = pkCache.get(id);
+  if (!poke) { renderPreview(id, null); return; }
+  renderPreview(id, poke);
+}
+
+function renderPreview(id, poke){
+  const canvas = document.getElementById('deck-canvas');
+  if (!poke) { canvas.innerHTML = `<div class="no-preview"><div class="no-preview-icon">⏳</div><div class="no-preview-txt">Loading…</div></div>`; return; }
+
+  const owned = State.owned.has(id);
+  const inDeck = State.deck.includes(id);
+  const col = tc(poke.types[0]);
+  const canAdd = owned && !inDeck && State.deck.length < 5;
+  const canEvo = owned && EVO_NEXT[id];
+  const evoId  = EVO_NEXT[id];
+  const evoOwned = evoId && State.owned.has(evoId);
+
+  document.getElementById('btn-add-to-deck').disabled = !canAdd;
+  document.getElementById('btn-evolve-main').disabled = !canEvo;
+  document.getElementById('deck-main-sub').textContent =
+    owned ? (inDeck ? `${poke.name} is in your deck` : `${poke.name} — Stage ${poke.stage+1}`) : `Not owned`;
+
+  // Find region for buy price using range index
+  const chainIdx = EVO_CHAINS.findIndex(c => c.includes(id));
+  const region = REGIONS.find(r => chainIdx >= r.start && chainIdx < r.end);
+  const buyPrice = rarityPrice(poke, region, poke.stage||0);
+
+  canvas.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;gap:20px;flex-wrap:wrap;';
+
+  // Card preview
+  const cardWrap = document.createElement('div');
+  cardWrap.className = 'preview-section';
+  cardWrap.innerHTML = `
+    <div class="detail-card" style="--card-bg:linear-gradient(160deg,#1a1f35,#0d1225);--card-border:${col}88;">
+      <div class="detail-card-inner" style="--type-color:${col}33;border-color:${col}55;">
+        <div class="detail-header">
+          <div class="detail-name">${poke.name}</div>
+          <div class="detail-hp">${poke.hp}HP</div>
+        </div>
+        <div class="detail-types">${poke.types.map(t=>`<span class="type-badge" style="background:${tc(t)}">${t}</span>`).join('')}</div>
+        <div class="detail-art"><img src="${poke.art}" alt="${poke.name}" onerror="this.src='${poke.front}'" style="width:90%;height:90%;object-fit:contain;filter:drop-shadow(0 4px 12px rgba(0,0,0,.4));"></div>
+        <div class="detail-stats">
+          <div class="stat-cell"><div class="stat-name">ATK</div><div class="stat-val">${poke.atk}</div></div>
+          <div class="stat-cell"><div class="stat-name">DEF</div><div class="stat-val">${poke.def}</div></div>
+          <div class="stat-cell"><div class="stat-name">SPD</div><div class="stat-val">${poke.spd}</div></div>
+        </div>
+        <div class="detail-moves">
+          ${poke.moves.map(m=>`<div class="move-row">
+            <div class="move-type-dot" style="background:${tc(m.type)}"></div>
+            <span class="move-name">${m.name}</span>
+            <span class="move-power">⚡${m.power}</span>
+          </div>`).join('')}
+        </div>
+        ${!owned ? `<button class="btn btn-gold btn-w" style="font-size:7px;" onclick="buyCard(${id})" ${State.coins<buyPrice||!region?.unlocked?'disabled':''}>BUY ${buyPrice}🪙</button>` : ''}
+      </div>
+    </div>`;
+  wrap.appendChild(cardWrap);
+
+  // Evolution panel
+  if (canEvo || evoOwned) {
+    const evoPanel = document.createElement('div');
+    evoPanel.className = 'evo-panel';
+    const evoCost = EVO_COST[poke.stage+1] || 500;
+    const canAfford = State.coins >= evoCost;
+    const nextPoke = pkCache.get(evoId);
+    evoPanel.innerHTML = `<div class="evo-panel-title">EVOLUTION</div>`;
+
+    const chain = EVO_CHAINS.find(c => c.includes(id));
+    if (chain) {
+      chain.forEach((cid, si) => {
+        const cp = pkCache.get(cid);
+        if (!cp) return;
+        const isOwned = State.owned.has(cid);
+        const isCurrent = cid === id;
+        const row = document.createElement('div');
+        row.className = 'evo-row';
+        const cost = si > 0 ? EVO_COST[si] : 0;
+        row.innerHTML = `
+          <img class="evo-img" src="${cp.front}" alt="${cp.name}" onerror="this.src='${SPRITES+cid}.png'">
+          <div style="flex:1">
+            <div style="font-size:10px;font-weight:700;text-transform:capitalize;color:${isCurrent?'var(--gold)':'#8aaccc'}">${cp.name}</div>
+            <div style="font-size:9px;color:#4a6080">Stage ${si+1} · ${cp.hp}HP</div>
+          </div>
+          ${isOwned
+            ? `<button class="evo-btn done">✓ OWNED</button>`
+            : si > 0 && State.owned.has(chain[si-1])
+              ? `<button class="evo-btn" onclick="evolveCard(${chain[si-1]},${cid},${cost})" ${!canAfford||State.coins<cost?'disabled':''}>EVOLVE<br>${cost}🪙</button>`
+              : `<button class="evo-btn" disabled>LOCKED</button>`
+          }`;
+        evoPanel.appendChild(row);
+      });
+    }
+    wrap.appendChild(evoPanel);
+  }
+
+  canvas.appendChild(wrap);
+}
+
+function showSideTab(tab){
+  document.getElementById('sidebar-collection').classList.toggle('hidden', tab!=='collection');
+  document.getElementById('sidebar-deck').classList.toggle('hidden', tab!=='deck');
+  document.getElementById('stab-collection').classList.toggle('on', tab==='collection');
+  document.getElementById('stab-deck').classList.toggle('on', tab==='deck');
+}
+
+async function addToDeck(){
+  const id = State.selectedId;
+  if (!id || !State.owned.has(id) || State.deck.includes(id) || State.deck.length>=5) return;
+  const poke = pkCache.get(id);
+  const ok = await confirm3('Add to Deck?', (poke?.name||'This Pokémon')+' will be added to your battle deck.', 'Add ✅', 'Cancel');
+  if (!ok) return;
+  State.deck.push(id);
+  saveState();
+  renderDeckBuilder();
+  toast(poke?.name + ' added to deck!');
+}
+
+async function removeFromDeck(i){
+  if (i < 0 || i >= State.deck.length) return;
+  const name = pkCache.get(State.deck[i])?.name||'Pokémon';
+  const ok = await confirm3('Remove from Deck?', name+' will be removed from your battle deck.', 'Remove ❌', 'Keep');
+  if (!ok) return;
+  State.deck.splice(i,1);
+  saveState();
+  renderDeckBuilder();
+  toast(name+' removed from deck');
+}
+
+function evolveSelected(){
+  const id = State.selectedId;
+  if (!id) return;
+  const evoId = EVO_NEXT[id];
+  if (!evoId || !State.owned.has(id)) return;
+  const poke = pkCache.get(id);
+  const cost = EVO_COST[poke?.stage+1||1];
+  evolveCard(id, evoId, cost);
+}
+
+async function evolveCard(fromId, toId, cost){
+  if (!State.owned.has(fromId)) { toast('You don\'t own the base form!'); return; }
+  if (State.owned.has(toId)) { toast('Already evolved!'); return; }
+  const fromPoke = pkCache.get(fromId);
+  const toPoke   = pkCache.get(toId);
+  const ok = await confirm3('Evolve '+( fromPoke?.name||'Pokémon')+'?',
+    (fromPoke?.name||'?')+' → '+(toPoke?.name||'evolved form')+'
+Cost: '+cost.toLocaleString()+' 🪙',
+    'Evolve ✨', 'Cancel');
+  if (!ok) return;
+  if (!spendCoins(cost)) { toast('Not enough coins!'); return; }
+  // Ensure evolved form is loaded
+  if (!pkCache.has(toId)) {
+    setLoader(true, 'Evolving…');
+    await getPokemon(toId);
+    setLoader(false);
+  }
+  // Replace in deck if base form was there
+  const di = State.deck.indexOf(fromId);
+  if (di >= 0) State.deck[di] = toId;
+  State.owned.add(toId);
+  saveState();
+  const newPoke = pkCache.get(toId);
+  toast('✨ '+newPoke?.name+' evolved!');
+  selectPokemon(toId);
+  renderDeckBuilder();
+}
+
+async function unlockRegion(region){
+  // Called only after a successful gym battle
+  region.unlocked = true;
+  saveState();
+  await lazyLoadRegion(region);
+  renderDeckBuilder();
+  renderShop();
+  toast(region.icon+' '+region.name+' region unlocked!');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SHOP
+// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+//  GYM LEADER CHALLENGE
+// ═══════════════════════════════════════════════════════════════════
+async function challengeGym(region) {
+  if (State.deck.length === 0) {
+    toast('Add Pokémon to your deck first!');
+    showScreen('deck');
+    return;
+  }
+  const leader = GYM_LEADERS[region.name];
+  if (!leader) { toast('No gym leader found!'); return; }
+
+  // Confirm before challenging
+  const go = await confirm3(`Challenge ${leader.name}?`,
+    `${leader.icon} ${leader.title}
+Specialty: ${leader.type} type
+Win to unlock ${region.name}!`,
+    'Challenge!', 'Cancel');
+  if (!go) return;
+
+  // Load gym leader's team
+  const teamIds = [...new Set(leader.team)].slice(0, 5);
+  const missing = teamIds.filter(id => !pkCache.has(id));
+  if (missing.length) {
+    setLoader(true, `Loading ${leader.name}'s team…`, 0);
+    await Promise.all(missing.map(id => getPokemon(id).catch(()=>{})));
+    setLoader(false);
+  }
+
+  State.pendingGymRegion = region;
+  showScreen('battle');
+  await Battle.startGym(leader, teamIds);
+}
+
+let shopFilter = 'all';
+const regionLoaded = new Set(['Kanto']); // Kanto preloaded on init
+
+async function lazyLoadRegion(region) {
+  // Never load a locked region — the shop just shows the gym battle banner
+  if (!region.unlocked) return;
+  if (regionLoaded.has(region.name)) return;
+  regionLoaded.add(region.name);
+  const ids = EVO_CHAINS.slice(region.start, region.end).flat()
+    .filter(id => !pkCache.has(id));
+  if (!ids.length) return;
+  setLoader(true, `Loading ${region.name} Pokémon…`, 0);
+  const BATCH = 10;
+  for (let i = 0; i < ids.length; i += BATCH) {
+    await Promise.all(ids.slice(i,i+BATCH).map(id => getPokemon(id).catch(()=>{})));
+    const pct = Math.round(Math.min(i+BATCH,ids.length)/ids.length*100);
+    setLoader(true, `Loading ${region.name}… ${Math.min(i+BATCH,ids.length)}/${ids.length}`, pct);
+  }
+  setLoader(false);
+}
+
+function renderShop(){
+  updateCoinsUI();
+  // Render filter buttons
+  const fEl = document.getElementById('shop-filters');
+  fEl.innerHTML = '';
+  ['all',...REGIONS.map(r=>r.name)].forEach(f=>{
+    const b = document.createElement('button');
+    b.className = 'shop-filter' + (shopFilter===f?' on':'');
+    b.textContent = f==='all'?'All Regions':f;
+    b.onclick = async () => {
+      shopFilter=f;
+      const reg = REGIONS.find(r=>r.name===f);
+      if (reg) await lazyLoadRegion(reg);
+      renderShop();
+    };
+    fEl.appendChild(b);
+  });
+
+  const grid = document.getElementById('shop-grid');
+  grid.innerHTML = '';
+
+  REGIONS.forEach(region => {
+    if (shopFilter !== 'all' && shopFilter !== region.name) return;
+
+    if (!region.unlocked) {
+      const leader = GYM_LEADERS[region.name] || {};
+      const banner = document.createElement('div');
+      banner.className = 'region-unlock-banner';
+      banner.style.cursor = 'pointer';
+      banner.innerHTML = `
+        <div class="rub-icon">${leader.icon||region.icon}</div>
+        <div class="rub-info">
+          <div class="rub-name">${region.icon} ${region.name} — LOCKED</div>
+          <div class="rub-desc">Defeat <strong>${leader.name||'the Gym Leader'}</strong> (${leader.title||region.name+' Gym'}) to unlock this region</div>
+          <div class="rub-desc" style="color:var(--gold);margin-top:3px;">${leader.type ? 'Specialty: '+leader.type : ''} · Reward: ${leader.badge||'Gym Badge'}</div>
+        </div>
+        <button class="btn btn-gold" style="font-size:7px;white-space:nowrap;">⚔ Challenge Gym</button>`;
+      banner.querySelector('.btn').onclick = (e) => { e.stopPropagation(); challengeGym(region); };
+      grid.appendChild(banner);
+      return;
+    }
+
+    // Show all chains for this region
+    const chain = EVO_CHAINS.slice(region.start, region.end);
+    chain.forEach(evoChain => {
+      evoChain.forEach((id, stageIdx) => {
+        const poke = pkCache.get(id);
+        if (!poke) return;
+        const owned = State.owned.has(id);
+        const cost = rarityPrice(poke, region, stageIdx);
+        const canAfford = State.coins >= cost;
+
+        const card = document.createElement('div');
+        card.className = 'shop-card' + (owned?' owned':'') + (!region.unlocked?' locked':'');
+        card.innerHTML = `
+          <img src="${poke.front}" alt="${poke.name}" onerror="this.src='${SPRITES+id}.png'">
+          <div class="shop-card-name">${poke.name}</div>
+          <div class="shop-card-type">${poke.types.join(' / ')}</div>
+          <div class="shop-card-region">${region.icon} ${region.name} · Stage ${stageIdx+1}</div>
+          ${!owned
+            ? `<div class="shop-card-price ${canAfford?'':'cant-afford'}">${cost.toLocaleString()} 🪙</div>`
+            : `<div class="shop-card-price" style="color:#00ff9d;background:rgba(0,255,157,.08);border-color:rgba(0,255,157,.2);">✓ Owned</div>`
+          }`;
+        if (!owned && canAfford && region.unlocked) {
+          card.onclick = () => buyCard(id);
+        } else if (!owned && !canAfford) {
+          card.title = 'Need '+(cost-State.coins)+' more coins';
+        }
+        grid.appendChild(card);
+      });
+    });
+  });
+}
+
+// Rarity-based pricing — uses base stat total + stage
+function rarityPrice(poke, region, stageIdx) {
+  if (!poke) return region?.cardCost || 100;
+  // Compute base stat total (BST)
+  const bst = poke.hp + poke.atk + poke.def + poke.spA + poke.spD + poke.spd;
+  // Tiers based on BST:
+  // < 300  = common (young/basic forms)
+  // 300-399 = uncommon
+  // 400-499 = rare
+  // 500-599 = very rare
+  // 600+   = legendary/ultra rare
+  let base;
+  if      (bst < 300)  base = 60;
+  else if (bst < 400)  base = 120;
+  else if (bst < 500)  base = 220;
+  else if (bst < 600)  base = 400;
+  else                 base = 800;
+
+  // Stage modifier — evolved forms cost more if bought directly
+  if (stageIdx === 1) base = Math.round(base * 1.6);
+  if (stageIdx >= 2)  base = Math.round(base * 2.8);
+
+  // Region multiplier (later regions have generally stronger Pokémon)
+  const regionMult = region ? [1, 1.1, 1.2, 1.35, 1.5][REGIONS.indexOf(region)] || 1 : 1;
+  return Math.round(base * regionMult / 10) * 10; // round to nearest 10
+}
+
+async function buyCard(id){
+  const poke = pkCache.get(id);
+  if (!poke) return;
+  if (State.owned.has(id)) { toast('Already owned!'); return; }
+  const bChainIdx = EVO_CHAINS.findIndex(c => c.includes(id));
+  const region = REGIONS.find(r => bChainIdx >= r.start && bChainIdx < r.end);
+  const stageIdx = EVO_STAGE[id]||0;
+  const cost = rarityPrice(poke, region, stageIdx);
+  const ok = await confirm3('Buy '+poke.name+'?',
+    poke.name+' ('+poke.types.join('/')+') · Stage '+(stageIdx+1)+'
+Cost: '+cost.toLocaleString()+' 🪙
+You have: '+State.coins.toLocaleString()+' 🪙',
+    'Buy 🪙'+cost, 'Cancel');
+  if (!ok) return;
+  if (!spendCoins(cost)) { toast('Not enough coins!'); return; }
+  State.owned.add(id);
+  saveState();
+  toast('✓ '+poke.name+' added to collection!');
+  renderShop();
+  renderDeckBuilder();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  BATTLE ENGINE
+// ═══════════════════════════════════════════════════════════════════
+const Battle = (() => {
+  let pPool=[], ePool=[], pPoke=null, ePoke=null;
+  let pH=0, eH=0, pMax=0, eMax=0;
+  let pMoves=[], eMoves=[];
+  let myTurn=true, over=false;
+  let turns=0, totalDmg=0, crits=0;
+  let forcedSwitch=false;
+  const fainted = new Set();
+
+  function blog(msg,cls='sys'){
+    const el=document.getElementById('battle-log');
+    const d=document.createElement('div'); d.className='blog-entry '+cls; d.textContent=msg;
+    el.appendChild(d); el.scrollTop=el.scrollHeight;
+  }
+  function floatDmg(n,targetId,cls){
+    const ref=document.getElementById(targetId)||document.body;
+    const r=ref.getBoundingClientRect();
+    const el=document.createElement('div');
+    el.className='dmg-float '+cls; el.textContent='-'+n;
+    el.style.left=(r.left+r.width/2-20)+'px'; el.style.top=(r.top+r.height/3)+'px';
+    document.body.appendChild(el); setTimeout(()=>el.remove(),950);
+  }
+  function bar(side,cur,max){
+    const pct=Math.max(0,cur/max*100);
+    const b=document.getElementById(side==='player'?'php-bar':'ehp-bar');
+    const t=document.getElementById(side==='player'?'php-txt':'ehp-txt');
+    if(!b||!t)return;
+    b.style.width=pct+'%';
+    b.className='hp-fill'+(pct>50?'':pct>20?' warn':' danger');
+    t.textContent=Math.max(0,cur)+' / '+max;
+  }
+  function mountCard(side,poke,moves,cur,max){
+    const col=tc(poke.types[0]);
+    const movesHTML = side==='player' ? moves.map((m,i)=>`
+      <button class="bmove-btn" id="mv-${i}" onclick="Battle.useMove(${i})"
+        style="border-color:${tc(m.type)}44;">
+        <span>${m.name}</span><span class="bmove-power">⚡${m.power}</span>
+        <span class="bmove-pp">${m.pp}/${m.maxPP}</span>
+      </button>`).join('') : '';
+    document.getElementById(side==='player'?'player-mount':'enemy-mount').innerHTML =
+      `<div class="bcard ${side==='enemy'?'enemy-bcard':''} active-bcard" id="bcard-${side}"
+          style="--bcard-glow:${col}66;--bcard-border:${col}88;--btype-color:${col}33;">
+        <div class="bcard-inner" style="border-color:${col}66;">
+          <div class="bcard-header">
+            <div class="bcard-name">${poke.name}</div>
+            <div class="bcard-hpb" id="bhpb-${side}">${cur}HP</div>
+          </div>
+          <div class="bcard-types">${poke.types.map(t=>`<span class="type-badge" style="background:${tc(t)}">${t}</span>`).join('')}</div>
+          <div class="bcard-art"><img class="bcard-img" id="bimg-${side}" src="${poke.art}" alt="${poke.name}"
+            onerror="this.onerror=null;this.src='${SPRITES+poke.id}.png'"></div>
+          <div class="bcard-stats">
+            <div class="stat-cell"><div class="stat-name">ATK</div><div class="stat-val">${poke.atk}</div></div>
+            <div class="stat-cell"><div class="stat-name">DEF</div><div class="stat-val">${poke.def}</div></div>
+            <div class="stat-cell"><div class="stat-name">SPD</div><div class="stat-val">${poke.spd}</div></div>
+          </div>
+          ${movesHTML?`<div class="bcard-moves">${movesHTML}</div>`:''}
+        </div>
+      </div>`;
+  }
+  function btns(on){
+    for(let i=0;i<4;i++){const b=document.getElementById('mv-'+i);if(b)b.disabled=!on;}
+    const sw=document.getElementById('btn-switch');
+    if(sw) sw.classList.toggle('hidden', !on || pPool.filter(p=>!fainted.has(p)&&p!==pPoke).length===0);
+  }
+  function turnUI(){
+    const pill=document.getElementById('turn-pill');
+    const hint=document.getElementById('b-hint');
+    if(myTurn){
+      pill.textContent='YOUR TURN';
+      pill.style.background='rgba(79,195,247,.1)';pill.style.borderColor='rgba(79,195,247,.3)';
+      hint.textContent='Choose a move or switch';btns(true);
+    }else{
+      pill.textContent='OPPONENT';
+      pill.style.background='rgba(239,83,80,.1)';pill.style.borderColor='rgba(239,83,80,.25)';
+      hint.textContent='Waiting…';btns(false);
+    }
+  }
+  function applyHit(res,atkSide){
+    const defSide=atkSide==='player'?'enemy':'player';
+    const atkName=atkSide==='player'?pPoke.name:ePoke.name;
+    if(res.miss){blog(atkName+"'s attack missed!",'sys');return;}
+    if(atkSide==='player'){
+      eH=Math.max(0,eH-res.damage); totalDmg+=res.damage; if(res.crit)crits++;
+      bar('enemy',eH,eMax);
+      const hpb=document.getElementById('bhpb-enemy');if(hpb)hpb.textContent=eH+'HP';
+      const img=document.getElementById('bimg-enemy');
+      if(img){img.classList.add('hit');setTimeout(()=>img.classList.remove('hit'),450);}
+      floatDmg(res.damage,'bcard-enemy',res.crit?'cr':'eh');
+    }else{
+      pH=Math.max(0,pH-res.damage);
+      bar('player',pH,pMax);
+      const hpb=document.getElementById('bhpb-player');if(hpb)hpb.textContent=pH+'HP';
+      const img=document.getElementById('bimg-player');
+      if(img){img.classList.add('hit');setTimeout(()=>img.classList.remove('hit'),450);}
+      floatDmg(res.damage,'bcard-player','ph');
+    }
+    const effTxt=res.eff>1?' Super effective!':res.eff<1&&res.eff>0?' Not very effective.':res.eff===0?' No effect!':'';
+    const critTxt=res.crit?' ★ CRIT!':'';
+    blog(atkName+' dealt '+res.damage+' dmg!'+effTxt+critTxt, res.crit?'crit':atkSide==='player'?'pa':'ea');
+  }
+
+  function useMove(i){
+    if(!myTurn||over)return;
+    const mv=pMoves[i]; if(!mv||mv.pp<=0){blog('No PP left!','sys');return;}
+    mv.pp=Math.max(0,mv.pp-1);
+    const ppEl=document.getElementById('mv-'+i);
+    if(ppEl)ppEl.querySelector('.bmove-pp').textContent=mv.pp+'/'+mv.maxPP;
+    turns++;
+    blog('You used '+mv.name+'!','pa');
+    const res=calcDmg(mv,pPoke,ePoke);
+    setTimeout(()=>{
+      applyHit(res,'player');
+      if(eH<=0){setTimeout(()=>faintPoke('enemy'),400);return;}
+      myTurn=false;turnUI();setTimeout(aiTurn,900);
+    },300);
+  }
+  function aiTurn(){
+    if(over)return;
+    const avail=eMoves.filter(m=>m.pp>0);
+    let chosen;
+    if(!avail.length){
+      blog(ePoke.name+' struggles!','ea');
+      applyHit({damage:15,miss:false,crit:false,eff:1},'enemy');
+    }else{
+      const w=avail.map(m=>m.power+Math.random()*20);
+      const tot=w.reduce((a,b)=>a+b,0); let rnd=Math.random()*tot;
+      chosen=avail[avail.length-1];
+      for(let i=0;i<avail.length;i++){rnd-=w[i];if(rnd<=0){chosen=avail[i];break;}}
+      chosen.pp=Math.max(0,chosen.pp-1);
+      blog(ePoke.name+' used '+chosen.name+'!','ea');
+      applyHit(calcDmg(chosen,ePoke,pPoke),'enemy');
+    }
+    if(pH<=0){setTimeout(()=>faintPoke('player'),400);return;}
+    myTurn=true;turnUI();
+  }
+
+  function faintPoke(side){
+    const poke=side==='enemy'?ePoke:pPoke;
+    fainted.add(poke);
+    blog('☠ '+poke.name+' fainted!','faint');
+    const card=document.getElementById('bcard-'+side);
+    if(card){card.style.transition='opacity .6s,transform .6s';card.style.opacity='0';card.style.transform+=' scale(.8)';}
+    if(side==='enemy'){
+      const alive=ePool.filter(p=>!fainted.has(p));
+      if(alive.length>0){
+        setTimeout(()=>{
+          ePoke=alive[0]; eMoves=ePoke.moves.map(m=>({...m}));
+          eMax=eH=ePoke.hp; mountCard('enemy',ePoke,eMoves,eH,eMax); bar('enemy',eH,eMax);
+          blog(ePoke.name+' sent out!','sys'); myTurn=true;turnUI();
+        },700);
+      }else{setTimeout(()=>endBattle(true),800);}
+    }else{
+      const alive=pPool.filter(p=>!fainted.has(p));
+      if(alive.length>0){blog(poke.name+' fainted! Switch!','faint');showHand(true);}
+      else{setTimeout(()=>endBattle(false),800);}
+    }
+  }
+
+  function showHand(forced){
+    forcedSwitch=!!forced;
+    const alive=pPool.filter(p=>!fainted.has(p)&&p!==pPoke);
+    document.getElementById('hand-section').classList.remove('hidden');
+    document.getElementById('hand-container').innerHTML=
+      alive.map((p,i)=>`<div class="hcard" onclick="Battle.pickHand(${p.id})">
+        <img src="${p.front}" alt="${p.name}" onerror="this.onerror=null;this.src='${SPRITES+p.id}.png'">
+        <div class="hcard-name">${p.name}</div>
+      </div>`).join('');
+    btns(false);
+    document.getElementById('b-hint').textContent='Pick a Pokémon';
+  }
+
+  function pickHand(id){
+    const poke=pPool.find(p=>p.id===id); if(!poke||fainted.has(poke))return;
+    pPoke=poke; pMoves=poke.moves.map(m=>({...m})); pMax=pH=poke.hp;
+    mountCard('player',pPoke,pMoves,pH,pMax); bar('player',pH,pMax);
+    blog('Go, '+pPoke.name+'!','pa');
+    document.getElementById('hand-section').classList.add('hidden');
+    if(over)return;
+    if(forcedSwitch){forcedSwitch=false;myTurn=false;turnUI();setTimeout(aiTurn,1000);}
+    else{myTurn=false;turnUI();setTimeout(aiTurn,900);}
+  }
+
+  function endBattle(win){
+    over=true;
+    // Make sure loader is hidden first
+    setLoader(false);
+    const baseReward = win ? 150 : 40;
+    const turnBonus  = Math.floor(turns*8);
+    const critBonus  = crits*25;
+    const reward = baseReward + turnBonus + critBonus;
+    if(win){State.wins++;}else{State.losses++;}
+    addCoins(reward);
+    document.getElementById('b-wins').textContent=State.wins;
+    document.getElementById('b-losses').textContent=State.losses;
+    document.getElementById('b-round').textContent=State.round;
+    const isGymWin = win && State.pendingGymRegion;
+    document.getElementById('res-icon').textContent=win?'🏆':'💀';
+    document.getElementById('res-title').textContent=win?'VICTORY!':'DEFEATED';
+    if(isGymWin){
+      const region = State.pendingGymRegion;
+      region.unlocked=true; State.pendingGymRegion=null; saveState();
+      document.getElementById('res-sub').textContent=region.icon+' '+region.name+' region unlocked! All Pokémon are now available in the shop.';
+    } else {
+      document.getElementById('res-sub').textContent=win?'All opponent Pokémon have fainted!':'All your Pokémon have fainted…';
+    }
+    document.getElementById('res-reward').textContent='+ '+reward+' 🪙 COINS EARNED';
+    document.getElementById('res-dmg').textContent=totalDmg;
+    document.getElementById('res-turns').textContent=turns;
+    document.getElementById('res-crits').textContent=crits;
+    // Small timeout ensures the loader is fully painted away before modal appears
+    setTimeout(()=>{
+      document.getElementById('result-modal').classList.remove('hidden');
+    }, 60);
+    saveState();
+  }
+
+  async function newRound(){
+    document.getElementById('result-modal').classList.add('hidden');
+    State.round++;
+    document.getElementById('b-round').textContent=State.round;
+    await startBattleInternal();
+  }
+
+  async function startBattleInternal(){
+    over=false; turns=0; totalDmg=0; crits=0; fainted.clear(); forcedSwitch=false;
+    document.getElementById('battle-log').innerHTML='';
+    document.getElementById('hand-section').classList.add('hidden');
+    document.getElementById('b-wins').textContent=State.wins;
+    document.getElementById('b-losses').textContent=State.losses;
+    document.getElementById('b-round').textContent=State.round;
+    updateCoinsUI();
+
+    // Build player pool from deck
+    const deckIDs = State.deck.length ? State.deck : [1,4,7];
+    pPool = deckIDs.map(id=>pkCache.get(id)).filter(Boolean);
+    if(!pPool.length){toast('Load your deck first!');showScreen('deck');return;}
+
+    // Build enemy pool — random selection weighted by round
+    const allAvailable = [...pkCache.values()];
+    const shuffled = allAvailable.sort(()=>Math.random()-.5);
+    ePool = shuffled.slice(0, Math.min(5, shuffled.length));
+    if(!ePool.length){
+      // Fallback: use some preloaded IDs
+      const fallbackIds = [1,4,7,152,155];
+      ePool = await Promise.all(fallbackIds.map(id=>getPokemon(id)));
+    }
+
+    pPoke=pPool[0]; ePoke=ePool[Math.floor(Math.random()*ePool.length)];
+    pMoves=pPoke.moves.map(m=>({...m})); eMoves=ePoke.moves.map(m=>({...m}));
+    pMax=pH=pPoke.hp; eMax=eH=ePoke.hp;
+    myTurn=Math.random()>.5;
+
+    mountCard('player',pPoke,pMoves,pH,pMax);
+    mountCard('enemy',ePoke,eMoves,eH,eMax);
+    bar('player',pH,pMax); bar('enemy',eH,eMax);
+    turnUI();
+    blog('⚔ Battle! '+pPoke.name+' vs '+ePoke.name+'!','sys');
+    if(!myTurn){blog('Opponent goes first!','sys');setTimeout(aiTurn,1200);}
+    else blog('Your turn!','sys');
+  }
+
+  async function startGym(leader, teamIds){
+    over=false; turns=0; totalDmg=0; crits=0; fainted.clear(); forcedSwitch=false;
+    document.getElementById('battle-log').innerHTML='';
+    document.getElementById('hand-section').classList.add('hidden');
+    updateCoinsUI();
+
+    const deckIDs = State.deck.length ? State.deck : [1,4,7];
+    pPool = deckIDs.map(id=>pkCache.get(id)).filter(Boolean);
+    if(!pPool.length){toast('Load your deck first!');showScreen('deck');return;}
+
+    // Gym leader uses their specified team
+    ePool = teamIds.map(id=>pkCache.get(id)).filter(Boolean);
+    if(!ePool.length){await startBattleInternal();return;}
+
+    pPoke=pPool[0]; ePoke=ePool[0];
+    pMoves=pPoke.moves.map(m=>({...m})); eMoves=ePoke.moves.map(m=>({...m}));
+    pMax=pH=pPoke.hp; eMax=eH=ePoke.hp;
+    myTurn=true; // Player goes first against gym leader
+
+    mountCard('player',pPoke,pMoves,pH,pMax);
+    mountCard('enemy',ePoke,eMoves,eH,eMax);
+    bar('player',pH,pMax); bar('enemy',eH,eMax);
+    turnUI();
+    // Update topbar to show gym context
+    const pill = document.getElementById('turn-pill');
+    if(pill){ pill.textContent = leader.icon+' GYM BATTLE'; pill.style.background='rgba(255,107,53,.15)'; pill.style.borderColor='rgba(255,107,53,.4)'; }
+    blog('⚔ GYM BATTLE! vs '+leader.name+' ('+leader.title+')','sys');
+    blog(leader.icon+' '+leader.name+': "I'm '+leader.name+', the Gym Leader!"','ea');
+    blog(ePoke.name+' appears!','ea');
+  }
+
+  return {useMove, showHand, pickHand, newRound, start: startBattleInternal, startGym};
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+//  LOADER HELPER
+// ═══════════════════════════════════════════════════════════════════
+function setLoader(show, msg='Loading…', pct=null){
+  const el = document.getElementById('loader');
+  if(show){
+    el.style.display='flex';
+    if(msg) document.getElementById('ltxt').textContent=msg;
+    if(pct!==null) document.getElementById('lbar').style.width=pct+'%';
+  } else {
+    el.style.display='none';
+    document.getElementById('lbar').style.width='0%';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  BATTLE LAUNCH
+// ═══════════════════════════════════════════════════════════════════
+async function startBattle(){
+  if(State.deck.length === 0){
+    toast('Add at least 1 Pokémon to your deck!');
+    showScreen('deck'); return;
+  }
+  showScreen('battle');
+  await Battle.start();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════════
+async function init(){
+  setLoader(true,'Loading…',0);
+
+  // Load saved state
+  loadState();
+
+  // Preload only what we need immediately:
+  // - Free Kanto starters (always needed)
+  // - All owned Pokémon (for collection display)
+  // - Deck Pokémon (for battle)
+  // - All Kanto chains (first region, shown by default)
+  const toLoad = new Set([1,4,7, ...State.owned, ...State.deck]);
+  // Kanto chains (indices 0–44)
+  EVO_CHAINS.slice(0, 45).forEach(chain => chain.forEach(id => toLoad.add(id)));
+
+  const ids = [...toLoad];
+  let done = 0;
+  const BATCH = 10;
+
+  for(let i = 0; i < ids.length; i += BATCH){
+    const batch = ids.slice(i, i+BATCH);
+    await Promise.all(batch.map(id => getPokemon(id).catch(()=>{})));
+    done += batch.length;
+    const pct = Math.round(done/ids.length*100);
+    setLoader(true, `Loading Pokémon ${done}/${ids.length}…`, pct);
+  }
+
+  // Grant free Kanto starters to new players
+  if(State.owned.size === 0){
+    [1,4,7].forEach(id => State.owned.add(id));
+    State.deck = [1,4,7];
+    State.coins = 250; // starting coins
+    saveState();
+    toast('Welcome! Kanto starters added to your deck 🎉');
+  }
+
+  setLoader(false);
+
+  // Show welcome screen for first visit, deck builder otherwise
+  const returning = localStorage.getItem('pokeduel_v3');
+  if(returning){
+    showScreen('deck');
+  } else {
+    document.getElementById('screen-welcome').classList.add('active');
+    document.getElementById('loader').style.display='none';
+  }
+
+  document.getElementById('btn-start-game').onclick = () => showScreen('deck');
+}
+
+init();
+</script>
+</body>
+</html>
