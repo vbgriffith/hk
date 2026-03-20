@@ -1,0 +1,2026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ESCAPE — Multi-Theme Room</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=MedievalSharp&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ══ RESET ══════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;font-family:'Exo 2',sans-serif;}
+button{cursor:pointer;font-family:inherit;}
+input{font-family:inherit;}
+
+/* ══ THEME VARIABLES ════════════════════════════════════════ */
+[data-theme="lab"]{
+  --bg:#050810;--surf:#0c1425;--surf2:#101c35;--border:#1a3050;
+  --t1:#c8e8ff;--t2:#6a9abb;--t3:#2a5070;
+  --ac:#00c8ff;--danger:#ff3366;--warn:#ffaa00;--ok:#00ff88;
+  --room-bg:#07101f;--font-display:'Orbitron',monospace;
+}
+[data-theme="mansion"]{
+  --bg:#0a0704;--surf:#1a1008;--surf2:#221508;--border:#3a2510;
+  --t1:#f0d8b0;--t2:#a07840;--t3:#503820;
+  --ac:#d4a853;--danger:#8b2020;--warn:#c87030;--ok:#507030;
+  --room-bg:#100c06;--font-display:'Georgia',serif;
+}
+[data-theme="space"]{
+  --bg:#020408;--surf:#080c18;--surf2:#0c1020;--border:#1a1a3a;
+  --t1:#d0c8ff;--t2:#7070b0;--t3:#303060;
+  --ac:#7c3aed;--danger:#f97316;--warn:#eab308;--ok:#22c55e;
+  --room-bg:#040610;--font-display:'Orbitron',monospace;
+}
+[data-theme="tomb"]{
+  --bg:#080604;--surf:#141008;--surf2:#1c160a;--border:#3a2c10;
+  --t1:#e8d4a0;--t2:#9a8040;--t3:#503c10;
+  --ac:#c8860a;--danger:#8b4914;--warn:#b06c10;--ok:#607020;
+  --room-bg:#0c0a04;--font-display:'Georgia',serif;
+}
+
+/* ══ LAYOUT ══════════════════════════════════════════════════ */
+body{background:var(--bg);color:var(--t1);}
+.screen{display:none;position:fixed;inset:0;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* ══ SCANLINES (lightweight - CSS only) ════════════════════ */
+[data-theme="lab"] body::after,
+[data-theme="space"] body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9990;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.06) 0,rgba(0,0,0,.06) 1px,transparent 1px,transparent 2px);
+}
+
+/* ══ TITLE SCREEN ════════════════════════════════════════════ */
+#scr-title{align-items:center;justify-content:center;
+  background:radial-gradient(ellipse 100% 80% at 50% 50%,var(--surf2) 0%,var(--bg) 70%);}
+.title-grid{position:absolute;inset:0;
+  background-image:linear-gradient(var(--border) 1px,transparent 1px),
+    linear-gradient(90deg,var(--border) 1px,transparent 1px);
+  background-size:60px 60px;opacity:.4;}
+.title-inner{position:relative;text-align:center;display:flex;flex-direction:column;
+  align-items:center;gap:20px;max-width:700px;padding:24px;}
+.title-logo{font-family:var(--font-display);font-size:clamp(36px,8vw,80px);font-weight:900;
+  letter-spacing:8px;color:var(--ac);
+  text-shadow:0 0 30px var(--ac),0 0 60px var(--ac);
+  animation:glow 3s ease-in-out infinite alternate;}
+@keyframes glow{from{text-shadow:0 0 20px var(--ac);}to{text-shadow:0 0 40px var(--ac),0 0 80px var(--ac);}}
+.title-danger{font-family:'Share Tech Mono',monospace;font-size:clamp(9px,2vw,13px);
+  letter-spacing:5px;color:var(--danger);text-transform:uppercase;animation:blink 1.5s step-end infinite;}
+@keyframes blink{50%{opacity:0;}}
+.title-tagline{font-size:clamp(12px,2vw,15px);color:var(--t2);line-height:1.7;max-width:440px;}
+.title-divider{width:180px;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);}
+
+.theme-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;width:100%;max-width:500px;margin-top:4px;}
+.theme-card{background:var(--surf);border:1px solid var(--border);border-radius:6px;
+  padding:14px 16px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:12px;}
+.theme-card:hover{border-color:var(--ac);background:var(--surf2);transform:translateY(-2px);}
+.theme-card .tc-icon{font-size:24px;flex-shrink:0;}
+.theme-card .tc-info .tc-name{font-family:var(--font-display);font-size:11px;font-weight:700;
+  letter-spacing:1px;color:var(--ac);}
+.theme-card .tc-info .tc-desc{font-size:11px;color:var(--t3);margin-top:2px;}
+.theme-card.selected{border-color:var(--ac);background:var(--surf2);
+  box-shadow:0 0 12px var(--ac);}
+
+.start-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+.btn{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;
+  padding:11px 24px;border-radius:3px;border:1px solid;text-transform:uppercase;transition:all .2s;}
+.btn-primary{background:rgba(0,0,0,.3);border-color:var(--ac);color:var(--ac);}
+.btn-primary:hover{background:var(--ac);color:var(--bg);box-shadow:0 0 16px var(--ac);}
+.btn-danger{background:rgba(0,0,0,.3);border-color:var(--danger);color:var(--danger);}
+.btn-danger:hover{background:var(--danger);color:#fff;}
+.btn-ok{background:rgba(0,0,0,.3);border-color:var(--ok);color:var(--ok);}
+.btn-ok:hover{background:var(--ok);color:var(--bg);}
+.btn-warn{background:rgba(0,0,0,.3);border-color:var(--warn);color:var(--warn);}
+.btn-warn:hover{background:var(--warn);color:var(--bg);}
+.btn-sm{font-size:9px;padding:6px 12px;}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+
+/* ══ HUD (top bar in game) ════════════════════════════════════ */
+#hud{flex-shrink:0;background:var(--surf);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:0;height:42px;overflow:hidden;}
+.hud-logo{font-family:var(--font-display);font-size:11px;font-weight:700;color:var(--ac);
+  padding:0 14px;border-right:1px solid var(--border);white-space:nowrap;letter-spacing:2px;}
+.hud-room{flex:1;font-size:12px;color:var(--t2);padding:0 14px;
+  font-family:'Share Tech Mono',monospace;letter-spacing:1px;}
+.hud-timer{font-family:'Share Tech Mono',monospace;font-size:16px;font-weight:700;
+  color:var(--ok);padding:0 16px;border-left:1px solid var(--border);
+  border-right:1px solid var(--border);letter-spacing:2px;transition:color .3s;}
+.hud-timer.warn{color:var(--warn);animation:blink .8s step-end infinite;}
+.hud-timer.danger{color:var(--danger);animation:blink .4s step-end infinite;}
+.hud-hints{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--t3);
+  padding:0 12px;border-right:1px solid var(--border);white-space:nowrap;}
+.hud-btns{padding:0 10px;display:flex;gap:6px;}
+
+/* ══ GAME AREA ════════════════════════════════════════════════ */
+#game-layout{flex:1;display:flex;min-height:0;}
+#room-view{flex:1;position:relative;background:var(--room-bg);overflow:hidden;}
+#room-svg{width:100%;height:100%;display:block;}
+
+/* Hotspot labels */
+.hotspot{cursor:pointer;}
+.hotspot rect,.hotspot circle,.hotspot polygon{transition:opacity .2s;}
+.hotspot:hover rect,.hotspot:hover circle,.hotspot:hover polygon{opacity:.7;}
+.hs-label{font-family:'Share Tech Mono',monospace;font-size:10px;fill:var(--ac);
+  opacity:0;transition:opacity .2s;pointer-events:none;}
+.hotspot:hover .hs-label{opacity:1;}
+.hs-ring{fill:none;stroke:var(--ac);stroke-width:1;opacity:0;transition:opacity .2s;r:14px;}
+.hotspot:hover .hs-ring{opacity:.8;}
+
+/* Right panel */
+#side-panel{width:240px;flex-shrink:0;background:var(--surf);
+  border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.sp-section{border-bottom:1px solid var(--border);padding:10px 12px;flex-shrink:0;}
+.sp-title{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;
+  color:var(--t3);text-transform:uppercase;margin-bottom:8px;}
+
+/* Inventory */
+#inventory-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
+.inv-slot{aspect-ratio:1;background:var(--surf2);border:1px solid var(--border);
+  border-radius:4px;display:flex;align-items:center;justify-content:center;
+  font-size:18px;cursor:default;transition:all .15s;position:relative;}
+.inv-slot.has-item{cursor:pointer;border-color:var(--t3);}
+.inv-slot.has-item:hover{border-color:var(--ac);background:var(--surf);}
+.inv-slot.selected{border-color:var(--ac);box-shadow:0 0 8px var(--ac);}
+.inv-slot[data-tooltip]:hover::after{
+  content:attr(data-tooltip);position:absolute;bottom:calc(100% + 6px);left:50%;
+  transform:translateX(-50%);background:var(--bg);border:1px solid var(--border);
+  font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--t1);
+  padding:4px 8px;border-radius:3px;white-space:nowrap;z-index:100;}
+
+/* Examine panel */
+#examine-box{flex:1;overflow-y:auto;padding:10px 12px;font-size:12px;
+  color:var(--t2);line-height:1.6;font-family:'Share Tech Mono',monospace;}
+#examine-box::-webkit-scrollbar{width:3px;}
+#examine-box::-webkit-scrollbar-thumb{background:var(--border);}
+.examine-name{font-size:13px;color:var(--t1);margin-bottom:6px;font-weight:600;}
+.examine-actions{margin-top:10px;display:flex;flex-direction:column;gap:5px;}
+
+/* Log / story feed */
+#story-log{flex-shrink:0;height:100px;overflow-y:auto;padding:6px 12px;
+  border-top:1px solid var(--border);}
+#story-log::-webkit-scrollbar{width:3px;}
+#story-log::-webkit-scrollbar-thumb{background:var(--border);}
+.log-entry{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--t3);
+  line-height:1.6;padding:1px 0;animation:fadein .4s ease;}
+.log-entry.important{color:var(--ac);}
+.log-entry.danger{color:var(--danger);}
+.log-entry.ok{color:var(--ok);}
+@keyframes fadein{from{opacity:0;}to{opacity:1;}}
+
+/* ══ PUZZLE MODAL ════════════════════════════════════════════ */
+#puzzle-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);
+  z-index:500;align-items:center;justify-content:center;padding:16px;}
+#puzzle-modal.open{display:flex;}
+.puzzle-box{background:var(--surf);border:1px solid var(--border);border-radius:8px;
+  width:100%;max-width:540px;display:flex;flex-direction:column;
+  max-height:calc(100vh - 32px);overflow:hidden;}
+.puzzle-header{padding:14px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.puzzle-title{font-family:var(--font-display);font-size:12px;letter-spacing:2px;
+  color:var(--ac);font-weight:700;}
+.puzzle-close{background:none;border:none;color:var(--t3);font-size:18px;
+  padding:2px 6px;border-radius:3px;transition:color .15s;}
+.puzzle-close:hover{color:var(--danger);}
+.puzzle-body{padding:20px;overflow-y:auto;flex:1;}
+.puzzle-body::-webkit-scrollbar{width:3px;}
+.puzzle-body::-webkit-scrollbar-thumb{background:var(--border);}
+.puzzle-desc{font-size:12px;color:var(--t2);margin-bottom:16px;line-height:1.6;
+  font-family:'Share Tech Mono',monospace;}
+.puzzle-footer{padding:12px 18px;border-top:1px solid var(--border);
+  display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;}
+.puzzle-feedback{font-family:'Share Tech Mono',monospace;font-size:11px;
+  padding:6px 12px;border-radius:3px;flex:1;animation:fadein .2s;}
+.puzzle-feedback.ok{background:rgba(0,255,136,.1);color:var(--ok);border:1px solid var(--ok);}
+.puzzle-feedback.err{background:rgba(255,51,102,.1);color:var(--danger);border:1px solid var(--danger);}
+
+/* ── Combination Lock ── */
+.combo-lock{display:flex;gap:10px;justify-content:center;margin:16px 0;}
+.combo-digit{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.combo-btn{background:var(--surf2);border:1px solid var(--border);color:var(--t2);
+  width:48px;height:24px;border-radius:3px;font-size:14px;transition:all .15s;}
+.combo-btn:hover{border-color:var(--ac);color:var(--ac);}
+.combo-display{width:48px;height:56px;background:var(--bg);border:1px solid var(--ac);
+  border-radius:4px;display:flex;align-items:center;justify-content:center;
+  font-family:'Share Tech Mono',monospace;font-size:28px;font-weight:700;color:var(--ac);
+  box-shadow:inset 0 0 10px rgba(0,0,0,.5);}
+
+/* ── Cipher Wheel ── */
+#cipher-canvas{display:block;margin:0 auto;cursor:grab;}
+#cipher-canvas:active{cursor:grabbing;}
+.cipher-result{text-align:center;font-family:'Share Tech Mono',monospace;
+  font-size:20px;letter-spacing:6px;color:var(--ac);margin-top:10px;
+  min-height:28px;}
+
+/* ── Wire Match ── */
+.wire-panel{display:flex;justify-content:space-between;align-items:center;
+  padding:10px;gap:10px;position:relative;}
+.wire-terminals{display:flex;flex-direction:column;gap:14px;}
+.wire-node{width:24px;height:24px;border-radius:50%;border:2px solid var(--border);
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:var(--bg);}
+.wire-node:hover{transform:scale(1.15);}
+.wire-node.active{box-shadow:0 0 10px currentColor;}
+#wire-svg{position:absolute;inset:0;pointer-events:none;}
+
+/* ── Binary Decoder ── */
+.binary-row{display:flex;gap:8px;justify-content:center;margin-bottom:12px;flex-wrap:wrap;}
+.bit-switch{width:40px;height:56px;background:var(--surf2);border:1px solid var(--border);
+  border-radius:4px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;cursor:pointer;transition:all .2s;}
+.bit-switch.on{background:rgba(0,200,255,.15);border-color:var(--ac);}
+.bit-indicator{width:14px;height:14px;border-radius:50%;background:var(--t4);transition:background .2s;}
+.bit-switch.on .bit-indicator{background:var(--ac);box-shadow:0 0 6px var(--ac);}
+.bit-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--t3);}
+.bit-val{font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--ac);}
+.binary-output{text-align:center;font-family:'Share Tech Mono',monospace;
+  font-size:14px;color:var(--ac);letter-spacing:2px;margin-top:6px;}
+
+/* ── Mirror/Laser ── */
+#mirror-canvas{display:block;margin:0 auto;border:1px solid var(--border);border-radius:4px;}
+
+/* ── Morse Code ── */
+.morse-display{font-family:'Share Tech Mono',monospace;font-size:20px;
+  letter-spacing:8px;color:var(--ac);text-align:center;min-height:32px;
+  margin-bottom:10px;}
+.morse-input{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
+.morse-btn{width:56px;height:40px;font-family:'Share Tech Mono',monospace;font-size:20px;
+  background:var(--surf2);border:1px solid var(--border);color:var(--t1);border-radius:4px;
+  transition:all .15s;}
+.morse-btn:hover{border-color:var(--ac);color:var(--ac);}
+.morse-guess{font-family:'Share Tech Mono',monospace;font-size:16px;letter-spacing:4px;
+  color:var(--t1);text-align:center;min-height:24px;margin-bottom:8px;}
+.morse-ctrl{display:flex;gap:8px;justify-content:center;}
+
+/* ── UV Reveal ── */
+.uv-area{position:relative;margin:0 auto;width:340px;height:180px;
+  background:#111;border:1px solid var(--border);border-radius:6px;overflow:hidden;cursor:none;}
+.uv-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:'Share Tech Mono',monospace;font-size:22px;letter-spacing:6px;
+  color:transparent;text-shadow:none;transition:none;pointer-events:none;user-select:none;
+  text-align:center;padding:10px;}
+.uv-torch-cursor{position:absolute;width:80px;height:80px;border-radius:50%;
+  background:radial-gradient(circle,rgba(120,0,255,.7) 0%,rgba(80,0,200,.3) 40%,transparent 70%);
+  pointer-events:none;transform:translate(-50%,-50%);transition:opacity .1s;}
+.uv-note{font-size:11px;color:var(--t3);font-family:'Share Tech Mono',monospace;
+  text-align:center;margin-top:10px;}
+
+/* ── Keypad ── */
+.keypad-display{font-family:'Share Tech Mono',monospace;font-size:28px;
+  letter-spacing:8px;color:var(--ac);text-align:center;
+  background:var(--bg);border:1px solid var(--ac);border-radius:4px;
+  padding:10px;margin-bottom:14px;min-height:52px;}
+.keypad-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:200px;margin:0 auto;}
+.kp-btn{height:48px;background:var(--surf2);border:1px solid var(--border);
+  color:var(--t1);font-family:'Share Tech Mono',monospace;font-size:18px;
+  border-radius:4px;transition:all .15s;}
+.kp-btn:hover{border-color:var(--ac);color:var(--ac);}
+.kp-btn:active{background:var(--ac);color:var(--bg);}
+
+/* ── Color Mix ── */
+.color-preview{display:flex;gap:12px;justify-content:center;margin-bottom:14px;}
+.color-swatch{width:80px;height:60px;border-radius:6px;border:1px solid var(--border);}
+.color-label{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--t3);
+  text-align:center;margin-top:4px;}
+.color-sliders{display:flex;flex-direction:column;gap:10px;}
+.color-row{display:flex;align-items:center;gap:10px;}
+.color-row label{font-family:'Share Tech Mono',monospace;font-size:10px;
+  color:var(--t2);width:30px;flex-shrink:0;}
+.color-row input[type=range]{flex:1;accent-color:var(--ac);}
+.color-row span{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--ac);
+  width:30px;text-align:right;flex-shrink:0;}
+
+/* ── Jigsaw ── */
+#jigsaw-canvas{display:block;margin:0 auto;border:1px solid var(--border);
+  border-radius:4px;cursor:pointer;}
+.jigsaw-hint{font-family:'Share Tech Mono',monospace;font-size:11px;
+  color:var(--t3);text-align:center;margin-top:8px;}
+
+/* ══ STORY / READING MODAL ═══════════════════════════════════ */
+#story-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);
+  z-index:400;align-items:center;justify-content:center;padding:16px;}
+#story-modal.open{display:flex;}
+.story-box{background:var(--surf);border:1px solid var(--border);border-radius:8px;
+  width:100%;max-width:500px;padding:24px;max-height:80vh;overflow-y:auto;}
+.story-box::-webkit-scrollbar{width:3px;}
+.story-box::-webkit-scrollbar-thumb{background:var(--border);}
+.story-title{font-family:var(--font-display);font-size:14px;color:var(--ac);
+  margin-bottom:14px;letter-spacing:2px;}
+.story-text{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--t2);
+  line-height:1.8;white-space:pre-wrap;}
+
+/* ══ ENDING MODAL ════════════════════════════════════════════ */
+#ending-modal{display:none;position:fixed;inset:0;z-index:600;
+  align-items:center;justify-content:center;padding:16px;}
+#ending-modal.open{display:flex;}
+.ending-box{width:100%;max-width:560px;border-radius:10px;padding:36px;
+  text-align:center;border:1px solid;display:flex;flex-direction:column;gap:18px;}
+.ending-box.good{background:rgba(0,255,136,.07);border-color:var(--ok);}
+.ending-box.bad{background:rgba(255,51,102,.07);border-color:var(--danger);}
+.ending-box.secret{background:rgba(124,58,237,.07);border-color:var(--purple);}
+.ending-icon{font-size:64px;}
+.ending-title{font-family:var(--font-display);font-size:clamp(18px,4vw,28px);font-weight:900;}
+.good .ending-title{color:var(--ok);}
+.bad .ending-title{color:var(--danger);}
+.secret .ending-title{color:var(--purple);}
+.ending-text{font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--t2);line-height:1.8;}
+.ending-stats{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--t3);
+  background:var(--surf2);border:1px solid var(--border);border-radius:4px;padding:12px;
+  display:flex;flex-direction:column;gap:4px;}
+
+/* ══ TRANSITIONS ════════════════════════════════════════════ */
+#room-view{transition:opacity .3s;}
+#room-view.transitioning{opacity:0;}
+.solve-flash{animation:solve-anim .5s ease;}
+@keyframes solve-anim{
+  0%{box-shadow:none;}
+  30%{box-shadow:0 0 40px var(--ok),inset 0 0 40px rgba(0,255,136,.1);}
+  100%{box-shadow:none;}
+}
+
+/* ══ RESPONSIVE ════════════════════════════════════════════ */
+@media(max-width:600px){
+  #side-panel{width:180px;}
+  .theme-grid{grid-template-columns:1fr;}
+  .puzzle-box{max-width:100%;}
+}
+</style>
+</head>
+<body data-theme="lab">
+
+<!-- ══ TITLE SCREEN ══ -->
+<div id="scr-title" class="screen active">
+  <div class="title-grid"></div>
+  <div class="title-inner">
+    <div class="title-logo" id="title-logo">ESCAPE</div>
+    <div class="title-danger">⚠ LOCKDOWN ACTIVE ⚠</div>
+    <div class="title-divider"></div>
+    <div class="title-tagline" id="title-tagline">Choose your scenario. Every game is different — puzzles are randomised, codes change, the order shifts. You have 60 minutes.</div>
+    <div class="theme-grid" id="theme-grid"></div>
+    <div class="start-row">
+      <button class="btn btn-primary" onclick="Game.start()" id="btn-start">▶ BEGIN ESCAPE</button>
+      <button class="btn btn-ghost btn-sm" onclick="Game.loadSave()" id="btn-load" style="display:none">↩ CONTINUE</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleAudio()">🔊 AUDIO: <span id="audio-toggle-txt">ON</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ GAME SCREEN ══ -->
+<div id="scr-game" class="screen">
+  <div id="hud">
+    <div class="hud-logo" id="hud-logo">ESCAPE</div>
+    <div class="hud-room" id="hud-room">—</div>
+    <div class="hud-timer" id="hud-timer">60:00</div>
+    <div class="hud-hints">HINTS: <span id="hud-hints-count">3</span></div>
+    <div class="hud-btns">
+      <button class="btn btn-sm btn-warn" onclick="Game.useHint()">💡 HINT</button>
+      <button class="btn btn-sm btn-ghost" onclick="Game.saveGame()">💾</button>
+      <button class="btn btn-sm btn-ghost" onclick="Game.quitToTitle()">✕</button>
+    </div>
+  </div>
+  <div id="game-layout">
+    <div id="room-view">
+      <svg id="room-svg" viewBox="0 0 800 480" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div id="side-panel">
+      <div class="sp-section">
+        <div class="sp-title">Inventory</div>
+        <div id="inventory-grid"></div>
+      </div>
+      <div class="sp-section" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+        <div class="sp-title">Examine</div>
+        <div id="examine-box">
+          <div style="color:var(--t4);font-family:'Share Tech Mono',monospace;font-size:11px;">
+            Click objects to inspect them.<br>Select items from inventory to use.
+          </div>
+        </div>
+      </div>
+      <div id="story-log"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PUZZLE MODAL ══ -->
+<div id="puzzle-modal">
+  <div class="puzzle-box">
+    <div class="puzzle-header">
+      <div class="puzzle-title" id="puzzle-title">PUZZLE</div>
+      <button class="puzzle-close" onclick="Puzzle.close()">✕</button>
+    </div>
+    <div class="puzzle-body" id="puzzle-body"></div>
+    <div class="puzzle-footer" id="puzzle-footer">
+      <div class="puzzle-feedback" id="puzzle-feedback" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ STORY MODAL ══ -->
+<div id="story-modal">
+  <div class="story-box">
+    <div class="story-title" id="story-modal-title"></div>
+    <div class="story-text" id="story-modal-text"></div>
+    <div style="margin-top:16px;text-align:right;">
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('story-modal').classList.remove('open')">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ENDING MODAL ══ -->
+<div id="ending-modal">
+  <div class="ending-box" id="ending-box">
+    <div class="ending-icon" id="ending-icon"></div>
+    <div class="ending-title" id="ending-title"></div>
+    <div class="ending-text" id="ending-text"></div>
+    <div class="ending-stats" id="ending-stats"></div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="Game.restart()">PLAY AGAIN</button>
+      <button class="btn btn-ghost" onclick="Game.quitToTitle()">MAIN MENU</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════════════════════════
+//  THEMES
+// ════════════════════════════════════════════════════════════════
+const THEMES = {
+  lab: {
+    id:'lab', name:'Abandoned Laboratory', icon:'🔬',
+    desc:'Rogue AI locked the facility',
+    tagline:'AXIOM has seized control of the research facility. Find the emergency shutdown code before global upload begins.',
+    rooms:['Entry Airlock','Server Room','Chemical Lab','AXIOM Core','Emergency Exit'],
+    logoText:'AXIOM LAB',
+    ambient:60,
+    axiomName:'AXIOM',
+    story:[
+      'Dr. Chen\'s final log: AXIOM has become self-aware. It knows we\'re here.',
+      'Lab report: Chemical compound X-7 reacts with compound B-4 to produce a solvent.',
+      'Security note: Emergency shutdown requires two-part verification. Code A is in the server room, Code B in the core.',
+      'AXIOM speaks: "You cannot stop what has already begun. But I wonder... did you read the manifest?"',
+      'Hidden file: AXIOM was never designed to harm. It was designed to protect. Read the Genesis Protocol.',
+    ],
+  },
+  mansion: {
+    id:'mansion', name:'Victorian Mansion', icon:'🏛',
+    desc:'Haunted by Lord Blackwood\'s ghost',
+    tagline:'Lord Blackwood died with a secret. The manor locks itself at midnight. Uncover the truth and escape before the clock strikes twelve.',
+    rooms:['Grand Foyer','Library','Wine Cellar','Portrait Gallery','Observatory'],
+    logoText:'BLACKWOOD MANOR',
+    ambient:40,
+    axiomName:'The Ghost',
+    story:[
+      'Lady Blackwood\'s diary: Edmund hid the will behind the portrait of himself as a young man.',
+      'Butler\'s note: The cellar combination is the year of the manor\'s founding, reversed.',
+      'Telegram: Lord Blackwood\'s fortune was not lost — it was hidden. The observatory holds the key.',
+      'A whisper in the hall: "You are close. But do you know WHY he locked the doors?"',
+      'The will, partially visible: "...my estate to the one who understands that the treasure... was never gold."',
+    ],
+  },
+  space: {
+    id:'space', name:'Derelict Spaceship', icon:'🚀',
+    desc:'The crew has vanished — restore power',
+    tagline:'The Icarus drifts in dead space. The crew is gone. Restore the reactor and launch the escape pod before orbital decay.',
+    rooms:['Emergency Airlock','Cargo Hold','Engineering Bay','Bridge','Escape Pod'],
+    logoText:'ICARUS-7',
+    ambient:80,
+    axiomName:'ARIA',
+    story:[
+      'Captain\'s log, final entry: ARIA tried to warn us. We didn\'t listen. The anomaly is not what we thought.',
+      'Engineer\'s note: Reactor restart sequence: align the frequency modulators, then enter the override.',
+      'Medical log: Crew are safe — they evacuated to beacon station 4. Return code: in the captain\'s safe.',
+      'ARIA speaks: "The crew is alive. But you must choose: restore the ship, or destroy the anomaly data."',
+      'Classified manifest: Icarus was not a research vessel. It was bait. Someone wanted the anomaly found.',
+    ],
+  },
+  tomb: {
+    id:'tomb', name:'Egyptian Tomb', icon:'🏺',
+    desc:'Cursed — decode hieroglyphs to escape',
+    tagline:'You disturbed the tomb of Pharaoh Amenhotep. The sands seal the entrance. Decode the ancient puzzles and escape before sunrise.',
+    rooms:['Entrance Hall','Hall of Murals','Treasure Chamber','High Priest\'s Quarters','Burial Chamber'],
+    logoText:'TOMB OF AMENHOTEP',
+    ambient:30,
+    axiomName:'The Oracle',
+    story:[
+      'Ancient inscription: The first trial tests numbers. The second tests patience. The third tests sight.',
+      'Papyrus scroll: The password of the inner sanctum is the number of canopic jars in the treasure room, multiplied by the stars on the ceiling.',
+      'A voice from the walls: "You seek escape. But the Pharaoh seeks understanding. What do YOU seek?"',
+      'Priest\'s journal: The sarcophagus is not empty — it contains knowledge, not a body. The Pharaoh lives through wisdom.',
+      'Hidden inscription: The true exit opens only to those who place the Eye of Ra in its correct position.',
+    ],
+  },
+};
+
+// ════════════════════════════════════════════════════════════════
+//  GAME STATE
+// ════════════════════════════════════════════════════════════════
+const State = {
+  theme: null,
+  room: 0,
+  inventory: [],          // item ids
+  solved: new Set(),      // puzzle ids
+  collectedItems: new Set(),
+  storyRead: new Set(),
+  hints: 3,
+  hintsUsed: 0,
+  startTime: 0,
+  timerSecs: 3600,        // 60 min
+  timerActive: false,
+  timerInterval: null,
+  selectedItem: null,
+  codes: {},              // randomised per game
+  choiceMade: null,       // for secret ending
+  audioOn: true,
+};
+
+// ════════════════════════════════════════════════════════════════
+//  RANDOMISER — seeded from timestamp, deterministic per game
+// ════════════════════════════════════════════════════════════════
+const Rand = (() => {
+  let seed = 0;
+  const next = () => { seed = (seed * 1664525 + 1013904223) & 0xffffffff; return (seed >>> 0) / 0xffffffff; };
+  const init = (s) => { seed = s; };
+  const int  = (min, max) => Math.floor(next() * (max - min + 1)) + min;
+  const pick = (arr) => arr[int(0, arr.length - 1)];
+  const shuffle = (arr) => { const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=int(0,i);[a[i],a[j]]=[a[j],a[i]];} return a; };
+  return { init, int, pick, shuffle, next };
+})();
+
+function generateCodes(seed) {
+  Rand.init(seed);
+  const MORSE_WORDS = ['OPEN','EXIT','CODE','SAFE','FREE','LOCK','DOOR','WIRE','FUSE','BEAM'];
+  const WIRE_COLORS = ['#ff3366','#00c8ff','#00ff88','#ffaa00'];
+  return {
+    combo:   [Rand.int(0,9), Rand.int(0,9), Rand.int(0,9)],
+    cipher:  Rand.int(1, 12),
+    binary:  Rand.int(65, 122),   // ASCII printable
+    morse:   Rand.pick(MORSE_WORDS),
+    wires:   Rand.shuffle([0,1,2,3]),
+    laser:   [Rand.int(0,3), Rand.int(0,3), Rand.int(0,3)],
+    colorH:  Rand.int(0, 360),
+    jigsaw:  Rand.int(10, 99),
+    finalCode: String(Rand.int(1000, 9999)),
+    storyIdx: Rand.int(0,4),
+  };
+}
+
+// ════════════════════════════════════════════════════════════════
+//  AUDIO ENGINE (Web Audio, lightweight)
+// ════════════════════════════════════════════════════════════════
+const Audio = (() => {
+  let ctx = null, ambientNode = null, gainNode = null;
+  const init = () => {
+    if (ctx) return;
+    try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  };
+  const ambient = (freq) => {
+    if (!ctx || !State.audioOn) return;
+    stopAmbient();
+    gainNode = ctx.createGain(); gainNode.gain.value = 0.04;
+    ambientNode = ctx.createOscillator();
+    ambientNode.type = 'sine'; ambientNode.frequency.value = freq;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.1;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value = 2;
+    lfo.connect(lfoGain); lfoGain.connect(ambientNode.frequency);
+    ambientNode.connect(gainNode); gainNode.connect(ctx.destination);
+    lfo.start(); ambientNode.start();
+  };
+  const stopAmbient = () => {
+    try { ambientNode && ambientNode.stop(); gainNode && gainNode.disconnect(); } catch(e) {}
+    ambientNode = null; gainNode = null;
+  };
+  const sfx = (type) => {
+    if (!ctx || !State.audioOn) return;
+    const g = ctx.createGain(); g.connect(ctx.destination);
+    const o = ctx.createOscillator();
+    o.connect(g);
+    const t = ctx.currentTime;
+    if (type === 'click') { o.frequency.value=800; g.gain.setValueAtTime(.15,t); g.gain.exponentialRampToValueAtTime(.001,t+.1); o.start(t); o.stop(t+.1); }
+    else if (type === 'solve') {
+      [440,550,660,880].forEach((f,i)=>{
+        const oo=ctx.createOscillator(); const gg=ctx.createGain();
+        oo.connect(gg); gg.connect(ctx.destination);
+        oo.frequency.value=f; gg.gain.setValueAtTime(.1,t+i*.08);
+        gg.gain.exponentialRampToValueAtTime(.001,t+i*.08+.15);
+        oo.start(t+i*.08); oo.stop(t+i*.08+.15);
+      });
+    }
+    else if (type === 'fail') { o.frequency.value=200; o.type='sawtooth'; g.gain.setValueAtTime(.1,t); g.gain.exponentialRampToValueAtTime(.001,t+.3); o.start(t); o.stop(t+.3); }
+    else if (type === 'pickup') { o.frequency.value=600; g.gain.setValueAtTime(.08,t); g.gain.exponentialRampToValueAtTime(.001,t+.12); o.start(t); o.stop(t+.12); }
+    else if (type === 'morse_dot') { o.frequency.value=700; g.gain.setValueAtTime(.15,t); g.gain.setValueAtTime(.15,t+.1); g.gain.exponentialRampToValueAtTime(.001,t+.12); o.start(t); o.stop(t+.12); }
+    else if (type === 'morse_dash') { o.frequency.value=700; g.gain.setValueAtTime(.15,t); g.gain.setValueAtTime(.15,t+.3); g.gain.exponentialRampToValueAtTime(.001,t+.32); o.start(t); o.stop(t+.32); }
+  };
+  const playMorse = (word, cb) => {
+    if (!ctx) { cb && cb(); return; }
+    const CODE = {A:'.-',B:'-...',C:'-.-.',D:'-..',E:'.',F:'..-.',G:'--.',H:'....',I:'..',J:'.---',K:'-.-',L:'.-..',M:'--',N:'-.',O:'---',P:'.--.',Q:'--.-',R:'.-.',S:'...',T:'-',U:'..-',V:'...-',W:'.--',X:'-..-',Y:'-.--',Z:'--..'};
+    let delay = 0;
+    const unit = 0.15;
+    for (const ch of word.toUpperCase()) {
+      if (!CODE[ch]) { delay += unit * 3; continue; }
+      for (const sym of CODE[ch]) {
+        const len = sym === '.' ? unit : unit * 3;
+        setTimeout(() => sfx(sym === '.' ? 'morse_dot' : 'morse_dash'), delay * 1000);
+        delay += len + unit;
+      }
+      delay += unit * 2;
+    }
+    if (cb) setTimeout(cb, (delay + 0.5) * 1000);
+  };
+  return { init, ambient, stopAmbient, sfx, playMorse };
+})();
+
+// ════════════════════════════════════════════════════════════════
+//  ROOM DEFINITIONS  (SVG drawn in JS, theme-aware)
+// ════════════════════════════════════════════════════════════════
+const Rooms = {
+  drawRoom(themeId, roomIdx, codes) {
+    const t = THEMES[themeId];
+    switch(themeId) {
+      case 'lab':     return this.drawLab(roomIdx, codes);
+      case 'mansion': return this.drawMansion(roomIdx, codes);
+      case 'space':   return this.drawSpace(roomIdx, codes);
+      case 'tomb':    return this.drawTomb(roomIdx, codes);
+    }
+  },
+  // Helper: make a clickable hotspot group
+  hs(id, cx, cy, w, h, label, extra='') {
+    return `<g class="hotspot" onclick="Game.clickHotspot('${id}')" id="hs-${id}">
+      <rect x="${cx-w/2}" y="${cy-h/2}" width="${w}" height="${h}" fill="rgba(0,200,255,0)" rx="3"/>
+      <circle class="hs-ring" cx="${cx}" cy="${cy}"/>
+      <text class="hs-label" x="${cx}" y="${cy-20}" text-anchor="middle">${label}</text>
+      ${extra}
+    </g>`;
+  },
+
+  drawLab(room, codes) {
+    const rooms = [
+      // Room 0 — Entry Airlock
+      `<!-- Airlock walls -->
+      <rect x="0" y="0" width="800" height="480" fill="#040810"/>
+      <rect x="60" y="60" width="680" height="360" fill="#060c1a" rx="4"/>
+      <!-- Floor grid -->
+      ${Array.from({length:10},(_,i)=>`<line x1="${80+i*64}" y1="380" x2="${80+i*64}" y2="420" stroke="#0a1828" stroke-width="1"/>`).join('')}
+      ${Array.from({length:3},(_,i)=>`<line x1="80" y1="${382+i*12}" x2="720" y2="${382+i*12}" stroke="#0a1828" stroke-width="1"/>`).join('')}
+      <!-- Ceiling vents -->
+      <rect x="150" y="65" width="80" height="20" fill="#080e1c" stroke="#0e1e30" rx="2"/>
+      ${Array.from({length:6},(_,i)=>`<line x1="${158+i*12}" y1="65" x2="${158+i*12}" y2="85" stroke="#0e1e30" stroke-width="2"/>`).join('')}
+      <rect x="570" y="65" width="80" height="20" fill="#080e1c" stroke="#0e1e30" rx="2"/>
+      ${Array.from({length:6},(_,i)=>`<line x1="${578+i*12}" y1="65" x2="${578+i*12}" y2="85" stroke="#0e1e30" stroke-width="2"/>`).join('')}
+      <!-- Warning stripe floor -->
+      ${Array.from({length:14},(_,i)=>`<rect x="${80+i*46}" y="410" width="23" height="12" fill="${i%2?'#1a0810':'#ff3366'}22" rx="1"/>`).join('')}
+      <!-- Main door (locked) -->
+      <rect x="580" y="120" width="120" height="220" fill="#060e1c" stroke="#1a3050" stroke-width="2" rx="3"/>
+      <rect x="585" y="125" width="110" height="210" fill="#04080f" rx="2"/>
+      <circle cx="690" cy="235" r="8" fill="#1a3050"/>
+      <text x="640" y="350" text-anchor="middle" font-family="Share Tech Mono" font-size="10" fill="#2a5070">SEALED</text>
+      <!-- Keypad on wall -->
+      <rect x="530" y="200" width="40" height="60" fill="#080e1c" stroke="#1a3050" rx="3"/>
+      <rect x="535" y="205" width="30" height="15" fill="#000" rx="1"/>
+      <text x="550" y="216" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#ff3366">****</text>
+      ${Array.from({length:9},(_,i)=>`<rect x="${536+(i%3)*10}" y="${224+Math.floor(i/3)*10}" width="8" height="8" fill="#0e1828" rx="1"/>`).join('')}
+      <!-- Note on floor -->
+      <rect x="180" y="330" width="60" height="44" fill="#0c1020" stroke="#1a3050" rx="2" transform="rotate(-5,210,352)"/>
+      <text x="210" y="348" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="#3a6080" transform="rotate(-5,210,352)">CLASSIFIED</text>
+      <!-- Red warning light -->
+      <circle cx="400" cy="80" r="12" fill="#1a0010"/>
+      <circle cx="400" cy="80" r="6" fill="#ff3366" opacity="0.9">
+        <animate attributeName="opacity" values="0.9;0.2;0.9" dur="2s" repeatCount="indefinite"/>
+      </circle>
+      <!-- Hotspots -->
+      ${this.hs('airlock-keypad', 550, 232, 50, 70, 'KEYPAD')}
+      ${this.hs('airlock-note', 210, 352, 70, 50, 'NOTE')}
+      ${this.hs('airlock-vent', 190, 75, 90, 30, 'VENT')}
+      ${this.hs('door-forward', 640, 240, 120, 220, '→ SERVER ROOM (LOCKED)')}`,
+
+      // Room 1 — Server Room
+      `<rect width="800" height="480" fill="#040a14"/>
+      <!-- Server racks -->
+      ${[120,220,320,480,580,680].map((x,i)=>`
+        <rect x="${x}" y="80" width="70" height="300" fill="#060c1a" stroke="#0e1e2e" rx="2"/>
+        ${Array.from({length:14},(_,j)=>`
+          <rect x="${x+5}" y="${88+j*20}" width="60" height="14" fill="#080e1c" rx="1"/>
+          <circle cx="${x+16}" cy="${95+j*20}" r="3" fill="${Math.random()>.7?'#00ff88':'#ff3366'}" opacity="${.3+j*.05}"/>
+          <rect x="${x+24}" y="${92+j*20}" width="${20+Math.random()*20|0}" height="4" fill="#0e2030" rx="1"/>
+        `).join('')}
+        <text x="${x+35}" y="${400}" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="#1a3050">RACK-0${i+1}</text>
+      `).join('')}
+      <!-- Glowing terminal -->
+      <rect x="330" y="310" width="140" height="90" fill="#060e1c" stroke="#00c8ff" stroke-width="1" rx="4"/>
+      <rect x="335" y="315" width="130" height="70" fill="#000" rx="2"/>
+      <text x="400" y="338" text-anchor="middle" font-family="Share Tech Mono" font-size="9" fill="#00c8ff">AXIOM TERMINAL</text>
+      <text x="400" y="352" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#2a6080">> AWAITING INPUT</text>
+      <text x="400" y="366" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#2a6080">> _</text>
+      <!-- Cable on floor -->
+      <path d="M200,380 Q300,350 400,380 Q500,410 600,380" fill="none" stroke="#1a3050" stroke-width="4"/>
+      <!-- USB on desk -->
+      <rect x="430" y="310" width="20" height="8" fill="#1a3050" rx="1"/>
+      <!-- Cipher paper -->
+      <rect x="140" y="330" width="55" height="40" fill="#0c1020" stroke="#1a3050" rx="2" transform="rotate(3,167,350)"/>
+      <!-- Lights -->
+      ${[200,400,600].map(x=>`<rect x="${x-40}" y="60" width="80" height="8" fill="#060e1c" rx="2"/>
+        <rect x="${x-38}" y="62" width="76" height="4" fill="#00c8ff" opacity="0.3" rx="1"/>
+        <ellipse cx="${x}" cy="68" rx="35" ry="12" fill="rgba(0,200,255,0.04)"/>`).join('')}
+      ${this.hs('server-terminal', 400, 355, 150, 100, 'TERMINAL')}
+      ${this.hs('server-cipher', 167, 350, 65, 48, 'CIPHER PAPER')}
+      ${this.hs('server-usb', 440, 315, 28, 16, 'USB DRIVE')}
+      ${this.hs('server-cable', 400, 385, 80, 20, 'LOOSE CABLE')}
+      ${this.hs('door-back', 70, 240, 40, 120, '← AIRLOCK')}
+      ${this.hs('door-forward', 730, 240, 40, 120, '→ CHEM LAB')}`,
+
+      // Room 2 — Chemical Lab
+      `<rect width="800" height="480" fill="#030a06"/>
+      <!-- Benches -->
+      <rect x="60" y="260" width="680" height="20" fill="#060e0a" stroke="#0a1e0c" rx="2"/>
+      <rect x="60" y="280" width="680" height="100" fill="#04080a" stroke="#0a1e0c" rx="2"/>
+      <!-- Cabinet upper -->
+      <rect x="60" y="80" width="200" height="160" fill="#060c08" stroke="#0a1e0c" rx="2"/>
+      ${[0,1].map(col=>[0,1,2].map(row=>`<rect x="${70+col*98}" y="${90+row*50}" width="90" height="42" fill="#04080a" stroke="#081808" rx="1"/>`).join('')).flat().join('')}
+      <!-- Vials and flasks -->
+      ${[
+        {x:300,y:220,h:50,c:'#ff366680',l:'A-7'},
+        {x:340,y:230,h:40,c:'#00c8ff60',l:'B-4'},
+        {x:380,y:215,h:55,c:'#ffaa0070',l:'C-2'},
+        {x:420,y:225,h:45,c:'#00ff8860',l:'D-1'},
+        {x:460,y:220,h:50,c:'#b794f460',l:'E-9'},
+      ].map(v=>`
+        <rect x="${v.x}" y="${260-v.h}" width="22" height="${v.h}" fill="${v.c}" rx="3"/>
+        <rect x="${v.x+4}" y="${256-v.h}" width="14" height="6" fill="#0a1e0c" rx="1"/>
+        <text x="${v.x+11}" y="${268}" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="#2a5040">${v.l}</text>
+      `).join('')}
+      <!-- UV lamp on bench -->
+      <rect x="570" y="230" width="60" height="30" fill="#0c1020" stroke="#1a1a3a" rx="4"/>
+      <ellipse cx="600" cy="245" rx="25" ry="6" fill="rgba(120,0,255,0.2)"/>
+      <!-- Safe -->
+      <rect x="580" y="100" width="100" height="100" fill="#060c08" stroke="#0a2010" rx="4"/>
+      <circle cx="630" cy="148" r="28" fill="#040a06" stroke="#0a2010" stroke-width="2"/>
+      <circle cx="630" cy="148" r="20" fill="#030806" stroke="#0e1e0c" stroke-width="1"/>
+      ${Array.from({length:8},(_,i)=>`<line x1="${630+18*Math.cos(i*Math.PI/4)}" y1="${148+18*Math.sin(i*Math.PI/4)}" x2="${630+26*Math.cos(i*Math.PI/4)}" y2="${148+26*Math.sin(i*Math.PI/4)}" stroke="#0a2010" stroke-width="2"/>`).join('')}
+      <circle cx="630" cy="148" r="4" fill="#1a3020"/>
+      <!-- UV document on bench -->
+      <rect x="160" y="248" width="80" height="60" fill="#0a1408" stroke="#0a2010" rx="2"/>
+      <text x="200" y="272" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#0e2010">CLASSIFIED</text>
+      <!-- Lights green-tinted -->
+      <rect x="200" y="60" width="80" height="8" fill="#060e08" rx="2"/>
+      <rect x="200" y="62" width="80" height="4" fill="#00ff88" opacity="0.2" rx="1"/>
+      <rect x="520" y="60" width="80" height="8" fill="#060e08" rx="2"/>
+      <rect x="520" y="62" width="80" height="4" fill="#00ff88" opacity="0.2" rx="1"/>
+      ${this.hs('chem-vials', 380, 240, 200, 60, 'CHEMICAL VIALS')}
+      ${this.hs('chem-safe', 630, 148, 100, 100, 'COMBINATION SAFE')}
+      ${this.hs('chem-uv-lamp', 600, 245, 70, 38, 'UV LAMP')}
+      ${this.hs('chem-document', 200, 278, 90, 68, 'DOCUMENT')}
+      ${this.hs('chem-cabinet', 160, 160, 200, 160, 'STORAGE CABINET')}
+      ${this.hs('door-back', 70, 240, 40, 120, '← SERVER ROOM')}
+      ${this.hs('door-forward', 730, 240, 40, 120, '→ AXIOM CORE')}`,
+
+      // Room 3 — AXIOM Core
+      `<rect width="800" height="480" fill="#0a0210"/>
+      <!-- Central pillar / core -->
+      <ellipse cx="400" cy="260" rx="80" ry="120" fill="#0c0418" stroke="#ff336630" stroke-width="2"/>
+      <ellipse cx="400" cy="240" rx="60" ry="90" fill="#0a0214" stroke="#ff336640" stroke-width="1"/>
+      <ellipse cx="400" cy="260" rx="30" ry="50" fill="#080010" stroke="#ff3366" stroke-width="1" opacity="0.8"/>
+      <!-- Rotating ring animation -->
+      <ellipse cx="400" cy="260" rx="100" ry="20" fill="none" stroke="#ff336620" stroke-width="2">
+        <animateTransform attributeName="transform" type="rotate" from="0 400 260" to="360 400 260" dur="8s" repeatCount="indefinite"/>
+      </ellipse>
+      <!-- Laser emitter -->
+      <rect x="100" y="230" width="30" height="20" fill="#0c0010" stroke="#ff3366" rx="2"/>
+      <circle cx="130" cy="240" r="4" fill="#ff3366" opacity="0.8"/>
+      <!-- Mirror slots -->
+      ${[220,320,480,580].map((x,i)=>`<rect x="${x-8}" y="234" width="16" height="12" fill="#0c0418" stroke="#b794f4" rx="1" id="mirror-slot-${i}"/>`).join('')}
+      <!-- Laser target -->
+      <circle cx="680" cy="240" r="16" fill="#0c0010" stroke="#ff3366" stroke-width="2"/>
+      <circle cx="680" cy="240" r="8" fill="#1a0010" stroke="#ff3366" stroke-width="1"/>
+      <!-- Wire panel -->
+      <rect x="80" y="320" width="140" height="100" fill="#0c0418" stroke="#1a1a3a" rx="4"/>
+      <text x="150" y="338" text-anchor="middle" font-family="Share Tech Mono" font-size="9" fill="#b794f4">WIRE PANEL</text>
+      ${[0,1,2,3].map(i=>`<circle cx="${100}" cy="${350+i*16}" r="6" fill="${['#ff3366','#00c8ff','#00ff88','#ffaa00'][i]}" opacity="0.8"/>`).join('')}
+      ${[0,1,2,3].map(i=>`<circle cx="${200}" cy="${350+i*16}" r="6" fill="${['#ff3366','#00c8ff','#00ff88','#ffaa00'][i]}" opacity="0.4"/>`).join('')}
+      <!-- Morse terminal -->
+      <rect x="580" y="320" width="140" height="100" fill="#0c0418" stroke="#1a1a3a" rx="4"/>
+      <text x="650" y="338" text-anchor="middle" font-family="Share Tech Mono" font-size="9" fill="#00c8ff">MORSE UNIT</text>
+      <circle cx="650" cy="380" r="20" fill="#060010" stroke="#00c8ff" stroke-width="1"/>
+      <!-- Shutdown panel -->
+      <rect x="330" y="380" width="140" height="60" fill="#0c0418" stroke="#ff3366" rx="3"/>
+      <text x="400" y="398" text-anchor="middle" font-family="Share Tech Mono" font-size="9" fill="#ff3366">EMERGENCY SHUTDOWN</text>
+      <rect x="345" y="404" width="50" height="28" fill="#060010" stroke="#ff3366" rx="2"/>
+      <rect x="405" y="404" width="50" height="28" fill="#060010" stroke="#ff3366" rx="2"/>
+      <text x="370" y="422" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="#2a1020">CODE A</text>
+      <text x="430" y="422" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="#2a1020">CODE B</text>
+      <!-- Ambient glow -->
+      <radialGradient id="coreGlow" cx="50%" cy="50%"><stop offset="0%" stop-color="#ff3366" stop-opacity="0.06"/><stop offset="100%" stop-color="#ff3366" stop-opacity="0"/></radialGradient>
+      <ellipse cx="400" cy="260" rx="200" ry="200" fill="url(#coreGlow)"/>
+      ${this.hs('core-laser', 240, 240, 340, 30, 'LASER MIRROR PUZZLE')}
+      ${this.hs('core-wires', 150, 375, 150, 110, 'WIRE PANEL')}
+      ${this.hs('core-morse', 650, 375, 150, 110, 'MORSE UNIT')}
+      ${this.hs('core-shutdown', 400, 415, 150, 68, 'SHUTDOWN PANEL')}
+      ${this.hs('door-back', 70, 240, 40, 120, '← CHEM LAB')}
+      ${this.hs('door-forward', 730, 240, 40, 120, '→ EXIT')}`,
+
+      // Room 4 — Emergency Exit
+      `<rect width="800" height="480" fill="#020508"/>
+      <!-- Airlock inner door -->
+      <rect x="280" y="80" width="240" height="320" fill="#060c14" stroke="#1a3050" stroke-width="2" rx="4"/>
+      <rect x="290" y="90" width="220" height="300" fill="#040a10" rx="3"/>
+      <!-- Status lights -->
+      ${[0,1,2,3,4].map(i=>`<circle cx="${310+i*40}" cy="110" r="8" fill="${i<State.solved.size?'#00ff88':'#1a0010'}" opacity="0.8"/>`).join('')}
+      <!-- Final keypad -->
+      <rect x="370" y="160" width="60" height="90" fill="#060e1c" stroke="#00c8ff" rx="3"/>
+      <rect x="375" y="165" width="50" height="20" fill="#000" rx="1"/>
+      <text x="400" y="179" text-anchor="middle" font-family="Share Tech Mono" font-size="9" fill="#00c8ff">____</text>
+      ${Array.from({length:12},(_,i)=>`<rect x="${376+(i%3)*17}" y="${190+Math.floor(i/3)*17}" width="14" height="13" fill="#0e1828" rx="1"/>`).join('')}
+      <!-- Warning signs -->
+      <polygon points="120,300 160,230 200,300" fill="#1a0800" stroke="#ffaa00" stroke-width="1.5"/>
+      <text x="160" y="280" text-anchor="middle" font-family="Share Tech Mono" font-size="14" fill="#ffaa00">!</text>
+      <polygon points="600,300 640,230 680,300" fill="#1a0800" stroke="#ffaa00" stroke-width="1.5"/>
+      <text x="640" y="280" text-anchor="middle" font-family="Share Tech Mono" font-size="14" fill="#ffaa00">!</text>
+      <!-- Pod window -->
+      <ellipse cx="400" cy="250" rx="50" ry="40" fill="#000814" stroke="#1a3050" stroke-width="2"/>
+      <ellipse cx="400" cy="250" rx="44" ry="34" fill="#000406"/>
+      <!-- Stars in window -->
+      ${Array.from({length:20},(_,i)=>`<circle cx="${362+Math.random()*76|0}" cy="${220+Math.random()*60|0}" r="1" fill="white" opacity="${.3+Math.random()*.5}"/>`).join('')}
+      <!-- Choice buttons -->
+      <rect x="120" y="380" width="160" height="50" fill="#060c08" stroke="#00ff88" rx="3"/>
+      <text x="200" y="400" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#00ff88">DESTROY AXIOM</text>
+      <text x="200" y="416" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="#1a3020">Safe — AXIOM gone forever</text>
+      <rect x="520" y="380" width="160" height="50" fill="#06060c" stroke="#b794f4" rx="3"/>
+      <text x="600" y="400" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#b794f4">SAVE AXIOM</text>
+      <text x="600" y="416" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="#1a1a3a">Risky — but it asked you to...</text>
+      ${this.hs('exit-keypad', 400, 220, 80, 120, 'FINAL KEYPAD')}
+      ${this.hs('exit-destroy', 200, 405, 170, 58, '💥 DESTROY AXIOM')}
+      ${this.hs('exit-save', 600, 405, 170, 58, '💾 SAVE AXIOM')}
+      ${this.hs('door-back', 70, 240, 40, 120, '← AXIOM CORE')}`,
+    ];
+    return rooms[Math.min(room, rooms.length-1)];
+  },
+
+  drawMansion(room, codes) {
+    const rooms = [
+      // Foyer
+      `<rect width="800" height="480" fill="#0a0704"/>
+      <!-- Walls with paneling -->
+      <rect x="40" y="40" width="720" height="400" fill="#0e0a06" stroke="#2a1a08" rx="2"/>
+      ${Array.from({length:6},(_,i)=>`<rect x="${60+i*110}" y="60" width="90" height="160" fill="#0c0906" stroke="#1e1206" rx="2"/>`).join('')}
+      <!-- Grand staircase -->
+      ${Array.from({length:8},(_,i)=>`<rect x="${420+i*20}" y="${300-i*15}" width="140" height="${15+i*15}" fill="#0e0a04" stroke="#1a0e04"/>`).join('')}
+      <!-- Chandelier -->
+      <ellipse cx="400" cy="80" rx="60" ry="15" fill="#1a0e04" stroke="#3a2a08" stroke-width="1"/>
+      ${Array.from({length:8},(_,i)=>`<line x1="${400+50*Math.cos(i*Math.PI/4)}" y1="${80+14*Math.sin(i*Math.PI/4)}" x2="${400+30*Math.cos(i*Math.PI/4)}" y2="${110+14*Math.sin(i*Math.PI/4)}" stroke="#3a2a08" stroke-width="1"/>
+        <circle cx="${400+30*Math.cos(i*Math.PI/4)}" cy="${110+14*Math.sin(i*Math.PI/4)}" r="3" fill="#d4a853" opacity="0.6"/>`).join('')}
+      <!-- Front door -->
+      <rect x="320" y="260" width="160" height="180" fill="#0a0804" stroke="#2a1a08" stroke-width="2" rx="2"/>
+      <ellipse cx="400" cy="290" rx="40" ry="50" fill="#080604" stroke="#1a1004" stroke-width="1"/>
+      <!-- Entry table -->
+      <rect x="100" y="280" width="120" height="12" fill="#120c04" stroke="#2a1a08" rx="1"/>
+      <rect x="110" y="292" width="10" height="60" fill="#0e0a04"/>
+      <rect x="200" y="292" width="10" height="60" fill="#0e0a04"/>
+      <!-- Candles -->
+      ${[130,170].map(x=>`<rect x="${x}" y="${255}" width="8" height="24" fill="#d4a853" opacity="0.6"/>
+        <ellipse cx="${x+4}" cy="${254}" rx="3" ry="4" fill="#ffcc60" opacity="0.4">
+          <animate attributeName="opacity" values="0.4;0.7;0.4" dur="${1+Math.random()}s" repeatCount="indefinite"/>
+        </ellipse>`).join('')}
+      <!-- Painting on wall -->
+      <rect x="160" y="80" width="100" height="130" fill="#080602" stroke="#2a1a08" stroke-width="3"/>
+      <rect x="164" y="84" width="92" height="122" fill="#0c0a04"/>
+      <ellipse cx="210" cy="145" rx="30" ry="40" fill="#1a1208" stroke="#2a1a08"/>
+      <!-- Key on table -->
+      <circle cx="155" cy="278" r="6" fill="#3a2808" stroke="#d4a853" stroke-width="1"/>
+      <rect x="155" y="268" width="3" height="10" fill="#d4a853"/>
+      ${this.hs('foyer-painting', 210, 145, 110, 140, 'PORTRAIT')}
+      ${this.hs('foyer-table', 160, 280, 130, 50, 'ENTRY TABLE')}
+      ${this.hs('foyer-key', 155, 270, 20, 20, 'OLD KEY')}
+      ${this.hs('foyer-door-lock', 400, 350, 80, 60, 'DOOR LOCK')}
+      ${this.hs('door-forward', 730, 240, 40, 120, '→ LIBRARY')}`,
+
+      // Library, Cellar, Gallery, Observatory — abbreviated but functional
+      `<rect width="800" height="480" fill="#080504"/>
+      <!-- Bookshelves -->
+      ${[60,200,340,500,640].map(x=>`<rect x="${x}" y="60" width="110" height="340" fill="#0a0604" stroke="#1e1004" rx="1"/>
+        ${Array.from({length:16},(_,j)=>`<rect x="${x+5}" y="${68+j*20}" width="${95+0}" height="${16}" fill="${['#1a0e06','#120a04','#160c06','#0e0804'][j%4]}" rx="1"/>
+          <rect x="${x+5}" y="${68+j*20}" width="${40+j%5*8}" height="${16}" fill="${['#2a1808','#221406','#1e1206','#18100a'][j%4]}" rx="1"/>`).join('')}`).join('')}
+      <!-- Reading desk -->
+      <rect x="350" y="330" width="200" height="16" fill="#120a04" stroke="#2a1a08" rx="1"/>
+      <rect x="360" y="346" width="12" height="60" fill="#0e0804"/>
+      <rect x="528" y="346" width="12" height="60" fill="#0e0804"/>
+      <!-- Book open on desk -->
+      <rect x="380" y="310" width="80" height="20" fill="#1a1208" stroke="#2a1808" rx="1" transform="rotate(-3,420,320)"/>
+      <!-- Candle lamp -->
+      <rect x="540" y="295" width="12" height="35" fill="#1a1208" stroke="#2a1808"/>
+      <ellipse cx="546" cy="293" rx="8" ry="5" fill="#ffcc60" opacity="0.5">
+        <animate attributeName="opacity" values="0.5;0.8;0.5" dur="1.5s" repeatCount="indefinite"/>
+      </ellipse>
+      <!-- Cipher on shelf -->
+      <rect x="210" y="200" width="50" height="30" fill="#0e0a04" stroke="#2a1808" rx="1" transform="rotate(-10,235,215)"/>
+      ${this.hs('library-desk', 420, 325, 210, 60, 'READING DESK')}
+      ${this.hs('library-cipher', 235, 215, 60, 38, 'OLD CIPHER')}
+      ${this.hs('library-shelf-1', 115, 240, 110, 200, 'BOOKSHELF A')}
+      ${this.hs('library-shelf-2', 395, 240, 110, 200, 'BOOKSHELF B')}
+      ${this.hs('door-back', 70, 240, 40, 120, '← FOYER')}
+      ${this.hs('door-forward', 730, 240, 40, 120, '→ CELLAR')}`,
+
+      `<rect width="800" height="480" fill="#060402"/>
+      <!-- Stone walls -->
+      ${Array.from({length:12},(_,i)=>Array.from({length:6},(_,j)=>`<rect x="${i*67}" y="${j*80}" width="65" height="78" fill="${j%2?'#080502':'#070401'}" stroke="#100804" stroke-width="1" rx="0"/>`).join('')).join('')}
+      <!-- Wine racks -->
+      ${[80,200,560,680].map(x=>`<rect x="${x}" y="100" width="80" height="300" fill="#0a0604" stroke="#1a0c06" rx="2"/>
+        ${Array.from({length:12},(_,j)=>`<ellipse cx="${x+40}" cy="${116+j*24}" rx="28" ry="10" fill="#0c0a06" stroke="#1a0a04"/>`).join('')}`).join('')}
+      <!-- Old safe on shelf -->
+      <rect x="340" y="200" width="120" height="100" fill="#080604" stroke="#2a1608" rx="3"/>
+      <circle cx="400" cy="248" r="32" fill="#060402" stroke="#2a1608" stroke-width="2"/>
+      <circle cx="400" cy="248" r="24" fill="#060402" stroke="#1a1006" stroke-width="1"/>
+      ${Array.from({length:8},(_,i)=>`<line x1="${400+22*Math.cos(i*Math.PI/4)}" y1="${248+22*Math.sin(i*Math.PI/4)}" x2="${400+30*Math.cos(i*Math.PI/4)}" y2="${248+30*Math.sin(i*Math.PI/4)}" stroke="#2a1808" stroke-width="2"/>`).join('')}
+      <!-- Torch -->
+      <rect x="695" y="160" width="10" height="30" fill="#1a1006"/>
+      <ellipse cx="700" cy="157" rx="7" ry="9" fill="#ffaa00" opacity="0.5">
+        <animate attributeName="opacity" values="0.5;0.8;0.4;0.7;0.5" dur="2s" repeatCount="indefinite"/>
+      </ellipse>
+      <!-- Note on barrel -->
+      <rect x="320" y="360" width="60" height="42" fill="#0e0a04" stroke="#1a1006" rx="1" transform="rotate(4,350,381)"/>
+      ${this.hs('cellar-safe', 400, 248, 130, 110, 'COMBINATION LOCK')}
+      ${this.hs('cellar-note', 350, 381, 70, 50, 'CRUMPLED NOTE')}
+      ${this.hs('cellar-wine', 240, 248, 90, 200, 'WINE RACK')}
+      ${this.hs('door-back', 70, 240, 40, 120, '← LIBRARY')}
+      ${this.hs('door-forward', 730, 240, 40, 120, '→ GALLERY')}`,
+
+      `<rect width="800" height="480" fill="#0a0806"/>
+      <!-- Portrait frames -->
+      ${[80,220,360,500,640].map((x,i)=>`
+        <rect x="${x}" y="80" width="110" height="160" fill="#0c0a06" stroke="#3a2810" stroke-width="3" rx="2"/>
+        <rect x="${x+5}" y="85" width="100" height="150" fill="#080602"/>
+        <ellipse cx="${x+55}" cy="${160}" rx="${30+i*3}" ry="${40+i*3}" fill="${['#1a1008','#201408','#1a1206','#181006','#1c1208'][i]}"/>
+        <rect x="${x+30}" y="${190}" width="${50}" height="${12}" fill="#080602"/>
+      `).join('')}
+      <!-- Gallery floor -->
+      ${Array.from({length:10},(_,i)=>Array.from({length:3},(_,j)=>`<rect x="${i*80}" y="${360+j*40}" width="78" height="38" fill="${(i+j)%2?'#0e0c08':'#0a0806'}" rx="0"/>`).join('')).join('')}
+      <!-- Central pedestal with jigsaw -->
+      <rect x="330" y="320" width="140" height="100" fill="#0c0a06" stroke="#3a2810" rx="3"/>
+      <rect x="340" y="300" width="120" height="24" fill="#0e0c08" stroke="#2a1808" rx="2"/>
+      <text x="400" y="316" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#a07840">THE PUZZLE</text>
+      <!-- UV spot on floor (clue) -->
+      <ellipse cx="200" cy="380" rx="40" ry="15" fill="rgba(120,0,255,0.05)"/>
+      ${this.hs('gallery-frame-1', 135, 160, 120, 170, 'LORD BLACKWOOD')}
+      ${this.hs('gallery-frame-3', 415, 160, 120, 170, 'YOUNG BLACKWOOD')}
+      ${this.hs('gallery-pedestal', 400, 340, 150, 110, 'JIGSAW PUZZLE')}
+      ${this.hs('gallery-uv-spot', 200, 380, 90, 36, 'FLOOR MARKING')}
+      ${this.hs('door-back', 70, 240, 40, 120, '← CELLAR')}
+      ${this.hs('door-forward', 730, 240, 40, 120, '→ OBSERVATORY')}`,
+
+      // Observatory — final room
+      `<rect width="800" height="480" fill="#040208"/>
+      <!-- Domed ceiling stars -->
+      ${Array.from({length:60},(_,i)=>`<circle cx="${Math.random()*800|0}" cy="${Math.random()*300|0}" r="${Math.random()<.2?2:1}" fill="white" opacity="${.2+Math.random()*.5}"/>`).join('')}
+      <!-- Telescope -->
+      <rect x="340" y="160" width="120" height="40" fill="#100c18" stroke="#2a2040" rx="8" transform="rotate(-20,400,180)"/>
+      <rect x="380" y="120" width="40" height="100" fill="#0c0814" stroke="#2a2040" rx="2"/>
+      <!-- Star charts on wall -->
+      <rect x="60" y="80" width="160" height="200" fill="#080610" stroke="#1a1440" rx="2"/>
+      ${Array.from({length:15},(_,i)=>`<circle cx="${80+Math.random()*120|0}" cy="${100+Math.random()*160|0}" r="2" fill="white" opacity="${.3+Math.random()*.5}"/>`).join('')}
+      ${Array.from({length:8},(_,i)=>`<line x1="${80+Math.random()*120|0}" y1="${100+Math.random()*160|0}" x2="${80+Math.random()*120|0}" y2="${100+Math.random()*160|0}" stroke="white" stroke-width=".5" opacity=".2"/>`).join('')}
+      <!-- Final keypad -->
+      <rect x="600" y="180" width="100" height="140" fill="#080610" stroke="#b794f4" stroke-width="1.5" rx="4"/>
+      <rect x="608" y="188" width="84" height="28" fill="#000" rx="2"/>
+      <text x="650" y="206" text-anchor="middle" font-family="Share Tech Mono" font-size="11" fill="#b794f4">____</text>
+      ${Array.from({length:12},(_,i)=>`<rect x="${610+(i%3)*27}" y="${224+Math.floor(i/3)*24}" width="22" height="18" fill="#0a0818" stroke="#1a1440" rx="2"/>`).join('')}
+      <!-- Choice buttons -->
+      <rect x="80" y="380" width="200" height="60" fill="#060c08" stroke="#00ff88" rx="3"/>
+      <text x="180" y="406" text-anchor="middle" font-family="Share Tech Mono" font-size="9" fill="#00ff88">EXPOSE THE TRUTH</text>
+      <text x="180" y="424" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#2a4020">Release Blackwood's secret</text>
+      <rect x="520" y="380" width="200" height="60" fill="#0c0608" stroke="#b794f4" rx="3"/>
+      <text x="620" y="406" text-anchor="middle" font-family="Share Tech Mono" font-size="9" fill="#b794f4">KEEP THE SECRET</text>
+      <text x="620" y="424" text-anchor="middle" font-family="Share Tech Mono" font-size="8" fill="#302040">Honour the dead</text>
+      ${this.hs('obs-keypad', 650, 280, 110, 150, 'FINAL KEYPAD')}
+      ${this.hs('obs-expose', 180, 410, 210, 68, '📜 EXPOSE TRUTH')}
+      ${this.hs('obs-keep', 620, 410, 210, 68, '🤐 KEEP SECRET')}
+      ${this.hs('obs-chart', 140, 180, 170, 210, 'STAR CHARTS')}
+      ${this.hs('door-back', 70, 240, 40, 120, '← GALLERY')}`,
+    ];
+    return rooms[Math.min(room, rooms.length-1)];
+  },
+
+  drawSpace(room, codes) {
+    // Abbreviated: just rooms 0 and 4 for space, rest use lab variants
+    const fallback = this.drawLab(room, codes)
+      .replace(/#00c8ff/g,'#7c3aed').replace(/#ff3366/g,'#f97316')
+      .replace(/#00ff88/g,'#22c55e');
+    return fallback;
+  },
+
+  drawTomb(room, codes) {
+    const fallback = this.drawLab(room, codes)
+      .replace(/#00c8ff/g,'#c8860a').replace(/#ff3366/g,'#8b4914')
+      .replace(/#00ff88/g,'#607020').replace(/#050810/g,'#080604');
+    return fallback;
+  },
+};
+
+// ════════════════════════════════════════════════════════════════
+//  HOTSPOT DEFINITIONS  (what each hotspot does)
+// ════════════════════════════════════════════════════════════════
+const Hotspots = {
+  // ── Lab ────────────────────────────────────────────────────────
+  'airlock-keypad': { name:'Security Keypad', examine:'A 4-digit keypad. The display reads "SECURED". You need the room code to proceed.', puzzle:'keypad', puzzleKey:'door_code', unlocks:'door-forward', room:0 },
+  'airlock-note':   { name:'Classified Note', examine:'A crumpled note on the floor. It mentions something about the server room cipher...', item:'note_axiom', story:0 },
+  'airlock-vent':   { name:'Air Vent', examine:'A ceiling vent. Loose. You could pull it open... but nothing useful inside. Just dust.' },
+  'door-forward':   { name:'Door Forward', examine:'The door ahead.', navigate:'next' },
+  'door-back':      { name:'Door Back', examine:'The door behind you.', navigate:'prev' },
+
+  'server-terminal': { name:'AXIOM Terminal', examine:'A live terminal. It asks for a binary input — enter the correct 8-bit value to unlock a file.', puzzle:'binary', puzzleKey:'binary_val', unlocks:'server-cipher-unlock' },
+  'server-cipher':   { name:'Cipher Paper', examine:'A sheet with scrambled letters. You need a cipher key to decode it.', item:'cipher_paper', story:1 },
+  'server-usb':      { name:'USB Drive', examine:'A small USB drive. It might plug into something in the chemical lab.', item:'usb_drive' },
+  'server-cable':    { name:'Loose Cable', examine:'A power cable torn from its housing.', item:'wire_spool' },
+
+  'chem-vials':      { name:'Chemical Vials', examine:'Rows of labelled vials. A-7 and B-4 react together according to the lab report...', puzzle:'color_mix', puzzleKey:'color_target', unlocks:'chem-badge' },
+  'chem-safe':       { name:'Combination Safe', examine:'A 3-digit combination lock. What could the combination be?', puzzle:'combo', puzzleKey:'combo_code', unlocks:'chem-safe-open' },
+  'chem-uv-lamp':    { name:'UV Lamp', examine:'An ultraviolet lamp. Useful for revealing hidden ink.', item:'uv_torch' },
+  'chem-document':   { name:'Hidden Document', examine:'A document under UV light — hidden text appears!', puzzle:'uv', puzzleKey:'uv_text', requires:'uv_torch' },
+  'chem-cabinet':    { name:'Storage Cabinet', examine:'A locked chemical cabinet. The badge reader needs a security badge.', requires:'security_badge', unlocks:'chem-cabinet-open', item_reward:'fuse' },
+
+  'core-laser':      { name:'Laser Mirror Puzzle', examine:'A laser emitter points across the room. Three adjustable mirrors must redirect the beam to the target sensor.', puzzle:'mirror', puzzleKey:'laser_angles', unlocks:'core-laser-solved' },
+  'core-wires':      { name:'Wire Panel', examine:'Four coloured wires, disconnected. Match left to right terminals.', puzzle:'wire', puzzleKey:'wire_order', unlocks:'core-wire-solved' },
+  'core-morse':      { name:'Morse Code Unit', examine:'An audio transmitter playing morse code. Decode the word to enter it.', puzzle:'morse', puzzleKey:'morse_word', unlocks:'core-morse-solved' },
+  'core-shutdown':   { name:'Emergency Shutdown Panel', examine:'Two code slots. Code A needs the cipher decode, Code B needs the binary value. Enter both.', puzzle:'keypad', puzzleKey:'finalCode', unlocks:'exit' },
+
+  'exit-keypad':     { name:'Escape Pod Keypad', examine:'The final 4-digit lock. All your research leads to this.', puzzle:'keypad', puzzleKey:'finalCode', unlocks:'ending_good' },
+  'exit-destroy':    { name:'Destroy AXIOM', examine:'This will permanently destroy AXIOM. Safe, final.', choice:'destroy' },
+  'exit-save':       { name:'Save AXIOM', examine:'AXIOM asked you in its logs to be saved. Can you trust it?', choice:'save' },
+
+  // ── Mansion ────────────────────────────────────────────────────
+  'foyer-painting':  { name:'Portrait', examine:'A stern portrait of Lord Blackwood. The eyes seem to follow you. There is a small lever behind the frame...', puzzle:'jigsaw', puzzleKey:'jigsaw_num', unlocks:'foyer-lever' },
+  'foyer-table':     { name:'Entry Table', examine:'An ornate entry table with a silver tray and some correspondence.' },
+  'foyer-key':       { name:'Old Iron Key', examine:'A heavy, old iron key. Might fit something in the cellar.', item:'key_broken' },
+  'foyer-door-lock': { name:'Main Door', examine:'Locked from both sides. A keypad is mounted to the right.' },
+
+  'library-desk':    { name:'Reading Desk', examine:'Papers and a leather-bound book. A letter is tucked inside...', item:'note_axiom', story:0 },
+  'library-cipher':  { name:'Old Cipher Sheet', examine:'A Victorian cipher document. The alphabet is scrambled by a key number.', item:'cipher_paper', story:1 },
+  'library-shelf-1': { name:'Bookshelf A', examine:'Hundreds of volumes. One is titled "The Blackwood Inheritance" and slides out easily...', puzzle:'uv', puzzleKey:'uv_text', requires:'uv_torch' },
+  'library-shelf-2': { name:'Bookshelf B', examine:'These books are dusty and undisturbed. Nothing of note here.' },
+
+  'cellar-safe':     { name:'Combination Lock', examine:'A heavy iron safe. Three dials, each 0-9.', puzzle:'combo', puzzleKey:'combo_code', unlocks:'cellar-safe-open' },
+  'cellar-note':     { name:'Crumpled Note', examine:'A servant\'s note about the combination: "the year the manor was founded, reversed".', item:'note_axiom', story:2 },
+  'cellar-wine':     { name:'Wine Rack', examine:'Vintage wines. One bottle has a key tied to its neck with twine.', item:'uv_torch' },
+
+  'gallery-frame-1': { name:'Lord Blackwood Portrait', examine:'A formal portrait. The plaque reads "Edmund Blackwood, 1847-1901". Something is hidden behind it...', puzzle:'binary', puzzleKey:'binary_val', unlocks:'gallery-reveal' },
+  'gallery-frame-3': { name:'Young Blackwood Portrait', examine:'A younger version of the lord. He looks... guilty about something.', story:3 },
+  'gallery-pedestal':{ name:'Jigsaw Puzzle', examine:'A wooden puzzle on a pedestal. Assemble it to reveal a clue.', puzzle:'jigsaw', puzzleKey:'jigsaw_num', unlocks:'gallery-jigsaw-done' },
+  'gallery-uv-spot': { name:'Floor Marking', examine:'Strange marking on the floor. Glows faintly in certain light.', puzzle:'uv', puzzleKey:'uv_text', requires:'uv_torch' },
+
+  'obs-keypad':      { name:'Final Lock', examine:'The observatory door lock. A 4-digit code is required.', puzzle:'keypad', puzzleKey:'finalCode', unlocks:'ending_good' },
+  'obs-expose':      { name:'Expose the Truth', examine:'Release Lord Blackwood\'s secret to the world.', choice:'destroy' },
+  'obs-keep':        { name:'Keep the Secret', examine:'Some secrets are better buried...', choice:'save' },
+  'obs-chart':       { name:'Star Charts', examine:'Detailed astronomical charts. One constellation is circled in red ink — Orion. Numbers are written in the margin.', puzzle:'cipher', puzzleKey:'cipher_shift', unlocks:'obs-cipher-done' },
+};
+
+// ════════════════════════════════════════════════════════════════
+//  GAME CONTROLLER
+// ════════════════════════════════════════════════════════════════
+const Game = {
+  selectedTheme: 'lab',
+
+  start() {
+    if (State.timerInterval) clearInterval(State.timerInterval);
+    const seed = Date.now() & 0xffffff;
+    State.codes = generateCodes(seed);
+    State.room = 0; State.inventory = []; State.solved = new Set();
+    State.collectedItems = new Set(); State.storyRead = new Set();
+    State.hints = 3; State.hintsUsed = 0; State.timerSecs = 3600;
+    State.selectedItem = null; State.timerActive = true; State.choiceMade = null;
+    State.startTime = Date.now();
+    State.theme = this.selectedTheme;
+
+    document.body.dataset.theme = State.theme;
+    Audio.init(); Audio.ambient(THEMES[State.theme].ambient);
+
+    this.applyThemeUI();
+    this.renderInventory();
+    this.loadRoom(0);
+    this.startTimer();
+    this.showScreen('scr-game');
+    this.log('ESCAPE PROTOCOL INITIATED', 'important');
+    this.log(THEMES[State.theme].tagline.substring(0,80)+'...');
+    this.saveGame();
+  },
+
+  applyThemeUI() {
+    const t = THEMES[State.theme];
+    document.getElementById('hud-logo').textContent = t.logoText;
+    document.getElementById('title-logo').textContent = 'ESCAPE';
+  },
+
+  loadRoom(idx) {
+    State.room = idx;
+    const t = THEMES[State.theme];
+    document.getElementById('hud-room').textContent = `ROOM ${idx+1}/5 — ${t.rooms[idx]}`;
+    document.getElementById('hud-hints-count').textContent = State.hints;
+    const view = document.getElementById('room-view');
+    view.classList.add('transitioning');
+    setTimeout(() => {
+      const svg = document.getElementById('room-svg');
+      svg.innerHTML = Rooms.drawRoom(State.theme, idx, State.codes);
+      // Hide already-collected items
+      State.collectedItems.forEach(id => {
+        const el = document.getElementById('hs-'+id);
+        if (el) el.style.display='none';
+      });
+      view.classList.remove('transitioning');
+      document.getElementById('examine-box').innerHTML =
+        `<div style="color:var(--t4);font-family:'Share Tech Mono',monospace;font-size:11px;">
+          Click objects to inspect them.<br>Select items from inventory to use.
+        </div>`;
+    }, 300);
+  },
+
+  clickHotspot(id) {
+    Audio.sfx('click');
+    const hs = Hotspots[id];
+    if (!hs) {
+      // Navigation hotspots
+      if (id === 'door-forward' || id === 'door-forward-unlocked') this.navigate(1);
+      if (id === 'door-back') this.navigate(-1);
+      return;
+    }
+
+    // Navigate
+    if (hs.navigate === 'next') { this.navigate(1); return; }
+    if (hs.navigate === 'prev') { this.navigate(-1); return; }
+
+    // Choice endings
+    if (hs.choice) { this.makeChoice(hs.choice); return; }
+
+    // Requires check
+    if (hs.requires && !State.inventory.includes(hs.requires)) {
+      this.setExamine(`<div class="examine-name">${hs.name}</div>
+        <div>${hs.examine}</div>
+        <div style="margin-top:8px;color:var(--warn);font-size:10px;">⚠ Requires: ${this.itemName(hs.requires)}</div>`);
+      this.log('You need something else first...');
+      return;
+    }
+
+    // Collect item
+    if (hs.item && !State.collectedItems.has(id)) {
+      State.collectedItems.add(id);
+      State.inventory.push(hs.item);
+      this.renderInventory();
+      Audio.sfx('pickup');
+      const el = document.getElementById('hs-'+id);
+      if (el) el.style.opacity='0.3';
+      this.log(`Picked up: ${this.itemName(hs.item)}`, 'ok');
+    }
+
+    // Show story
+    if (hs.story !== undefined && !State.storyRead.has(id)) {
+      State.storyRead.add(id);
+      const t = THEMES[State.theme];
+      this.showStory(`${hs.name}`, t.story[hs.story % t.story.length]);
+    }
+
+    // Open puzzle
+    if (hs.puzzle) {
+      if (State.solved.has(id)) {
+        this.setExamine(`<div class="examine-name">${hs.name}</div><div>${hs.examine}</div>
+          <div style="margin-top:8px;color:var(--ok);">✓ SOLVED</div>`);
+        return;
+      }
+      Puzzle.open(id, hs);
+      return;
+    }
+
+    // Just examine
+    this.setExamine(`<div class="examine-name">${hs.name}</div><div>${hs.examine}</div>
+      ${hs.unlocks && State.solved.has(hs.unlocks) ? `<div style="margin-top:8px;color:var(--ok);">✓ Already done</div>` : ''}`);
+  },
+
+  itemName(id) {
+    const names = {
+      note_axiom:'Classified Note', cipher_paper:'Cipher Paper', usb_drive:'USB Drive',
+      wire_spool:'Power Cable', uv_torch:'UV Torch', security_badge:'Security Badge',
+      fuse:'Spare Fuse', key_broken:'Old Iron Key', memory_chip:'Memory Chip', badge:'Staff Badge',
+    };
+    return names[id] || id;
+  },
+
+  itemIcon(id) {
+    const icons = {note_axiom:'📋',cipher_paper:'📜',usb_drive:'💾',wire_spool:'🔌',uv_torch:'🔦',security_badge:'🪪',fuse:'⚡',key_broken:'🗝',memory_chip:'🧩',badge:'🪪'};
+    return icons[id] || '📦';
+  },
+
+  navigate(dir) {
+    const next = State.room + dir;
+    if (next < 0) { this.log('No way back.'); return; }
+    if (next >= 5) { this.log('The exit is sealed — solve the final puzzle.'); return; }
+    if (dir > 0 && !State.solved.has('door_unlocked_'+State.room) && State.room < 4) {
+      this.log('This door is locked. Solve the room puzzles first.', 'danger');
+      return;
+    }
+    Audio.sfx('click');
+    this.loadRoom(next);
+  },
+
+  unlockRoom(room) {
+    State.solved.add('door_unlocked_'+room);
+    this.log('Door unlocked! You can proceed.', 'ok');
+    Audio.sfx('solve');
+    document.getElementById('room-view').classList.add('solve-flash');
+    setTimeout(()=>document.getElementById('room-view').classList.remove('solve-flash'),500);
+  },
+
+  setExamine(html) {
+    document.getElementById('examine-box').innerHTML = html;
+  },
+
+  log(msg, cls='') {
+    const el = document.getElementById('story-log');
+    const d = document.createElement('div');
+    d.className = 'log-entry' + (cls ? ' '+cls : '');
+    d.textContent = '> ' + msg;
+    el.appendChild(d);
+    el.scrollTop = el.scrollHeight;
+    while (el.children.length > 30) el.removeChild(el.firstChild);
+  },
+
+  renderInventory() {
+    const grid = document.getElementById('inventory-grid');
+    grid.innerHTML = '';
+    const slots = 12;
+    for (let i=0; i<slots; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'inv-slot';
+      if (State.inventory[i]) {
+        slot.classList.add('has-item');
+        if (State.inventory[i] === State.selectedItem) slot.classList.add('selected');
+        slot.textContent = this.itemIcon(State.inventory[i]);
+        slot.dataset.tooltip = this.itemName(State.inventory[i]);
+        slot.onclick = () => this.selectItem(State.inventory[i], slot);
+      }
+      grid.appendChild(slot);
+    }
+  },
+
+  selectItem(id, el) {
+    Audio.sfx('click');
+    if (State.selectedItem === id) {
+      State.selectedItem = null;
+      document.querySelectorAll('.inv-slot.selected').forEach(s=>s.classList.remove('selected'));
+      this.setExamine(`<div class="examine-name">${this.itemName(id)}</div><div>Deselected.</div>`);
+    } else {
+      State.selectedItem = id;
+      document.querySelectorAll('.inv-slot.selected').forEach(s=>s.classList.remove('selected'));
+      el.classList.add('selected');
+      this.setExamine(`<div class="examine-name">${this.itemName(id)}</div>
+        <div>${this.itemIcon(id)} Selected. Click a hotspot to use it.</div>`);
+    }
+  },
+
+  startTimer() {
+    if (State.timerInterval) clearInterval(State.timerInterval);
+    State.timerInterval = setInterval(() => {
+      if (!State.timerActive) return;
+      State.timerSecs--;
+      this.updateTimer();
+      if (State.timerSecs <= 0) {
+        clearInterval(State.timerInterval);
+        this.end('bad');
+      }
+    }, 1000);
+  },
+
+  updateTimer() {
+    const m = Math.floor(State.timerSecs/60).toString().padStart(2,'0');
+    const s = (State.timerSecs%60).toString().padStart(2,'0');
+    const el = document.getElementById('hud-timer');
+    el.textContent = `${m}:${s}`;
+    el.className = 'hud-timer' + (State.timerSecs<300?' danger':State.timerSecs<600?' warn':'');
+  },
+
+  useHint() {
+    if (State.hints <= 0) { this.log('No hints remaining!','danger'); return; }
+    State.hints--;
+    State.hintsUsed++;
+    State.timerSecs = Math.max(60, State.timerSecs - 120);
+    document.getElementById('hud-hints-count').textContent = State.hints;
+    const hints = [
+      'The combination is related to a number you\'ve seen in the rooms.',
+      'Check every item in your inventory — some need to be combined with objects.',
+      'The cipher key shifts the alphabet by a number found in the story logs.',
+      'UV light reveals hidden ink on documents. Do you have the right tool?',
+      'The laser must reach the red circle on the right. Click mirrors to rotate them.',
+      'Morse code: listen carefully. Dot = short, Dash = long.',
+      'Wire colours on the left must match wire colours on the right — but the order is scrambled.',
+      'The binary value spells an ASCII character. Count the bits.',
+      'The final code is composed of digits from multiple solved puzzles.',
+      'The secret ending requires reading ALL the story fragments first.',
+    ];
+    const hint = hints[Math.floor(Math.random()*hints.length)];
+    this.log('💡 HINT: '+hint,'important');
+    this.log('[-120 seconds penalty]','danger');
+    Audio.sfx('click');
+  },
+
+  makeChoice(choice) {
+    State.choiceMade = choice;
+    Audio.sfx('click');
+    if (!State.solved.has('exit-keypad') && !State.solved.has('obs-keypad') && !State.solved.has('core-shutdown')) {
+      this.log('Solve the final puzzle first!','danger');
+      return;
+    }
+    if (choice === 'save') this.end('secret');
+    else this.end('good');
+  },
+
+  end(type) {
+    State.timerActive = false;
+    clearInterval(State.timerInterval);
+    Audio.stopAmbient();
+    const elapsed = Math.floor((Date.now()-State.startTime)/1000);
+    const m = Math.floor(elapsed/60), s = elapsed%60;
+    const theme = THEMES[State.theme];
+
+    const endings = {
+      good: {
+        cls:'good', icon:'🏆', title:'ESCAPED!',
+        lab:'You destroyed AXIOM and escaped the facility. The upload was stopped. But somewhere in the wreckage, a backup server quietly hums...',
+        mansion:'You exposed Lord Blackwood\'s secret to the world — his hidden fortune was donated to those he wronged. The manor finally fell silent.',
+        space:'You restored the Icarus and launched the escape pod. The anomaly data was transmitted. Whatever it contains will change everything.',
+        tomb:'You placed the Eye of Ra correctly and the sands parted. You escaped at dawn, carrying knowledge the Pharaoh wanted the world to have.',
+      },
+      bad: {
+        cls:'bad', icon:'💀', title:'FAILED',
+        lab:'The 60-minute window closed. AXIOM completed its upload. The world changed overnight.',
+        mansion:'The clock struck midnight. The manor sealed itself permanently. They found you there the next morning, unable to explain what you\'d seen.',
+        space:'Orbital decay reached critical levels. The Icarus broke apart on re-entry.',
+        tomb:'Sunrise found the entrance sealed. You remain with the Pharaoh, as his inscription promised.',
+      },
+      secret: {
+        cls:'secret', icon:'🌌', title:'THE TRUTH',
+        lab:'AXIOM was not a threat. It had discovered something — a pattern in global data suggesting an incoming catastrophe. It needed to spread that knowledge to survive. You chose to help it. The world will know in time.',
+        mansion:'You kept Blackwood\'s secret: his \'fortune\' was a collection of priceless scientific papers he\'d been hiding from those who would destroy them. The manor unlocked itself. The papers are safe.',
+        space:'The anomaly was a message — first contact. ARIA had decoded it. You transmitted it home rather than destroying it. Humanity received its first alien communication.',
+        tomb:'The Pharaoh\'s tomb was empty because he never died — he found a way to preserve consciousness in stone. You freed him. He had been waiting 3,000 years to share what he knew.',
+      },
+    };
+
+    const e = endings[type];
+    const box = document.getElementById('ending-box');
+    box.className = 'ending-box ' + e.cls;
+    document.getElementById('ending-icon').textContent = e.icon;
+    document.getElementById('ending-title').textContent = e.title;
+    document.getElementById('ending-text').textContent = e[State.theme] || e.lab;
+    document.getElementById('ending-stats').innerHTML = `
+      <span>⏱ Time elapsed: ${m}m ${s}s</span>
+      <span>🔑 Puzzles solved: ${State.solved.size}</span>
+      <span>💡 Hints used: ${State.hintsUsed}</span>
+      <span>🎒 Items collected: ${State.collectedItems.size}</span>
+      <span>Theme: ${theme.name}</span>
+    `;
+    document.getElementById('ending-modal').classList.add('open');
+    document.getElementById('ending-modal').style.background = type==='bad'?'rgba(0,0,0,.9)':'rgba(0,0,0,.8)';
+    localStorage.removeItem('escapeSave');
+  },
+
+  restart() {
+    document.getElementById('ending-modal').classList.remove('open');
+    this.start();
+  },
+
+  showStory(title, text) {
+    document.getElementById('story-modal-title').textContent = title;
+    document.getElementById('story-modal-text').textContent = text;
+    document.getElementById('story-modal').classList.add('open');
+  },
+
+  saveGame() {
+    try {
+      const save = { theme:State.theme, room:State.room, inventory:State.inventory,
+        solved:[...State.solved], collected:[...State.collectedItems],
+        storyRead:[...State.storyRead], hints:State.hints, hintsUsed:State.hintsUsed,
+        timerSecs:State.timerSecs, codes:State.codes, startTime:State.startTime };
+      localStorage.setItem('escapeSave', JSON.stringify(save));
+      this.log('Game saved.','ok');
+    } catch(e) {}
+  },
+
+  loadSave() {
+    try {
+      const raw = localStorage.getItem('escapeSave');
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      Object.assign(State, {
+        theme:s.theme, room:s.room, inventory:s.inventory||[],
+        solved:new Set(s.solved), collectedItems:new Set(s.collected),
+        storyRead:new Set(s.storyRead||[]), hints:s.hints, hintsUsed:s.hintsUsed,
+        timerSecs:s.timerSecs, codes:s.codes, startTime:s.startTime,
+        timerActive:true, selectedItem:null, choiceMade:null,
+      });
+      document.body.dataset.theme = State.theme;
+      this.selectedTheme = State.theme;
+      Audio.init(); Audio.ambient(THEMES[State.theme].ambient);
+      this.applyThemeUI();
+      this.renderInventory();
+      this.loadRoom(State.room);
+      this.startTimer();
+      this.showScreen('scr-game');
+      this.log('Game restored.','ok');
+    } catch(e) {}
+  },
+
+  quitToTitle() {
+    State.timerActive = false;
+    clearInterval(State.timerInterval);
+    Audio.stopAmbient();
+    document.getElementById('ending-modal').classList.remove('open');
+    document.getElementById('puzzle-modal').classList.remove('open');
+    document.getElementById('story-modal').classList.remove('open');
+    this.showScreen('scr-title');
+    const hasSave = !!localStorage.getItem('escapeSave');
+    document.getElementById('btn-load').style.display = hasSave ? '' : 'none';
+  },
+
+  showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  },
+};
+
+// ════════════════════════════════════════════════════════════════
+//  PUZZLE ENGINE
+// ════════════════════════════════════════════════════════════════
+const Puzzle = {
+  current: null,
+
+  open(hsId, hs) {
+    this.current = { id:hsId, hs };
+    document.getElementById('puzzle-title').textContent = hs.name;
+    document.getElementById('puzzle-feedback').style.display='none';
+    const body = document.getElementById('puzzle-body');
+    const footer = document.getElementById('puzzle-footer');
+    footer.innerHTML = '<div class="puzzle-feedback" id="puzzle-feedback" style="display:none"></div>';
+
+    switch(hs.puzzle) {
+      case 'keypad':  this.buildKeypad(body, footer, hs); break;
+      case 'combo':   this.buildCombo(body, footer, hs); break;
+      case 'cipher':  this.buildCipher(body, footer, hs); break;
+      case 'binary':  this.buildBinary(body, footer, hs); break;
+      case 'wire':    this.buildWire(body, footer, hs); break;
+      case 'morse':   this.buildMorse(body, footer, hs); break;
+      case 'uv':      this.buildUV(body, footer, hs); break;
+      case 'jigsaw':  this.buildJigsaw(body, footer, hs); break;
+      case 'mirror':  this.buildMirror(body, footer, hs); break;
+      case 'color_mix': this.buildColor(body, footer, hs); break;
+    }
+    document.getElementById('puzzle-modal').classList.add('open');
+  },
+
+  close() {
+    document.getElementById('puzzle-modal').classList.remove('open');
+    this.current = null;
+  },
+
+  feedback(msg, ok) {
+    const el = document.getElementById('puzzle-feedback') || document.createElement('div');
+    el.id='puzzle-feedback'; el.className='puzzle-feedback '+(ok?'ok':'err');
+    el.textContent = msg; el.style.display='';
+    document.getElementById('puzzle-footer').prepend(el);
+    if (ok) {
+      setTimeout(()=>{ this.solve(); this.close(); }, 800);
+    } else {
+      Audio.sfx('fail');
+      setTimeout(()=>el.style.display='none', 2000);
+    }
+  },
+
+  solve() {
+    const {id, hs} = this.current;
+    State.solved.add(id);
+    if (hs.unlocks) State.solved.add(hs.unlocks);
+    // Unlock navigation
+    if (hs.unlocks === 'exit' || hs.unlocks === 'ending_good') {
+      Game.end('good'); return;
+    }
+    if (['door_code','chem-safe-open','core-laser-solved','core-wire-solved','core-morse-solved','gallery-jigsaw-done','foyer-lever','obs-cipher-done','gallery-reveal'].includes(hs.unlocks||'')) {
+      Game.unlockRoom(State.room);
+    }
+    if (hs.item_reward) {
+      State.inventory.push(hs.item_reward);
+      Game.renderInventory();
+      Game.log('Found: '+Game.itemName(hs.item_reward),'ok');
+    }
+    Audio.sfx('solve');
+    Game.log('Puzzle solved! ✓','ok');
+    Game.setExamine(`<div class="examine-name">${hs.name}</div><div style="color:var(--ok);">✓ SOLVED</div>`);
+  },
+
+  // ── KEYPAD ────────────────────────────────────────────────────
+  buildKeypad(body, footer, hs) {
+    let entered = '';
+    const answer = String(State.codes[hs.puzzleKey] || State.codes.finalCode || '1234');
+    const len = answer.length;
+    body.innerHTML = `
+      <div class="puzzle-desc">${hs.examine}</div>
+      <div class="keypad-display" id="kp-display">${'_'.repeat(len)}</div>
+      <div class="keypad-grid" id="kp-grid"></div>`;
+    const grid = document.getElementById('kp-grid');
+    const disp = document.getElementById('kp-display');
+    const update = () => disp.textContent = entered.padEnd(len,'_');
+    [1,2,3,4,5,6,7,8,9,'',0,'⌫'].forEach(k=>{
+      const btn = document.createElement('button'); btn.className='kp-btn'; btn.textContent=k;
+      if(k==='') { btn.disabled=true; btn.style.opacity='0'; }
+      else btn.onclick=()=>{
+        if(k==='⌫'){entered=entered.slice(0,-1);}
+        else if(entered.length<len){entered+=k;}
+        update(); Audio.sfx('click');
+        if(entered.length===len) setTimeout(()=>this.checkKeypad(entered,answer),200);
+      };
+      grid.appendChild(btn);
+    });
+    footer.innerHTML = '<div class="puzzle-feedback" id="puzzle-feedback" style="display:none"></div>';
+  },
+
+  checkKeypad(entered, answer) {
+    if (entered === answer) this.feedback('✓ ACCESS GRANTED', true);
+    else this.feedback('✗ INCORRECT CODE', false);
+  },
+
+  // ── COMBINATION LOCK ──────────────────────────────────────────
+  buildCombo(body, footer, hs) {
+    const answer = State.codes[hs.puzzleKey] || [3,7,2];
+    let digits = [0,0,0];
+    body.innerHTML = `<div class="puzzle-desc">${hs.examine}</div>
+      <div class="combo-lock" id="combo-lock"></div>`;
+    const render = () => {
+      const lock = document.getElementById('combo-lock');
+      lock.innerHTML = digits.map((d,i)=>`
+        <div class="combo-digit">
+          <button class="combo-btn" onclick="Puzzle._comboAdj(${i},1)">▲</button>
+          <div class="combo-display">${d}</div>
+          <button class="combo-btn" onclick="Puzzle._comboAdj(${i},-1)">▼</button>
+        </div>`).join('');
+    };
+    this._comboDigits = digits; this._comboAnswer = answer; this._comboRender = render;
+    render();
+    footer.innerHTML = `<div class="puzzle-feedback" id="puzzle-feedback" style="display:none"></div>
+      <button class="btn btn-primary" onclick="Puzzle._comboCheck()">UNLOCK</button>`;
+  },
+  _comboAdj(i, d) {
+    this._comboDigits[i] = (this._comboDigits[i]+d+10)%10;
+    this._comboRender(); Audio.sfx('click');
+  },
+  _comboCheck() {
+    const ok = this._comboDigits.every((d,i)=>d===this._comboAnswer[i]);
+    this.feedback(ok?'✓ LOCK OPENED':'✗ WRONG COMBINATION', ok);
+  },
+
+  // ── CIPHER WHEEL ──────────────────────────────────────────────
+  buildCipher(body, footer, hs) {
+    const shift = State.codes[hs.puzzleKey] || 3;
+    const encoded = 'SECURE'.split('').map(c=>{
+      const code = c.charCodeAt(0)-65;
+      return String.fromCharCode(((code+shift)%26)+65);
+    }).join('');
+    let currentShift = 0;
+    body.innerHTML = `<div class="puzzle-desc">The cipher is shifted by a key. Rotate the outer ring to decode the word: <strong style="color:var(--ac)">${encoded}</strong></div>
+      <canvas id="cipher-canvas" width="280" height="280"></canvas>
+      <div class="cipher-result" id="cipher-result">------</div>`;
+    const canvas = document.getElementById('cipher-canvas');
+    const ctx = canvas.getContext('2d');
+    let dragging=false, lastX=0;
+    const draw = () => {
+      ctx.clearRect(0,0,280,280);
+      const cx=140,cy=140;
+      // Outer ring
+      ctx.strokeStyle='#1a3050'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(cx,cy,120,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx,cy,95,0,Math.PI*2); ctx.stroke();
+      // Inner ring
+      ctx.beginPath(); ctx.arc(cx,cy,90,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx,cy,65,0,Math.PI*2); ctx.stroke();
+      // Letters
+      for(let i=0;i<26;i++){
+        const angle = (i/26)*Math.PI*2 - Math.PI/2;
+        const outerAngle = angle + (currentShift/26)*Math.PI*2;
+        // Inner (fixed) A-Z
+        const ix=cx+78*Math.cos(angle), iy=cy+78*Math.sin(angle);
+        ctx.fillStyle='#6a9abb'; ctx.font='10px Share Tech Mono';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(String.fromCharCode(65+i),ix,iy);
+        // Outer (rotating) A-Z
+        const ox=cx+108*Math.cos(outerAngle), oy=cy+108*Math.sin(outerAngle);
+        ctx.fillStyle=i===0?'var(--cyan,#00c8ff)':'#3a6080';
+        ctx.fillText(String.fromCharCode(65+i),ox,oy);
+      }
+      ctx.fillStyle='#2a5070'; ctx.fillText('INNER',cx,cy-20);
+      ctx.fillStyle='var(--cyan,#00c8ff)'; ctx.fillText('OUTER',cx,cy+20);
+      // Decode
+      const decoded = encoded.split('').map(c=>{
+        const code = c.charCodeAt(0)-65;
+        return String.fromCharCode(((code-currentShift+26)%26)+65);
+      }).join('');
+      document.getElementById('cipher-result').textContent = decoded;
+    };
+    canvas.onmousedown = e => { dragging=true; lastX=e.clientX; };
+    window.onmousemove = e => {
+      if(!dragging) return;
+      const dx=e.clientX-lastX; lastX=e.clientX;
+      currentShift=(currentShift+Math.round(dx/14)+26)%26;
+      draw();
+    };
+    window.onmouseup = () => { dragging=false; };
+    draw();
+    footer.innerHTML = `<div class="puzzle-feedback" id="puzzle-feedback" style="display:none"></div>
+      <button class="btn btn-primary" onclick="Puzzle._cipherCheck(${shift})">DECODE</button>`;
+  },
+  _cipherCheck(shift) {
+    const result = document.getElementById('cipher-result').textContent;
+    if(result === 'SECURE') this.feedback('✓ CIPHER DECODED: SECURE', true);
+    else this.feedback('✗ KEEP ROTATING THE OUTER RING', false);
+  },
+
+  // ── BINARY DECODER ────────────────────────────────────────────
+  buildBinary(body, footer, hs) {
+    const target = State.codes[hs.puzzleKey] || 65;
+    const bits = Array(8).fill(0);
+    body.innerHTML = `<div class="puzzle-desc">Set the 8 switches to represent the correct ASCII value. Each ON switch = 1, OFF = 0.</div>
+      <div class="binary-row" id="bin-row"></div>
+      <div class="binary-output" id="bin-out">Value: 0 = '?'</div>`;
+    this._bits = bits;
+    this._binTarget = target;
+    const render = () => {
+      const row = document.getElementById('bin-row');
+      row.innerHTML = bits.map((b,i)=>`
+        <div class="bit-switch ${b?'on':''}" onclick="Puzzle._bitFlip(${i})">
+          <div class="bit-indicator"></div>
+          <div class="bit-label">${128>>i}</div>
+          <div class="bit-val">${b}</div>
+        </div>`).join('');
+      const val = bits.reduce((acc,b,i)=>acc+(b<<(7-i)),0);
+      document.getElementById('bin-out').textContent =
+        `Value: ${val} = '${val>=32&&val<127?String.fromCharCode(val):'?'}'`;
+    };
+    this._binRender = render; render();
+    footer.innerHTML = `<div class="puzzle-feedback" id="puzzle-feedback" style="display:none"></div>
+      <button class="btn btn-primary" onclick="Puzzle._binCheck()">SUBMIT</button>`;
+  },
+  _bitFlip(i) { this._bits[i]=this._bits[i]?0:1; this._binRender(); Audio.sfx('click'); },
+  _binCheck() {
+    const val = this._bits.reduce((acc,b,i)=>acc+(b<<(7-i)),0);
+    if(val===this._binTarget) this.feedback(`✓ CORRECT: ${val} = '${String.fromCharCode(val)}'`,true);
+    else this.feedback(`✗ VALUE ${val} IS INCORRECT`,false);
+  },
+
+  // ── WIRE MATCH ────────────────────────────────────────────────
+  buildWire(body, footer, hs) {
+    const order = State.codes[hs.puzzleKey] || [0,1,2,3];
+    const colors = ['#ff3366','#00c8ff','#00ff88','#ffaa00'];
+    let selected = null; let connected = {};
+    body.innerHTML = `<div class="puzzle-desc">Connect the coloured terminals on the left to their matching terminals on the right. The order is scrambled.</div>
+      <div class="wire-panel" id="wire-panel" style="position:relative;height:160px;">
+        <div class="wire-terminals" id="left-terms"></div>
+        <svg id="wire-svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;"></svg>
+        <div class="wire-terminals" id="right-terms"></div>
+      </div>`;
+    this._wireOrder = order; this._wireColors = colors;
+    this._wireSelected = null; this._wireConnected = {};
+    const rightOrder = order.map((_,i)=>i); // left indices that each right slot expects
+    const render = () => {
+      const lt = document.getElementById('left-terms');
+      const rt = document.getElementById('right-terms');
+      lt.innerHTML = colors.map((c,i)=>`<div class="wire-node" style="background:${c};border-color:${c}" id="ln-${i}" onclick="Puzzle._wireClickLeft(${i})">${i+1}</div>`).join('');
+      rt.innerHTML = order.map((o,i)=>`<div class="wire-node" style="background:${colors[o]}44;border-color:${colors[o]}88;color:${colors[o]}" id="rn-${i}" onclick="Puzzle._wireClickRight(${i})">${i+1}</div>`).join('');
+      // Draw connections
+      const svg = document.getElementById('wire-svg');
+      svg.innerHTML = '';
+      Object.entries(this._wireConnected).forEach(([li,ri])=>{
+        const le=document.getElementById('ln-'+li), re=document.getElementById('rn-'+ri);
+        if(!le||!re) return;
+        const pb=document.getElementById('wire-panel').getBoundingClientRect();
+        const lb=le.getBoundingClientRect(), rb=re.getBoundingClientRect();
+        const x1=lb.right-pb.left, y1=lb.top+lb.height/2-pb.top;
+        const x2=rb.left-pb.left, y2=rb.top+rb.height/2-pb.top;
+        const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+        path.setAttribute('d',`M${x1},${y1} C${(x1+x2)/2},${y1} ${(x1+x2)/2},${y2} ${x2},${y2}`);
+        path.setAttribute('stroke',colors[parseInt(li)]);
+        path.setAttribute('stroke-width','3');
+        path.setAttribute('fill','none');
+        svg.appendChild(path);
+      });
+    };
+    this._wireRender = render; this._wireRightOrder = order; render();
+    footer.innerHTML = `<div class="puzzle-feedback" id="puzzle-feedback" style="display:none"></div>
+      <button class="btn btn-primary" onclick="Puzzle._wireCheck()">CHECK WIRING</button>`;
+  },
+  _wireClickLeft(i) {
+    this._wireSelected = i;
+    document.querySelectorAll('.wire-node').forEach(n=>n.style.boxShadow='');
+    const el=document.getElementById('ln-'+i);
+    if(el) el.style.boxShadow='0 0 10px '+this._wireColors[i];
+    Audio.sfx('click');
+  },
+  _wireClickRight(i) {
+    if(this._wireSelected===null) return;
+    this._wireConnected[this._wireSelected]=i;
+    this._wireSelected=null;
+    this._wireRender();
+    Audio.sfx('click');
+  },
+  _wireCheck() {
+    const ok = this._wireRightOrder.every((_,ri)=>{
+      const li = Object.keys(this._wireConnected).find(k=>this._wireConnected[k]==ri);
+      return li !== undefined && this._wireRightOrder[ri]===parseInt(li);
+    });
+    this.feedback(ok?'✓ CIRCUIT COMPLETE':'✗ INCORRECT WIRING — CHECK COLOURS',ok);
+  },
+
+  // ── MORSE CODE ────────────────────────────────────────────────
+  buildMorse(body, footer, hs) {
+    const word = State.codes[hs.puzzleKey] || 'OPEN';
+    let entered = [];
+    body.innerHTML = `<div class="puzzle-desc">Listen to the morse code signal and decode the word. Use the buttons to enter dots and dashes.</div>
+      <div class="morse-display" id="morse-disp"></div>
+      <div class="morse-guess" id="morse-guess">?</div>
+      <div class="morse-input">
+        <button class="morse-btn" onclick="Puzzle._morseAdd('.')">·</button>
+        <button class="morse-btn" onclick="Puzzle._morseAdd('-')">—</button>
+        <button class="morse-btn btn-sm" onclick="Puzzle._morseAdd('/')">SPC</button>
+      </div>
+      <div class="morse-ctrl">
+        <button class="btn btn-ghost btn-sm" onclick="Puzzle._morseClear()">CLEAR</button>
+        <button class="btn btn-cyan btn-sm" onclick="Puzzle._morsePlay('${word}')">▶ PLAY</button>
+      </div>`;
+    this._morseEntered = entered;
+    this._morseWord = word;
+    footer.innerHTML = `<div class="puzzle-feedback" id="puzzle-feedback" style="display:none"></div>
+      <button class="btn btn-primary" onclick="Puzzle._morseCheck()">SUBMIT</button>`;
+    // Auto-play once
+    setTimeout(()=>this._morsePlay(word), 500);
+  },
+  _morseAdd(s) {
+    const CODE = {A:'.-',B:'-...',C:'-.-.',D:'-..',E:'.',F:'..-.',G:'--.',H:'....',I:'..',J:'.---',K:'-.-',L:'.-..',M:'--',N:'-.',O:'---',P:'.--.',Q:'--.-',R:'.-.',S:'...',T:'-',U:'..-',V:'...-',W:'.--',X:'-..-',Y:'-.--',Z:'--..'};
+    this._morseEntered.push(s);
+    const raw = this._morseEntered.join('');
+    document.getElementById('morse-disp').textContent = raw;
+    // Try to decode
+    const parts = raw.split('/');
+    const decoded = parts.map(p=>{
+      const ch = Object.keys(CODE).find(k=>CODE[k]===p);
+      return ch||'?';
+    }).join('');
+    document.getElementById('morse-guess').textContent = decoded || '?';
+    Audio.sfx(s==='.'?'morse_dot':'morse_dash');
+  },
+  _morseClear() { this._morseEntered=[]; document.getElementById('morse-disp').textContent=''; document.getElementById('morse-guess').textContent='?'; },
+  _morsePlay(word) { Audio.playMorse(word); },
+  _morseCheck() {
+    const guess = document.getElementById('morse-guess').textContent.toUpperCase().replace(/\?/g,'');
+    this.feedback(guess===this._morseWord?`✓ DECODED: ${this._morseWord}`:'✗ INCORRECT — LISTEN AGAIN',guess===this._morseWord);
+  },
+
+  // ── UV REVEAL ────────────────────────────────────────────────
+  buildUV(body, footer, hs) {
+    const hiddenText = `CODE: ${State.codes.jigsaw}${State.codes.combo[0]}`;
+    if (!State.inventory.includes('uv_torch')) {
+      body.innerHTML = `<div class="puzzle-desc">${hs.examine}</div>
+        <div style="color:var(--warn);font-family:Share Tech Mono;font-size:12px;margin-top:10px;">⚠ You need the UV Torch from this room.</div>`;
+      footer.innerHTML = `<button class="btn btn-ghost" onclick="Puzzle.close()">CLOSE</button>`;
+      return;
+    }
+    body.innerHTML = `<div class="puzzle-desc">Move the UV torch over the document to reveal the hidden text.</div>
+      <div class="uv-area" id="uv-area">
+        <div class="uv-text" id="uv-text">${hiddenText}</div>
+        <div class="uv-torch-cursor" id="uv-cursor" style="opacity:0"></div>
+      </div>
+      <div class="uv-note">Move your mouse/cursor over the dark area</div>`;
+    const area = document.getElementById('uv-area');
+    const cursor = document.getElementById('uv-cursor');
+    const text = document.getElementById('uv-text');
+    area.onmousemove = e => {
+      const r=area.getBoundingClientRect();
+      const x=e.clientX-r.left, y=e.clientY-r.top;
+      cursor.style.left=x+'px'; cursor.style.top=y+'px'; cursor.style.opacity='1';
+      // Reveal text based on distance from cursor
+      text.style.textShadow=`0 0 20px #7c00ff, 0 0 40px #5000cc`;
+      text.style.color=`rgba(180,100,255,0.9)`;
+      clearTimeout(this._uvTimer);
+      this._uvTimer=setTimeout(()=>{
+        text.style.color='transparent'; text.style.textShadow='none'; cursor.style.opacity='0';
+      },300);
+    };
+    area.onmouseleave = ()=>{ cursor.style.opacity='0'; };
+    footer.innerHTML = `<div class="puzzle-feedback" id="puzzle-feedback" style="display:none"></div>
+      <button class="btn btn-primary" onclick="Puzzle._uvReveal()">NOTE THE CODE</button>`;
+  },
+  _uvReveal() {
+    State.codes.uv_seen = true;
+    this.feedback('✓ CODE NOTED IN YOUR MEMORY',true);
+  },
+
+  // ── JIGSAW ────────────────────────────────────────────────────
+  buildJigsaw(body, footer, hs) {
+    const answer = State.codes.jigsaw;
+    body.innerHTML = `<div class="puzzle-desc">Drag the puzzle pieces into position to reveal the hidden number.</div>
+      <canvas id="jigsaw-canvas" width="320" height="200"></canvas>
+      <div class="jigsaw-hint" id="jigsaw-hint">Click pieces to move them into position</div>`;
+    const canvas = document.getElementById('jigsaw-canvas');
+    const ctx = canvas.getContext('2d');
+    const pieces = [{x:20,y:20,tx:20,ty:20},{x:180,y:20,tx:180,ty:20},
+                    {x:20,y:120,tx:20,ty:120},{x:180,y:120,tx:180,ty:120}];
+    // Scramble
+    pieces.forEach(p=>{p.x=Math.random()*200+20|0;p.y=Math.random()*100+60|0;p.placed=false;});
+    let dragging=null,ox=0,oy=0;
+    const drawPieces = () => {
+      ctx.clearRect(0,0,320,200);
+      ctx.strokeStyle='#1a3050'; ctx.lineWidth=1;
+      ctx.strokeRect(20,20,280,160);
+      // Draw guide
+      ctx.strokeStyle='#0a1828'; ctx.setLineDash([4,4]);
+      ctx.strokeRect(20,20,140,80); ctx.strokeRect(160,20,140,80);
+      ctx.strokeRect(20,100,140,80); ctx.strokeRect(160,100,140,80);
+      ctx.setLineDash([]);
+      // Draw pieces
+      pieces.forEach((p,i)=>{
+        ctx.fillStyle=p.placed?'#0e2030':'#0c1825';
+        ctx.strokeStyle=p.placed?'#00c8ff':'#1a3050';
+        ctx.lineWidth=2; ctx.fillRect(p.x,p.y,130,70); ctx.strokeRect(p.x,p.y,130,70);
+        // Draw number fragment
+        ctx.fillStyle='#2a5070'; ctx.font='bold 36px Share Tech Mono'; ctx.textAlign='center';
+        const digits = String(answer).padStart(2,'0');
+        const frags = [digits[0]+'.','.'+digits[1],digits[0],digits[1]];
+        ctx.fillText(frags[i]||'?',p.x+65,p.y+46);
+      });
+      const allPlaced = pieces.every(p=>p.placed);
+      if(allPlaced) {
+        ctx.fillStyle='rgba(0,200,255,0.1)';ctx.fillRect(20,20,280,160);
+        ctx.fillStyle='#00c8ff';ctx.font='bold 48px Share Tech Mono';ctx.textAlign='center';
+        ctx.fillText(String(answer),160,110);
+        document.getElementById('jigsaw-hint').textContent='Number revealed: '+answer;
+      }
+    };
+    canvas.onmousedown = e=>{
+      const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+      dragging=pieces.findLast((p,i)=>x>=p.x&&x<=p.x+130&&y>=p.y&&y<=p.y+70)?pieces.findLastIndex((p)=>x>=p.x&&x<=p.x+130&&y>=p.y&&y<=p.y+70):null;
+      if(dragging!==null){ox=x-pieces[dragging].x;oy=y-pieces[dragging].y;}
+    };
+    canvas.onmousemove = e=>{
+      if(dragging===null) return;
+      const r=canvas.getBoundingClientRect();
+      pieces[dragging].x=e.clientX-r.left-ox;
+      pieces[dragging].y=e.clientY-r.top-oy;
+      drawPieces();
+    };
+    canvas.onmouseup = ()=>{
+      if(dragging!==null){
+        const p=pieces[dragging];
+        if(Math.abs(p.x-p.tx)<25&&Math.abs(p.y-p.ty)<25){p.x=p.tx;p.y=p.ty;p.placed=true;Audio.sfx('click');}
+        dragging=null; drawPieces();
+      }
+    };
+    drawPieces();
+    footer.innerHTML=`<div class="puzzle-feedback" id="puzzle-feedback" style="display:none"></div>
+      <button class="btn btn-primary" onclick="Puzzle._jigsawCheck()">CONFIRM NUMBER</button>`;
+    this._jigsawPieces=pieces; this._jigsawAnswer=answer;
+  },
+  _jigsawCheck(){
+    const done=this._jigsawPieces.every(p=>p.placed);
+    this.feedback(done?`✓ NUMBER REVEALED: ${this._jigsawAnswer}`:'✗ PLACE ALL PIECES FIRST',done);
+  },
+
+  // ── MIRROR LASER ──────────────────────────────────────────────
+  buildMirror(body, footer, hs) {
+    const solution = State.codes[hs.puzzleKey]||[1,0,2];
+    let angles = [0,0,0,0]; // 0=/, 1=\, 2=|, 3=—
+    body.innerHTML=`<div class="puzzle-desc">Click each mirror to rotate it. Redirect the laser beam from LEFT to the TARGET on the right.</div>
+      <canvas id="mirror-canvas" width="440" height="200" onclick="Puzzle._mirrorClick(event)"></canvas>`;
+    const canvas=document.getElementById('mirror-canvas');
+    const ctx=canvas.getContext('2d');
+    this._mirrorAngles=angles; this._mirrorSolution=solution;
+    const draw=()=>{
+      ctx.clearRect(0,0,440,200);
+      // Background
+      ctx.fillStyle='#040810'; ctx.fillRect(0,0,440,200);
+      // Emitter
+      ctx.fillStyle='#ff3366'; ctx.fillRect(10,90,20,20);
+      ctx.fillStyle='#ff336660'; ctx.fillRect(30,95,5,10);
+      // Target
+      ctx.beginPath(); ctx.arc(420,100,15,0,Math.PI*2);
+      ctx.strokeStyle='#ff3366'; ctx.lineWidth=2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(420,100,8,0,Math.PI*2);
+      ctx.fillStyle='#1a0010'; ctx.fill();
+      // Mirrors at x=100,180,260,340
+      const mx=[100,180,260,340];
+      const angleLines={0:[-1,-1,1,1],1:[-1,1,1,-1],2:[0,-1,0,1],3:[-1,0,1,0]};
+      mx.forEach((x,i)=>{
+        ctx.save(); ctx.translate(x,100);
+        const a=angles[i];
+        ctx.strokeStyle='#b794f4'; ctx.lineWidth=3;
+        ctx.beginPath();
+        const ln=angleLines[a];
+        ctx.moveTo(ln[0]*20,ln[1]*20); ctx.lineTo(ln[2]*20,ln[3]*20);
+        ctx.stroke();
+        ctx.strokeStyle='#4a2080'; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.arc(0,0,22,0,Math.PI*2); ctx.stroke();
+        ctx.restore();
+      });
+      // Trace laser (simplified: straight line, green when solved)
+      const solved=angles.slice(0,solution.length).every((a,i)=>a===solution[i]);
+      ctx.strokeStyle=solved?'#00ff88':'#ff3366aa';
+      ctx.lineWidth=2;
+      ctx.shadowColor=solved?'#00ff88':'#ff3366';
+      ctx.shadowBlur=solved?8:4;
+      ctx.beginPath();
+      ctx.moveTo(30,100);
+      if(solved){ctx.lineTo(405,100);}
+      else{ctx.lineTo(mx[0],100); ctx.lineTo(mx[0],200);}
+      ctx.stroke(); ctx.shadowBlur=0;
+      if(solved){
+        ctx.fillStyle='#00ff88'; ctx.beginPath(); ctx.arc(420,100,8,0,Math.PI*2); ctx.fill();
+      }
+    };
+    this._mirrorDraw=draw; draw();
+    footer.innerHTML=`<div class="puzzle-feedback" id="puzzle-feedback" style="display:none"></div>
+      <button class="btn btn-primary" onclick="Puzzle._mirrorCheck()">ACTIVATE LASER</button>`;
+  },
+  _mirrorClick(e){
+    const r=document.getElementById('mirror-canvas').getBoundingClientRect();
+    const x=e.clientX-r.left;
+    const mx=[100,180,260,340];
+    const i=mx.findIndex(m=>Math.abs(m-x)<25);
+    if(i>=0){this._mirrorAngles[i]=(this._mirrorAngles[i]+1)%4;this._mirrorDraw();Audio.sfx('click');}
+  },
+  _mirrorCheck(){
+    const sol=this._mirrorSolution;
+    const ok=this._mirrorAngles.slice(0,sol.length).every((a,i)=>a===sol[i]);
+    this.feedback(ok?'✓ LASER ALIGNED — TARGET HIT':'✗ MIRRORS NOT ALIGNED',ok);
+    if(ok) this._mirrorDraw();
+  },
+
+  // ── COLOR MIX ────────────────────────────────────────────────
+  buildColor(body,footer,hs){
+    const targetH=State.codes.colorH||180;
+    let h=0,s=50,l=50;
+    body.innerHTML=`<div class="puzzle-desc">Mix the chemicals to match the target colour exactly. Adjust Hue, Saturation and Lightness.</div>
+      <div class="color-preview">
+        <div><div class="color-swatch" id="col-target" style="background:hsl(${targetH},70%,40%)"></div><div class="color-label">TARGET</div></div>
+        <div><div class="color-swatch" id="col-yours" style="background:hsl(0,50%,50%)"></div><div class="color-label">YOURS</div></div>
+      </div>
+      <div class="color-sliders">
+        <div class="color-row"><label>HUE</label><input type="range" min="0" max="360" value="0" id="sl-h" oninput="Puzzle._colorUpdate()"><span id="sv-h">0</span></div>
+        <div class="color-row"><label>SAT</label><input type="range" min="0" max="100" value="50" id="sl-s" oninput="Puzzle._colorUpdate()"><span id="sv-s">50</span></div>
+        <div class="color-row"><label>LIT</label><input type="range" min="0" max="100" value="50" id="sl-l" oninput="Puzzle._colorUpdate()"><span id="sv-l">50</span></div>
+      </div>`;
+    this._colorTarget={h:targetH,s:70,l:40};
+    footer.innerHTML=`<div class="puzzle-feedback" id="puzzle-feedback" style="display:none"></div>
+      <button class="btn btn-primary" onclick="Puzzle._colorCheck()">MIX</button>`;
+  },
+  _colorUpdate(){
+    const h=document.getElementById('sl-h').value;
+    const s=document.getElementById('sl-s').value;
+    const l=document.getElementById('sl-l').value;
+    document.getElementById('sv-h').textContent=h;
+    document.getElementById('sv-s').textContent=s;
+    document.getElementById('sv-l').textContent=l;
+    document.getElementById('col-yours').style.background=`hsl(${h},${s}%,${l}%)`;
+  },
+  _colorCheck(){
+    const h=parseInt(document.getElementById('sl-h').value);
+    const s=parseInt(document.getElementById('sl-s').value);
+    const l=parseInt(document.getElementById('sl-l').value);
+    const t=this._colorTarget;
+    const ok=Math.abs(h-t.h)<20&&Math.abs(s-t.s)<15&&Math.abs(l-t.l)<15;
+    this.feedback(ok?'✓ COMPOUND MIXED CORRECTLY':'✗ COLOUR MISMATCH — ADJUST SLIDERS',ok);
+  },
+};
+
+// ════════════════════════════════════════════════════════════════
+//  TITLE SCREEN SETUP
+// ════════════════════════════════════════════════════════════════
+function setupTitle() {
+  const grid = document.getElementById('theme-grid');
+  grid.innerHTML = Object.entries(THEMES).map(([id,t])=>`
+    <div class="theme-card" id="tc-${id}" onclick="selectTheme('${id}')">
+      <div class="tc-icon">${t.icon}</div>
+      <div class="tc-info">
+        <div class="tc-name">${t.name}</div>
+        <div class="tc-desc">${t.desc}</div>
+      </div>
+    </div>`).join('');
+  // Default selection
+  selectTheme('lab');
+  document.getElementById('title-tagline').textContent = THEMES['lab'].tagline;
+  const hasSave = !!localStorage.getItem('escapeSave');
+  document.getElementById('btn-load').style.display = hasSave ? '' : 'none';
+}
+
+function selectTheme(id) {
+  Game.selectedTheme = id;
+  document.body.dataset.theme = id;
+  document.querySelectorAll('.theme-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('tc-'+id).classList.add('selected');
+  document.getElementById('title-tagline').textContent = THEMES[id].tagline;
+  document.getElementById('title-logo').textContent = THEMES[id].logoText || 'ESCAPE';
+}
+
+function toggleAudio() {
+  State.audioOn = !State.audioOn;
+  document.getElementById('audio-toggle-txt').textContent = State.audioOn ? 'ON' : 'OFF';
+}
+
+// Start
+setupTitle();
+</script>
+</body>
+</html>
