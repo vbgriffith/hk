@@ -1,0 +1,2342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>NetPulse — Network Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ══════════════════════════════════════════════════════════
+   RESET & ROOT
+══════════════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#070a0f;--s1:#0b0f18;--s2:#0f1520;--s3:#141d2e;
+  --b1:#1a2840;--b2:#203460;--b3:#284878;
+  --t1:#b8d4f0;--t2:#6890b8;--t3:#304860;--t4:#182838;
+  --ac:#00e5ff;--ac2:#39ff14;--ac3:#ff6b35;--ac4:#f0c040;--ac5:#c084fc;
+  --err:#ff3366;--warn:#ffaa00;--ok:#39ff14;
+  --mono:'JetBrains Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+  --r:4px;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--t1);
+  font-family:var(--sans);font-size:13px;}
+button{font-family:var(--sans);cursor:pointer;}
+input,select,textarea{font-family:var(--mono);}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px;}
+
+/* ══ BACKGROUND ══ */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 0%,rgba(0,229,255,.04) 0%,transparent 60%),
+    radial-gradient(ellipse 40% 30% at 80% 100%,rgba(57,255,20,.03) 0%,transparent 50%),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0,rgba(255,255,255,.012) 1px,transparent 1px,transparent 32px),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.012) 0,rgba(255,255,255,.012) 1px,transparent 1px,transparent 32px);}
+
+/* ══ APP SHELL ══ */
+#app{display:flex;flex-direction:column;height:100vh;}
+
+/* ══ TOPBAR ══ */
+#topbar{height:48px;background:var(--s1);border-bottom:1px solid var(--b1);
+  display:flex;align-items:center;padding:0 16px;gap:0;flex-shrink:0;}
+.brand{display:flex;align-items:center;gap:10px;margin-right:24px;flex-shrink:0;}
+.brand-icon{width:28px;height:28px;border:1px solid var(--ac);border-radius:3px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,229,255,.08);flex-shrink:0;}
+.brand-icon svg{width:16px;height:16px;}
+.brand-name{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ac);
+  letter-spacing:2px;}
+.brand-ver{font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:1px;}
+.nav-tabs{display:flex;height:100%;flex:1;overflow-x:auto;gap:0;}
+.nav-tabs::-webkit-scrollbar{height:0;}
+.nav-tab{display:flex;align-items:center;gap:7px;padding:0 16px;height:100%;
+  font-family:var(--mono);font-size:11px;font-weight:500;color:var(--t3);
+  border:none;background:transparent;border-bottom:2px solid transparent;
+  white-space:nowrap;letter-spacing:.5px;transition:all .15s;position:relative;}
+.nav-tab:hover{color:var(--t2);background:rgba(255,255,255,.03);}
+.nav-tab.active{color:var(--ac);border-bottom-color:var(--ac);background:rgba(0,229,255,.04);}
+.nav-tab .tab-icon{font-size:13px;}
+.nav-tab .tab-badge{background:var(--ac2);color:#000;font-size:8px;font-weight:700;
+  padding:1px 4px;border-radius:2px;min-width:14px;text-align:center;}
+
+.topbar-right{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0;}
+.conn-pill{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;
+  color:var(--t3);padding:3px 10px;border:1px solid var(--b1);border-radius:20px;
+  background:var(--s2);}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.dot.ok{background:var(--ok);box-shadow:0 0 4px var(--ok);}
+.dot.warn{background:var(--warn);}
+.dot.err{background:var(--err);}
+.dot.idle{background:var(--t4);}
+
+/* ══ MAIN CONTENT ══ */
+#main{flex:1;display:flex;min-height:0;}
+.tab-pane{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.tab-pane.active{display:flex;}
+.pane-body{flex:1;overflow-y:auto;padding:16px;}
+
+/* ══ SHARED COMPONENTS ══ */
+.section{background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);
+  margin-bottom:14px;overflow:hidden;}
+.section-head{padding:10px 14px;border-bottom:1px solid var(--b1);
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:rgba(255,255,255,.02);}
+.section-title{font-family:var(--mono);font-size:10px;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;color:var(--t2);}
+.section-body{padding:12px 14px;}
+
+.input-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.inp{background:var(--s3);border:1px solid var(--b1);border-radius:var(--r);
+  color:var(--t1);font-family:var(--mono);font-size:12px;padding:7px 10px;
+  outline:none;transition:border-color .15s;}
+.inp:focus{border-color:var(--ac);}
+.inp-sm{padding:5px 8px;font-size:11px;}
+.inp-w{flex:1;min-width:160px;}
+select.inp{cursor:pointer;}
+
+.btn{font-size:11px;font-weight:600;padding:7px 14px;border:1px solid;border-radius:var(--r);
+  transition:all .15s;letter-spacing:.3px;display:inline-flex;align-items:center;gap:5px;}
+.btn-p{background:rgba(0,229,255,.1);border-color:var(--ac);color:var(--ac);}
+.btn-p:hover{background:rgba(0,229,255,.2);}
+.btn-g{background:rgba(57,255,20,.08);border-color:var(--ac2);color:var(--ac2);}
+.btn-g:hover{background:rgba(57,255,20,.16);}
+.btn-o{background:rgba(255,107,53,.1);border-color:var(--ac3);color:var(--ac3);}
+.btn-o:hover{background:rgba(255,107,53,.2);}
+.btn-ghost{background:transparent;border-color:var(--b2);color:var(--t3);}
+.btn-ghost:hover{border-color:var(--b3);color:var(--t2);}
+.btn-sm{padding:4px 10px;font-size:10px;}
+.btn:disabled{opacity:.3;cursor:not-allowed;}
+
+.tag{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.5px;
+  padding:2px 7px;border-radius:2px;border:1px solid;text-transform:uppercase;}
+.tag-ok{background:rgba(57,255,20,.1);border-color:rgba(57,255,20,.3);color:var(--ok);}
+.tag-err{background:rgba(255,51,102,.1);border-color:rgba(255,51,102,.3);color:var(--err);}
+.tag-warn{background:rgba(255,170,0,.1);border-color:rgba(255,170,0,.3);color:var(--warn);}
+.tag-info{background:rgba(0,229,255,.1);border-color:rgba(0,229,255,.3);color:var(--ac);}
+.tag-idle{background:rgba(255,255,255,.05);border-color:var(--b1);color:var(--t3);}
+
+.kv-grid{display:grid;grid-template-columns:1fr 2fr;gap:1px;background:var(--b1);
+  border:1px solid var(--b1);border-radius:var(--r);overflow:hidden;font-family:var(--mono);}
+.kv-k{background:var(--s3);padding:6px 10px;font-size:10px;color:var(--t3);font-weight:600;}
+.kv-v{background:var(--s2);padding:6px 10px;font-size:11px;color:var(--t1);word-break:break-all;}
+.kv-v.ok{color:var(--ok);}  .kv-v.err{color:var(--err);} .kv-v.warn{color:var(--warn);}
+.kv-v.ac{color:var(--ac);}
+
+.mono{font-family:var(--mono);}
+.muted{color:var(--t3);}
+.small{font-size:11px;}
+
+/* progress bar */
+.prog-track{height:3px;background:var(--b1);border-radius:2px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:2px;transition:width .3s;}
+
+/* ══ RESULT TABLE ══ */
+.result-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+.result-table th{padding:6px 10px;text-align:left;font-size:9px;letter-spacing:1px;
+  text-transform:uppercase;color:var(--t3);border-bottom:1px solid var(--b1);font-weight:700;}
+.result-table td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.04);
+  vertical-align:middle;}
+.result-table tr:hover td{background:rgba(255,255,255,.02);}
+.result-table tr:last-child td{border-bottom:none;}
+
+/* ══ SPARKLINE ══ */
+.sparkline-wrap{width:80px;height:28px;display:inline-block;}
+
+/* ══ STATUS PULSE ══ */
+@keyframes pulse-ok{0%,100%{box-shadow:0 0 0 0 rgba(57,255,20,.4);}70%{box-shadow:0 0 0 6px rgba(57,255,20,0);}}
+@keyframes pulse-err{0%,100%{box-shadow:0 0 0 0 rgba(255,51,102,.4);}70%{box-shadow:0 0 0 6px rgba(255,51,102,0);}}
+.pulse-ok{animation:pulse-ok 2s infinite;}
+.pulse-err{animation:pulse-err 1.5s infinite;}
+
+/* ══ DASHBOARD GRID ══ */
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:14px;}
+.stat-card{background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);
+  padding:14px;display:flex;flex-direction:column;gap:6px;}
+.stat-card-label{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;color:var(--t3);}
+.stat-card-val{font-family:var(--mono);font-size:24px;font-weight:700;color:var(--ac);
+  line-height:1;}
+.stat-card-sub{font-size:11px;color:var(--t3);}
+
+/* ══ HOST GRID (LAN MAP) ══ */
+.host-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;}
+.host-card{background:var(--s3);border:1px solid var(--b1);border-radius:var(--r);
+  padding:10px 12px;cursor:pointer;transition:all .2s;}
+.host-card:hover{border-color:var(--b2);background:var(--s2);}
+.host-card.alive{border-color:rgba(57,255,20,.3);}
+.host-card.selected{border-color:var(--ac);background:rgba(0,229,255,.04);}
+.host-ip{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ac);}
+.host-ms{font-family:var(--mono);font-size:10px;color:var(--ok);}
+.host-ports{font-size:10px;color:var(--t3);margin-top:4px;font-family:var(--mono);}
+.host-services{margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;}
+
+/* ══ DNS RESULTS ══ */
+.dns-answer{background:var(--s3);border:1px solid var(--b1);border-radius:var(--r);
+  padding:8px 12px;margin-bottom:6px;font-family:var(--mono);}
+.dns-type{font-size:9px;font-weight:700;letter-spacing:1px;color:var(--ac4);margin-bottom:3px;}
+.dns-val{font-size:12px;color:var(--t1);}
+.dns-ttl{font-size:10px;color:var(--t3);}
+
+/* ══ SPEED TEST ══ */
+.speed-gauge{text-align:center;padding:20px;}
+.speed-val{font-family:var(--mono);font-size:48px;font-weight:700;color:var(--ac);
+  line-height:1;}
+.speed-unit{font-family:var(--mono);font-size:14px;color:var(--t2);}
+.speed-bars{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.speed-bar-row{display:flex;align-items:center;gap:8px;}
+.speed-bar-label{font-family:var(--mono);font-size:10px;color:var(--t3);width:80px;flex-shrink:0;}
+.speed-bar-track{flex:1;height:8px;background:var(--s3);border-radius:4px;overflow:hidden;}
+.speed-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--ac),var(--ac2));
+  transition:width .5s cubic-bezier(.4,0,.2,1);}
+.speed-bar-val{font-family:var(--mono);font-size:10px;color:var(--ac);width:60px;text-align:right;flex-shrink:0;}
+
+/* ══ SECURITY GRADE ══ */
+.grade-badge{width:64px;height:64px;border-radius:var(--r);display:flex;align-items:center;
+  justify-content:center;font-family:var(--mono);font-size:32px;font-weight:900;flex-shrink:0;}
+.grade-A{background:rgba(57,255,20,.1);border:2px solid var(--ok);color:var(--ok);}
+.grade-B{background:rgba(0,229,255,.1);border:2px solid var(--ac);color:var(--ac);}
+.grade-C{background:rgba(240,192,64,.1);border:2px solid var(--ac4);color:var(--ac4);}
+.grade-D{background:rgba(255,107,53,.1);border:2px solid var(--ac3);color:var(--ac3);}
+.grade-F{background:rgba(255,51,102,.1);border:2px solid var(--err);color:var(--err);}
+
+/* ══ LOG / OUTPUT ══ */
+.log-box{background:var(--bg);border:1px solid var(--b1);border-radius:var(--r);
+  padding:10px 12px;font-family:var(--mono);font-size:11px;
+  max-height:240px;overflow-y:auto;line-height:1.8;}
+.log-box .l-ok{color:var(--ok);}
+.log-box .l-err{color:var(--err);}
+.log-box .l-warn{color:var(--warn);}
+.log-box .l-info{color:var(--ac);}
+.log-box .l-dim{color:var(--t3);}
+.log-entry{animation:slide-in .15s ease;}
+@keyframes slide-in{from{opacity:0;transform:translateX(-4px);}to{opacity:1;transform:none;}}
+
+/* ══ CHART CONTAINER ══ */
+.chart-wrap{position:relative;height:160px;}
+
+/* ══ JWT ══ */
+.jwt-part{border-radius:var(--r);padding:10px 12px;margin-bottom:8px;font-family:var(--mono);font-size:11px;}
+.jwt-header{background:rgba(240,192,64,.06);border:1px solid rgba(240,192,64,.2);}
+.jwt-payload{background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.2);}
+.jwt-sig{background:rgba(57,255,20,.06);border:1px solid rgba(57,255,20,.2);}
+.jwt-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  margin-bottom:6px;}
+.jwt-header .jwt-label{color:var(--ac4);}
+.jwt-payload .jwt-label{color:var(--ac);}
+.jwt-sig .jwt-label{color:var(--ok);}
+pre{white-space:pre-wrap;word-break:break-all;font-size:11px;color:var(--t1);}
+
+/* ══ SUBNET CALC ══ */
+.cidr-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+/* ══ WS TESTER ══ */
+.ws-messages{background:var(--bg);border:1px solid var(--b1);border-radius:var(--r);
+  height:200px;overflow-y:auto;padding:8px 12px;font-family:var(--mono);font-size:11px;}
+.ws-msg{padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.ws-msg.sent{color:var(--ac);}
+.ws-msg.recv{color:var(--ac2);}
+.ws-msg.sys{color:var(--t3);font-style:italic;}
+
+/* ══ TOPOLOGY MAP ══ */
+#topo-canvas{border:1px solid var(--b1);border-radius:var(--r);background:var(--bg);}
+
+/* ══ LOADING SPINNER ══ */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--b2);
+  border-top-color:var(--ac);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── ORIGIN FIX PANEL ── */
+.ofix-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+@media(max-width:700px){.ofix-grid{grid-template-columns:1fr;}}
+.ofix-card{background:var(--s3);border:1px solid var(--b1);border-radius:var(--r);
+  padding:12px;cursor:pointer;transition:border-color .2s,background .2s;
+  display:flex;flex-direction:column;gap:5px;}
+.ofix-card:hover{border-color:var(--ac);background:var(--s2);}
+.ofix-card.ok{border-color:var(--ok);background:rgba(57,255,20,.04);}
+.ofix-card.fail{border-color:var(--err);opacity:.55;cursor:default;}
+.ofix-card.trying{border-color:var(--warn);}
+.ofix-name{font-family:var(--mono);font-size:10px;font-weight:700;
+  color:var(--ac);letter-spacing:.5px;text-transform:uppercase;}
+.ofix-desc{font-size:11px;color:var(--t3);line-height:1.5;}
+.ofix-st{font-family:var(--mono);font-size:9px;margin-top:3px;color:var(--t3);}
+.ofix-st.ok{color:var(--ok);} .ofix-st.err{color:var(--err);} .ofix-st.try{color:var(--warn);}
+
+/* ══ SCAN PROGRESS ══ */
+.scan-progress{padding:10px 14px;background:rgba(0,229,255,.04);border-top:1px solid var(--b1);
+  font-family:var(--mono);font-size:10px;color:var(--t2);display:flex;align-items:center;gap:8px;}
+
+/* ══ RESPONSIVE ══ */
+@media(max-width:640px){
+  .dash-grid{grid-template-columns:1fr 1fr;}
+  .cidr-grid{grid-template-columns:1fr;}
+  .host-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ══ TOPBAR ══ -->
+<div id="topbar">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg viewBox="0 0 16 16" fill="none">
+        <polygon points="8,1 15,4.5 15,11.5 8,15 1,11.5 1,4.5" stroke="#00e5ff" stroke-width="1.2" fill="rgba(0,229,255,.1)"/>
+        <circle cx="8" cy="8" r="2" fill="#00e5ff"/>
+      </svg>
+    </div>
+    <div>
+      <div class="brand-name">NETPULSE</div>
+      <div class="brand-ver">v2.0 · Browser Network Suite</div>
+    </div>
+  </div>
+  <div class="nav-tabs" id="nav-tabs">
+    <button class="nav-tab active" data-tab="dashboard">📡 Dashboard</button>
+    <button class="nav-tab" data-tab="lan">🔍 LAN</button>
+    <button class="nav-tab" data-tab="inspector">🔬 Inspector</button>
+    <button class="nav-tab" data-tab="dns">🌐 DNS</button>
+    <button class="nav-tab" data-tab="speed">⚡ Speed</button>
+    <button class="nav-tab" data-tab="ip">📍 IP &amp; Geo</button>
+    <button class="nav-tab" data-tab="tools">🔧 Tools</button>
+  </div>
+  <div class="topbar-right">
+    <div class="conn-pill">
+      <div class="dot" id="net-dot"></div>
+      <span id="net-label">Checking…</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<div id="main">
+
+<!-- ━━ DASHBOARD ━━ -->
+<div class="tab-pane active" id="tab-dashboard">
+  <div class="pane-body">
+    <div class="dash-grid" id="dash-stats"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;" id="dash-charts-row">
+      <div class="section">
+        <div class="section-head">
+          <span class="section-title">Latency Monitor</span>
+          <div style="display:flex;gap:6px;">
+            <input class="inp inp-sm" id="watch-url" placeholder="https://example.com" style="width:200px;">
+            <button class="btn btn-p btn-sm" onclick="Dash.addWatch()">+ Watch</button>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="chart-wrap"><canvas id="latency-chart"></canvas></div>
+          <div id="watch-list" style="margin-top:10px;display:flex;flex-direction:column;gap:5px;"></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-head"><span class="section-title">Network Info</span></div>
+        <div class="section-body">
+          <div class="kv-grid" id="net-info-grid"></div>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-head">
+        <span class="section-title">Uptime Monitor</span>
+        <button class="btn btn-ghost btn-sm" onclick="Dash.exportResults()">Export CSV</button>
+      </div>
+      <div class="section-body" style="padding:0;">
+        <table class="result-table" id="uptime-table">
+          <thead><tr><th>Host</th><th>Status</th><th>Latency</th><th>Uptime %</th><th>History</th><th>Actions</th></tr></thead>
+          <tbody id="uptime-body"></tbody>
+        </table>
+      </div>
+      <div style="padding:10px 14px;border-top:1px solid var(--b1);display:flex;gap:8px;flex-wrap:wrap;">
+        <input class="inp inp-sm" id="uptime-url" placeholder="https://host-to-watch.com" style="flex:1;min-width:200px;">
+        <button class="btn btn-g btn-sm" onclick="Dash.addUptime()">+ Add Host</button>
+        <label style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--t3);">
+          <input type="checkbox" id="notif-check" onchange="Dash.toggleNotifs()"> Alert on down
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ━━ LAN ━━ -->
+<div class="tab-pane" id="tab-lan">
+  <div class="pane-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div class="section">
+        <div class="section-head"><span class="section-title">My Network</span></div>
+        <div class="section-body">
+          <div class="kv-grid" id="lan-net-info"></div>
+          <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
+            <input class="inp inp-sm" id="lan-subnet" placeholder="192.168.1" style="width:130px;">
+            <button class="btn btn-p btn-sm" onclick="LAN.detectSubnet()">Auto-Detect</button>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-head"><span class="section-title">Port Scanner</span></div>
+        <div class="section-body">
+          <div class="input-row" style="margin-bottom:8px;">
+            <input class="inp inp-sm inp-w" id="port-target" placeholder="192.168.1.1">
+            <button class="btn btn-p btn-sm" onclick="LAN.scanPorts()">Scan</button>
+          </div>
+          <div id="port-results" class="log-box" style="height:100px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-head">
+        <span class="section-title">Host Discovery <span id="scan-count" class="muted small mono" style="margin-left:8px;"></span></span>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <label style="font-family:var(--mono);font-size:10px;color:var(--t3);display:flex;align-items:center;gap:4px;">
+            <input type="checkbox" id="deep-scan" checked> Service ID
+          </label>
+          <button class="btn btn-g btn-sm" id="btn-scan-lan" onclick="LAN.startScan()">⚡ Scan Network</button>
+          <button class="btn btn-ghost btn-sm" id="btn-stop-scan" onclick="LAN.stopScan()" disabled>■ Stop</button>
+        </div>
+      </div>
+      <div class="host-grid" id="host-grid" style="padding:12px;min-height:100px;"></div>
+      <div class="scan-progress hidden" id="scan-progress">
+        <div class="spinner"></div>
+        <div id="scan-progress-txt">Scanning…</div>
+        <div class="prog-track" style="flex:1;"><div class="prog-fill" id="scan-prog-fill" style="width:0%;background:var(--ac);"></div></div>
+        <span id="scan-pct" class="mono" style="font-size:10px;color:var(--ac);">0%</span>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-head">
+        <span class="section-title">Topology Map</span>
+        <button class="btn btn-ghost btn-sm" onclick="LAN.drawTopology()">Refresh</button>
+      </div>
+      <div class="section-body" style="overflow-x:auto;">
+        <canvas id="topo-canvas" width="760" height="200"></canvas>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-head">
+        <span class="section-title">Continuous Monitor</span>
+        <div class="dot idle" id="monitor-dot"></div>
+        <button class="btn btn-g btn-sm" id="btn-monitor" onclick="LAN.toggleMonitor()">Start</button>
+      </div>
+      <div class="section-body">
+        <div class="log-box" id="monitor-log" style="height:120px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ┬┬ INSPECTOR ┬┬ -->
+<div class="tab-pane" id="tab-inspector">
+  <div class="pane-body">
+    <div id="origin-banner" style="margin-bottom:12px;padding:10px 14px;border-radius:4px;
+      font-family:var(--mono);font-size:11px;line-height:1.8;
+      border:1px solid var(--b1);background:var(--s2);"></div>
+
+    <!-- Origin Fix Panel — shown only when file:// detected -->
+    <div id="origin-fix-panel" style="display:none;margin-bottom:12px;">
+      <div class="section">
+        <div class="section-head">
+          <span class="section-title">Origin Workarounds</span>
+          <span class="muted mono" style="font-size:10px;">JavaScript techniques to bypass null-origin — trying automatically…</span>
+        </div>
+        <div class="section-body" style="padding:10px 14px;">
+          <div class="ofix-grid">
+            <div class="ofix-card" id="ofix-ext">
+              <div class="ofix-name">1 · CORS Extension</div>
+              <div class="ofix-desc">Detect if a CORS-unblocking extension (Allow CORS, CORS Everywhere) is already active. If so, direct fetches work immediately.</div>
+              <div class="ofix-st" id="ofix-ext-st">Checking…</div>
+            </div>
+            <div class="ofix-card" id="ofix-blob" onclick="OriginFix.blobRelaunch()">
+              <div class="ofix-name">2 · Blob URL Relaunch</div>
+              <div class="ofix-desc">Opens a blank tab, writes this page's HTML directly via document.write() — avoids the black-screen blob:// bug. Reports the resulting origin so you know if it helped.</div>
+              <div class="ofix-st" id="ofix-blob-st">Click to try →</div>
+            </div>
+            <div class="ofix-card" id="ofix-sw" onclick="OriginFix.trySW()">
+              <div class="ofix-name">3 · Service Worker</div>
+              <div class="ofix-desc">Attempt to register a Service Worker from a blob: URL. Blocked on file:// in most browsers, but worth trying — some Chromium builds allow it.</div>
+              <div class="ofix-st" id="ofix-sw-st">Checking…</div>
+            </div>
+            <div class="ofix-card" id="ofix-proxysw" onclick="OriginFix.tryProxySW()">
+              <div class="ofix-name">4 · SW Auto-Proxy</div>
+              <div class="ofix-desc">Service Worker that silently reroutes all cross-origin fetches through corsproxy.io. If SW registration succeeds, all Inspector tests work transparently.</div>
+              <div class="ofix-st" id="ofix-proxysw-st">Checking…</div>
+            </div>
+            <div class="ofix-card" id="ofix-relay" onclick="OriginFix.broadcastRelay()">
+              <div class="ofix-name">5 · BroadcastChannel Relay</div>
+              <div class="ofix-desc">Opens a relay tab. That tab fetches on your behalf and returns data via BroadcastChannel. Works if relay tab can get a non-null origin.</div>
+              <div class="ofix-st" id="ofix-relay-st">Click to open relay →</div>
+            </div>
+            <div class="ofix-card" id="ofix-gh">
+              <div class="ofix-name">6 · HTTPS URL Launch</div>
+              <div class="ofix-desc">Open NetPulse from GitHub Pages or any HTTPS URL for a real origin instantly. Paste URL below.</div>
+              <div style="display:flex;gap:5px;margin-top:5px;" onclick="event.stopPropagation()">
+                <input class="inp inp-sm" id="ofix-gh-url" placeholder="https://you.github.io/netpulse.html" style="flex:1;font-size:10px;">
+                <button class="btn btn-ghost btn-sm" onclick="OriginFix.httpsLaunch()" style="font-size:9px;">Open</button>
+              </div>
+              <div class="ofix-st" id="ofix-gh-st">Paste URL above →</div>
+            </div>
+          </div>
+          <div id="ofix-result" style="display:none;margin-top:10px;padding:10px 12px;
+            border-radius:4px;font-family:var(--mono);font-size:11px;line-height:1.8;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><span class="section-title">URL Inspector</span></div>
+      <div class="section-body">
+        <div class="input-row" style="margin-bottom:10px;">
+          <input class="inp inp-w" id="inspect-url" placeholder="https://example.com" value="https://example.com">
+          <button class="btn btn-p" onclick="Inspector.run()">Inspect</button>
+          <button class="btn btn-ghost" onclick="Inspector.runAll()">Full Audit</button>
+        </div>
+        <div id="inspect-results"></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-head">
+        <span class="section-title">Bulk CORS Tester</span>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span id="bulk-progress" class="mono muted" style="font-size:10px;"></span>
+          <button class="btn btn-ghost btn-sm" onclick="Inspector.loadPreset()">Load Known-CORS List</button>
+          <button class="btn btn-p btn-sm" id="btn-bulk-run" onclick="Inspector.bulkRun()">&#9654; Test All</button>
+        </div>
+      </div>
+      <div class="section-body" style="padding:8px 14px;">
+        <textarea class="inp" id="bulk-urls"
+          placeholder="One URL per line&#10;https://api.open-meteo.com/v1/forecast?latitude=0&amp;longitude=0"
+          rows="5" style="width:100%;resize:vertical;font-size:11px;margin-bottom:8px;"></textarea>
+        <div id="bulk-results"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ━━ DNS ━━ -->
+<div class="tab-pane" id="tab-dns">
+  <div class="pane-body">
+    <div class="section">
+      <div class="section-head"><span class="section-title">DNS Lookup</span></div>
+      <div class="section-body">
+        <div class="input-row" style="margin-bottom:10px;">
+          <input class="inp inp-w" id="dns-domain" placeholder="example.com" value="example.com">
+          <select class="inp inp-sm" id="dns-type">
+            <option>A</option><option>AAAA</option><option>MX</option>
+            <option>TXT</option><option>CNAME</option><option>NS</option>
+            <option>SOA</option><option>PTR</option>
+          </select>
+          <button class="btn btn-p" onclick="DNS.lookup()">Lookup</button>
+          <button class="btn btn-ghost" onclick="DNS.compare()">Compare Resolvers</button>
+        </div>
+        <div id="dns-results"></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-head"><span class="section-title">Propagation Check</span></div>
+      <div class="section-body">
+        <div class="input-row" style="margin-bottom:10px;">
+          <input class="inp inp-w" id="prop-domain" placeholder="newdomain.com">
+          <button class="btn btn-p" onclick="DNS.checkProp()">Check</button>
+        </div>
+        <div id="prop-results"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ━━ SPEED ━━ -->
+<div class="tab-pane" id="tab-speed">
+  <div class="pane-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div class="section">
+        <div class="section-head"><span class="section-title">Download Speed</span></div>
+        <div class="section-body">
+          <div class="speed-gauge">
+            <div class="speed-val" id="speed-val">—</div>
+            <div class="speed-unit">Mbps</div>
+          </div>
+          <div class="speed-bars" id="speed-bars"></div>
+          <div style="margin-top:12px;text-align:center;">
+            <button class="btn btn-g" id="btn-speed" onclick="Speed.run()">▶ Start Speed Test</button>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-head"><span class="section-title">CDN Race</span></div>
+        <div class="section-body">
+          <div id="cdn-results" style="margin-bottom:10px;"></div>
+          <button class="btn btn-p" onclick="Speed.cdnRace()">Race CDNs</button>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-head"><span class="section-title">Latency Histogram</span></div>
+      <div class="section-body">
+        <div class="input-row" style="margin-bottom:10px;">
+          <input class="inp inp-w" id="hist-url" placeholder="https://example.com" value="https://example.com">
+          <input class="inp inp-sm" id="hist-count" type="number" value="20" min="5" max="100" style="width:70px;">
+          <button class="btn btn-p" onclick="Speed.histogram()">Run</button>
+        </div>
+        <div class="chart-wrap"><canvas id="hist-chart"></canvas></div>
+        <div id="hist-stats" style="margin-top:8px;display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--t2);"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ━━ IP & GEO ━━ -->
+<div class="tab-pane" id="tab-ip">
+  <div class="pane-body">
+    <div class="section">
+      <div class="section-head"><span class="section-title">IP Lookup</span></div>
+      <div class="section-body">
+        <div class="input-row" style="margin-bottom:10px;">
+          <input class="inp inp-w" id="ip-input" placeholder="IP address or blank for your IP">
+          <button class="btn btn-p" onclick="IPGeo.lookup()">Lookup</button>
+          <button class="btn btn-ghost" onclick="IPGeo.myIP()">My IP</button>
+        </div>
+        <div id="ip-results"></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-head"><span class="section-title">Threat Intelligence</span></div>
+      <div class="section-body">
+        <div class="input-row" style="margin-bottom:10px;">
+          <input class="inp inp-w" id="threat-ip" placeholder="IP address to check">
+          <button class="btn btn-o" onclick="IPGeo.threatCheck()">Check Reputation</button>
+        </div>
+        <div id="threat-results"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ━━ TOOLS ━━ -->
+<div class="tab-pane" id="tab-tools">
+  <div class="pane-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <!-- URL Parser -->
+      <div class="section">
+        <div class="section-head"><span class="section-title">URL Parser</span></div>
+        <div class="section-body">
+          <input class="inp" id="url-parse-input" placeholder="https://user:pass@example.com:8080/path?q=1#frag" style="width:100%;margin-bottom:8px;" oninput="Tools.parseURL()">
+          <div class="kv-grid" id="url-parse-out"></div>
+        </div>
+      </div>
+      <!-- Subnet Calc -->
+      <div class="section">
+        <div class="section-head"><span class="section-title">Subnet Calculator</span></div>
+        <div class="section-body">
+          <input class="inp" id="cidr-input" placeholder="192.168.1.0/24" style="width:100%;margin-bottom:8px;" oninput="Tools.calcSubnet()">
+          <div class="kv-grid" id="cidr-out"></div>
+        </div>
+      </div>
+      <!-- JWT -->
+      <div class="section">
+        <div class="section-head"><span class="section-title">JWT Decoder</span></div>
+        <div class="section-body">
+          <textarea class="inp" id="jwt-input" placeholder="Paste JWT token here…" rows="3" style="width:100%;margin-bottom:8px;resize:vertical;" oninput="Tools.decodeJWT()"></textarea>
+          <div id="jwt-out"></div>
+        </div>
+      </div>
+      <!-- Encode/Decode -->
+      <div class="section">
+        <div class="section-head"><span class="section-title">Encode / Decode</span></div>
+        <div class="section-body">
+          <textarea class="inp" id="enc-input" placeholder="Text to encode or decode…" rows="3" style="width:100%;margin-bottom:8px;resize:vertical;"></textarea>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
+            <button class="btn btn-ghost btn-sm" onclick="Tools.encode('base64')">B64 Enc</button>
+            <button class="btn btn-ghost btn-sm" onclick="Tools.encode('base64d')">B64 Dec</button>
+            <button class="btn btn-ghost btn-sm" onclick="Tools.encode('url')">URL Enc</button>
+            <button class="btn btn-ghost btn-sm" onclick="Tools.encode('urld')">URL Dec</button>
+            <button class="btn btn-ghost btn-sm" onclick="Tools.encode('html')">HTML Enc</button>
+            <button class="btn btn-ghost btn-sm" onclick="Tools.encode('htmld')">HTML Dec</button>
+          </div>
+          <textarea class="inp" id="enc-output" rows="3" style="width:100%;resize:vertical;color:var(--ac);" readonly></textarea>
+        </div>
+      </div>
+    </div>
+    <!-- WebSocket Tester -->
+    <div class="section">
+      <div class="section-head">
+        <span class="section-title">WebSocket Tester</span>
+        <div class="dot idle" id="ws-dot"></div>
+      </div>
+      <div class="section-body">
+        <div class="input-row" style="margin-bottom:8px;">
+          <input class="inp inp-w" id="ws-url" placeholder="wss://echo.websocket.org" value="wss://echo.websocket.org">
+          <button class="btn btn-p" id="ws-connect-btn" onclick="Tools.wsConnect()">Connect</button>
+          <button class="btn btn-o btn-sm" onclick="Tools.wsDisconnect()" id="ws-disc-btn" disabled>Disconnect</button>
+        </div>
+        <div class="ws-messages" id="ws-messages"></div>
+        <div class="input-row" style="margin-top:8px;">
+          <input class="inp inp-w" id="ws-send-input" placeholder="Message to send…" onkeydown="if(event.key==='Enter')Tools.wsSend()">
+          <button class="btn btn-g btn-sm" onclick="Tools.wsSend()" id="ws-send-btn" disabled>Send</button>
+        </div>
+      </div>
+    </div>
+    <!-- HTTP Request Builder -->
+    <div class="section">
+      <div class="section-head"><span class="section-title">HTTP Request Builder</span></div>
+      <div class="section-body">
+        <div class="input-row" style="margin-bottom:8px;">
+          <select class="inp inp-sm" id="req-method" style="width:90px;">
+            <option>GET</option><option>POST</option><option>PUT</option>
+            <option>DELETE</option><option>PATCH</option><option>HEAD</option>
+            <option>OPTIONS</option>
+          </select>
+          <input class="inp inp-w" id="req-url" placeholder="https://api.example.com/endpoint">
+          <button class="btn btn-p" onclick="Tools.sendRequest()">Send</button>
+        </div>
+        <textarea class="inp" id="req-headers" placeholder="Headers (one per line): Content-Type: application/json" rows="2" style="width:100%;margin-bottom:6px;resize:vertical;font-size:11px;"></textarea>
+        <textarea class="inp" id="req-body" placeholder="Request body (for POST/PUT/PATCH)" rows="2" style="width:100%;margin-bottom:8px;resize:vertical;font-size:11px;"></textarea>
+        <div id="req-results"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- #main -->
+</div><!-- #app -->
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════════════
+//  CORE PROBING ENGINE
+// ═══════════════════════════════════════════════════════════════
+const Probe = {
+  img(url, ms=3000) {
+    return new Promise(res=>{
+      const img=new Image(), t=Date.now();
+      const tid=setTimeout(()=>{img.onload=img.onerror=null;img.src='';res({ok:false,ms:ms});},ms);
+      const done=(ok)=>{clearTimeout(tid);res({ok,ms:Date.now()-t});};
+      img.onload=()=>done(true); img.onerror=()=>done(true);
+      img.src=url+(url.includes('?')?'&':'?')+'_t='+Date.now();
+    });
+  },
+  async fetch(url, opts={}, ms=8000) {
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),ms);
+    const t=Date.now();
+    try{
+      const r=await fetch(url,{...opts,signal:ctrl.signal,cache:'no-store'});
+      clearTimeout(tid);
+      return {ok:true,status:r.status,headers:r.headers,ms:Date.now()-t,res:r};
+    }catch(e){clearTimeout(tid);return {ok:false,ms:Date.now()-t,err:e.message};}
+  },
+
+  // Enhanced CORS-mode fetch that captures the exact failure reason
+  async fetchDetailed(url, ms=8000) {
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),ms);
+    const t=Date.now();
+    try{
+      const r=await fetch(url,{mode:'cors',cache:'no-store',signal:ctrl.signal});
+      clearTimeout(tid);
+      const acao=r.headers.get('access-control-allow-origin');
+      return {ok:true,status:r.status,headers:r.headers,ms:Date.now()-t,res:r,acao};
+    }catch(e){
+      clearTimeout(tid);
+      const elapsed=Date.now()-t;
+      const msg=(e.message||'').toLowerCase();
+      const isFile=location.protocol==='file:'||location.origin==='null';
+      const isMixed=location.protocol==='https:'&&url.startsWith('http:');
+      let reason='unknown', fix='';
+      if(ctrl.signal.aborted){
+        reason='timeout';
+        fix='Server did not respond within '+ms+'ms.';
+      } else if(isMixed){
+        reason='mixed-content';
+        fix='Page is on HTTPS but URL is HTTP. Browser blocks mixed content. Use the HTTPS version of this URL.';
+      } else if(isFile){
+        reason='null-origin';
+        fix='NetPulse is open as a local file. Browsers send null as the origin for file:// pages and most CORS servers reject it. Fix: run "python3 -m http.server 8000" in this folder and open http://localhost:8000/netpulse.html';
+      } else if(msg.includes('failed to fetch')||msg.includes('network')){
+        reason='network-error';
+        fix='Could not reach the server. Check the URL or your network.';
+      } else if(msg.includes('ssl')||msg.includes('cert')||msg.includes('tls')){
+        reason='tls-error';
+        fix='TLS/certificate error. The server certificate may be invalid.';
+      } else {
+        reason='cors-header-missing';
+        fix='Server is reachable but did not send Access-Control-Allow-Origin. It may require an API key, or this endpoint does not support CORS.';
+      }
+      return {ok:false,ms:elapsed,err:e.message,reason,fix,isFile};
+    }
+  },
+  async noCors(url, ms=6000) {
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),ms);
+    const t=Date.now();
+    try{
+      await fetch(url,{mode:'no-cors',cache:'no-store',signal:ctrl.signal});
+      clearTimeout(tid); return {ok:true,ms:Date.now()-t};
+    }catch(e){clearTimeout(tid);return {ok:false,ms:Date.now()-t};}
+  },
+  async viaProxy(proxyFn, url, ms=8000) {
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),ms);
+    const t=Date.now();
+    try{
+      const r=await fetch(proxyFn(url),{mode:'cors',cache:'no-store',signal:ctrl.signal});
+      clearTimeout(tid);
+      return {ok:true,status:r.status,ms:Date.now()-t,acao:r.headers.get('access-control-allow-origin')};
+    }catch(e){clearTimeout(tid);return {ok:false,ms:Date.now()-t,err:e.message};}
+  },
+
+  async viaJSONP(url, ms=6000) {
+    return new Promise(res=>{
+      const cb='_npjp'+Date.now();
+      const t=Date.now();
+      const s=document.createElement('script');
+      const tid=setTimeout(()=>{s.remove();delete window[cb];res({ok:false,ms,err:'timeout'});},ms);
+      window[cb]=(data)=>{clearTimeout(tid);s.remove();delete window[cb];res({ok:true,ms:Date.now()-t,data});};
+      s.src=url+(url.includes('?')?'&':'?')+'callback='+cb+'&_t='+Date.now();
+      s.onerror=()=>{clearTimeout(tid);s.remove();delete window[cb];res({ok:false,ms:Date.now()-t,err:'load error'});};
+      document.head.appendChild(s);
+    });
+  },
+
+  async all(url) {
+    const PROXIES=[
+      {name:'corsproxy.io',   fn:u=>'https://corsproxy.io/?'+encodeURIComponent(u)},
+      {name:'allorigins.win', fn:u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u)},
+      {name:'cors-anywhere',  fn:u=>'https://cors-anywhere.herokuapp.com/'+u},
+    ];
+    const [img,direct,nc,...pR]=await Promise.all([
+      this.img(url,5000),
+      this.fetchDetailed(url,5000),
+      this.noCors(url,5000),
+      ...PROXIES.map(p=>this.viaProxy(p.fn,url,7000)),
+    ]);
+    let jsonp={ok:false,err:'not tried',ms:0};
+    if(!direct.ok && pR.every(p=>!p.ok)) jsonp=await this.viaJSONP(url,5000);
+    let status='blocked', ms=img.ms;
+    if(direct.ok){status='cors';ms=direct.ms;}
+    else if(nc.ok||img.ok){status='reachable';ms=img.ok?img.ms:nc.ms;}
+    else if(pR.some(p=>p.ok)){status='proxy-only';ms=pR.find(p=>p.ok).ms;}
+    return {status,ms,cors:direct,nc,img,proxies:PROXIES.map((p,i)=>({...p,...pR[i]})),jsonp};
+  }
+};
+
+const DNS_RESOLVERS = {
+  'Cloudflare':'https://cloudflare-dns.com/dns-query',
+  'Google':'https://dns.google/resolve',
+  'Quad9':'https://dns.quad9.net:5053/dns-query',
+};
+async function dnsQuery(name, type='A', resolver='https://cloudflare-dns.com/dns-query'){
+  const url=`${resolver}?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}`;
+  try{
+    const r=await fetch(url,{headers:{Accept:'application/dns-json'},cache:'no-store'});
+    return await r.json();
+  }catch(e){return {Status:2,Answer:[]};}
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DOM HELPERS
+// ═══════════════════════════════════════════════════════════════
+const h=(tag,attrs={},children=[])=>{
+  const el=document.createElement(tag);
+  Object.entries(attrs).forEach(([k,v])=>{if(k==='cls')el.className=v;else if(k==='html')el.innerHTML=v;else el.setAttribute(k,v);});
+  children.forEach(c=>el.appendChild(typeof c==='string'?document.createTextNode(c):c));
+  return el;
+};
+const $=id=>document.getElementById(id);
+const makeTag=(text,type='idle')=>h('span',{cls:`tag tag-${type}`},[text]);
+const makeKV=(data,el)=>{
+  el.innerHTML='';
+  Object.entries(data).forEach(([k,v])=>{
+    const [kEl,vEl]=[h('div',{cls:'kv-k'},[k]),h('div',{cls:'kv-v '+v[1]},[v[0]])];
+    el.appendChild(kEl); el.appendChild(vEl);
+  });
+};
+function log(elId,msg,cls=''){
+  const el=$(elId); if(!el)return;
+  const d=h('div',{cls:'log-entry l-'+cls},[`[${new Date().toLocaleTimeString()}] ${msg}`]);
+  el.appendChild(d); el.scrollTop=el.scrollHeight;
+}
+function setHTML(id,html){const el=$(id);if(el)el.innerHTML=html;}
+
+// ═══════════════════════════════════════════════════════════════
+//  NETWORK INFO
+// ═══════════════════════════════════════════════════════════════
+async function detectMyIP(){
+  return new Promise(res=>{
+    const ips=[], pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+    pc.createDataChannel('x');
+    pc.onicecandidate=e=>{
+      if(!e.candidate){try{pc.close();}catch(_){}
+        const priv=ips.find(ip=>/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip));
+        res(priv||ips[0]||null); return;
+      }
+      const line=e.candidate.candidate||'';
+      const parts=line.split(' ');
+      [parts[4],...(()=>{const i=parts.indexOf('raddr');return i>=0?[parts[i+1]]:[];})()]
+        .forEach(ip=>{if(ip&&/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)&&!ip.startsWith('127.')&&!ips.includes(ip))ips.push(ip);});
+    };
+    pc.createOffer().then(o=>pc.setLocalDescription(o)).catch(()=>{});
+    setTimeout(()=>{try{pc.close();}catch(_){}res(ips[0]||null);},5000);
+  });
+}
+function getNetworkInfo(){
+  const nc=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+  return {
+    type: nc?.type||'unknown',
+    effectiveType: nc?.effectiveType||'unknown',
+    downlink: nc?.downlink?nc.downlink+' Mbps':'unknown',
+    rtt: nc?.rtt?nc.rtt+'ms':'unknown',
+    saveData: nc?.saveData?'Yes':'No',
+    online: navigator.onLine?'Yes':'No',
+    userAgent: navigator.userAgent.split(') ')[0]+')',
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+const Dash = {
+  watchedHosts:[],
+  uptimeHosts:[],
+  latencyChart:null,
+  latencyData:{},
+  monitorInterval:null,
+  notifsOn:false,
+
+  async init(){
+    this.load();
+    await this.updateNetInfo();
+    this.initLatencyChart();
+    this.renderUptime();
+    this.startPolling();
+  },
+
+  async updateNetInfo(){
+    const myIP=await detectMyIP();
+    const ni=getNetworkInfo();
+    const el=$('net-info-grid');
+    if(!el)return;
+    makeKV({
+      'My IP':[myIP||'Not detected','ac'],
+      'Connection':[ni.effectiveType,''],
+      'Type':[ni.type,''],
+      'Downlink':[ni.downlink,'ok'],
+      'RTT':[ni.rtt,''],
+      'Save Data':[ni.saveData,''],
+      'Online':[ni.online,ni.online==='Yes'?'ok':'err'],
+    },el);
+    const dot=$('net-dot');
+    if(navigator.onLine){dot.className='dot ok';$('net-label').textContent='Online';}
+    else{dot.className='dot err';$('net-label').textContent='Offline';}
+    $('lan-subnet').value=myIP?myIP.split('.').slice(0,3).join('.'):'192.168.1';
+    $('lan-net-info') && makeKV({
+      'Local IP':[myIP||'Not detected (Avahi/mDNS?)','ac'],
+      'Subnet':[myIP?myIP.split('.').slice(0,3).join('.')+'.0/24':'Unknown',''],
+      'Effective Speed':[ni.downlink,'ok'],
+      'Network Type':[ni.effectiveType,''],
+      'RTT':[ni.rtt,''],
+    },$('lan-net-info'));
+  },
+
+  initLatencyChart(){
+    const ctx=$('latency-chart');
+    if(!ctx)return;
+    this.latencyChart=new Chart(ctx,{
+      type:'line',
+      data:{labels:[],datasets:[]},
+      options:{
+        responsive:true,maintainAspectRatio:false,animation:false,
+        scales:{
+          x:{display:false},
+          y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#6890b8',font:{family:'JetBrains Mono',size:10}},min:0}
+        },
+        plugins:{legend:{labels:{color:'#6890b8',font:{family:'JetBrains Mono',size:10}}}},
+      }
+    });
+  },
+
+  addWatch(){
+    const url=($('watch-url').value||'').trim();
+    if(!url)return;
+    if(this.watchedHosts.includes(url)){return;}
+    this.watchedHosts.push(url);
+    this.latencyData[url]=[];
+    const colors=['#00e5ff','#39ff14','#ff6b35','#f0c040','#c084fc'];
+    const idx=this.watchedHosts.length-1;
+    this.latencyChart.data.datasets.push({
+      label:new URL(url).hostname,data:[],borderColor:colors[idx%colors.length],
+      backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.3,
+    });
+    $('watch-url').value='';
+    this.renderWatchList();
+    this.save();
+  },
+
+  renderWatchList(){
+    const el=$('watch-list'); if(!el)return;
+    el.innerHTML='';
+    this.watchedHosts.forEach((url,i)=>{
+      const row=h('div',{style:'display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);'});
+      const dot=h('div',{cls:'dot idle'}); dot.id='wh-dot-'+i;
+      const lbl=h('span',{cls:'mono small',style:'flex:1;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'},[(new URL(url).hostname)]);
+      const ms=h('span',{cls:'mono small',style:'color:var(--t3);'},['-']);ms.id='wh-ms-'+i;
+      const rm=h('button',{cls:'btn btn-ghost btn-sm'},['×']);
+      rm.onclick=()=>{this.watchedHosts.splice(i,1);delete this.latencyData[url];this.latencyChart.data.datasets.splice(i,1);this.latencyChart.update();this.renderWatchList();this.save();};
+      row.appendChild(dot);row.appendChild(lbl);row.appendChild(ms);row.appendChild(rm);
+      el.appendChild(row);
+    });
+  },
+
+  async pollWatched(){
+    if(!this.watchedHosts.length)return;
+    const now=new Date().toLocaleTimeString('en',{hour12:false});
+    if(this.latencyChart.data.labels.length>30)this.latencyChart.data.labels.shift();
+    this.latencyChart.data.labels.push(now);
+    await Promise.all(this.watchedHosts.map(async(url,i)=>{
+      const r=await Probe.img(url,5000);
+      if(this.latencyChart.data.datasets[i]){
+        if(this.latencyChart.data.datasets[i].data.length>30)this.latencyChart.data.datasets[i].data.shift();
+        this.latencyChart.data.datasets[i].data.push(r.ok?r.ms:null);
+      }
+      const dot=$('wh-dot-'+i); const ms=$('wh-ms-'+i);
+      if(dot)dot.className='dot '+(r.ok?'ok':'err');
+      if(ms)ms.textContent=r.ok?r.ms+'ms':'timeout';
+    }));
+    this.latencyChart.update('none');
+  },
+
+  addUptime(){
+    const url=($('uptime-url').value||'').trim();
+    if(!url||this.uptimeHosts.find(h=>h.url===url))return;
+    this.uptimeHosts.push({url,history:[],checks:0,successes:0});
+    $('uptime-url').value='';
+    this.renderUptime();this.save();
+  },
+
+  async pollUptime(){
+    await Promise.all(this.uptimeHosts.map(async(host,i)=>{
+      const r=await Probe.img(host.url,6000);
+      host.checks++; if(r.ok)host.successes++;
+      if(host.history.length>=40)host.history.shift();
+      host.history.push({ok:r.ok,ms:r.ms,t:Date.now()});
+      host.lastMs=r.ms; host.lastOk=r.ok;
+      if(!r.ok&&host.history.length>1&&host.history[host.history.length-2].ok&&this.notifsOn){
+        if(Notification.permission==='granted')new Notification('NetPulse Alert',{body:host.url+' is DOWN',icon:''});
+      }
+    }));
+    this.renderUptime();
+  },
+
+  renderUptime(){
+    const tbody=$('uptime-body'); if(!tbody)return;
+    tbody.innerHTML='';
+    this.uptimeHosts.forEach((host,i)=>{
+      const pct=host.checks?Math.round(host.successes/host.checks*100):null;
+      const tr=tbody.insertRow();
+      tr.innerHTML=`
+        <td class="mono" style="color:var(--t2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${host.url}</td>
+        <td>${host.lastOk===undefined?'<span class="tag tag-idle">PENDING</span>':host.lastOk?'<span class="tag tag-ok pulse-ok">UP</span>':'<span class="tag tag-err pulse-err">DOWN</span>'}</td>
+        <td class="mono" style="color:${host.lastOk?'var(--ok)':'var(--err)'};">${host.lastMs?host.lastMs+'ms':'—'}</td>
+        <td class="mono" style="color:${pct===null?'var(--t3)':pct>95?'var(--ok)':pct>80?'var(--warn)':'var(--err)'};">${pct===null?'—':pct+'%'}</td>
+        <td>${this.sparkline(host.history)}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="Dash.removeUptime(${i})">×</button></td>`;
+    });
+    if(!this.uptimeHosts.length)tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--t3);padding:20px;font-family:var(--mono);font-size:11px;">No hosts monitored — add one below</td></tr>';
+  },
+
+  sparkline(history){
+    if(!history.length)return '<span class="muted mono small">—</span>';
+    const W=80,H=28;
+    const max=Math.max(...history.map(h=>h.ms),1);
+    const pts=history.map((h,i)=>`${W*i/Math.max(history.length-1,1)},${h.ok?H-(h.ms/max*(H-4)+2):H}`).join(' ');
+    const errs=history.map((h,i)=>h.ok?'':`<rect x="${W*i/Math.max(history.length-1,1)-1}" y="0" width="2" height="${H}" fill="var(--err)" opacity=".4"/>`).join('');
+    return `<svg width="${W}" height="${H}" style="display:block;"><polyline points="${pts}" fill="none" stroke="var(--ac2)" stroke-width="1.2"/>${errs}</svg>`;
+  },
+
+  removeUptime(i){this.uptimeHosts.splice(i,1);this.renderUptime();this.save();},
+
+  startPolling(){
+    setInterval(()=>{this.pollWatched();this.pollUptime();},15000);
+    setTimeout(()=>{this.pollWatched();this.pollUptime();},1000);
+  },
+
+  toggleNotifs(){
+    this.notifsOn=$('notif-check').checked;
+    if(this.notifsOn&&Notification.permission!=='granted')Notification.requestPermission();
+    this.save();
+  },
+
+  exportResults(){
+    const rows=[['URL','Status','Last MS','Uptime%']];
+    this.uptimeHosts.forEach(h=>rows.push([h.url,h.lastOk?'UP':'DOWN',h.lastMs||'',h.checks?Math.round(h.successes/h.checks*100)+'%':'']));
+    const csv=rows.map(r=>r.join(',')).join('\n');
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download='netpulse-uptime.csv';a.click();
+  },
+
+  save(){try{localStorage.setItem('np_dash',JSON.stringify({watched:this.watchedHosts,uptime:this.uptimeHosts.map(h=>({url:h.url}))}));}catch(_){}},
+  load(){
+    try{
+      const d=JSON.parse(localStorage.getItem('np_dash')||'{}');
+      (d.watched||[]).forEach(u=>this.watchedHosts.push(u));
+      (d.uptime||[]).forEach(u=>this.uptimeHosts.push({url:u.url,history:[],checks:0,successes:0}));
+      this.renderWatchList();
+    }catch(_){}
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  LAN SCANNER
+// ═══════════════════════════════════════════════════════════════
+const LAN = {
+  hosts:[],
+  scanning:false,
+  stopFlag:false,
+  monitorActive:false,
+  monitorInterval:null,
+
+  SERVICES:[
+    {port:80,name:'HTTP',icon:'🌐'},{port:443,name:'HTTPS',icon:'🔒'},
+    {port:8080,name:'HTTP-Alt',icon:'🌐'},{port:8000,name:'HTTP-Dev',icon:'🐍'},
+    {port:9090,name:'Cockpit',icon:'🐚'},{port:10000,name:'Webmin',icon:'⚙️'},
+    {port:8888,name:'Jupyter',icon:'📓'},{port:3000,name:'Node/React',icon:'⬡'},
+    {port:5000,name:'Flask',icon:'🐍'},{port:1880,name:'Node-RED',icon:'🔴'},
+    {port:8123,name:'HomeAssist',icon:'🏠'},{port:5173,name:'Vite',icon:'⚡'},
+    {port:4200,name:'Angular',icon:'🅰'},{port:9200,name:'Elastic',icon:'🔍'},
+    {port:5601,name:'Kibana',icon:'📊'},{port:3001,name:'Grafana',icon:'📊'},
+    {port:32400,name:'Plex',icon:'🎬'},{port:8096,name:'Jellyfin',icon:'🎬'},
+    {port:2375,name:'Docker',icon:'🐳'},{port:9000,name:'Portainer',icon:'🐳'},
+  ],
+
+  detectSubnet(){
+    detectMyIP().then(ip=>{
+      if(ip){$('lan-subnet').value=ip.split('.').slice(0,3).join('.');}
+      else alert('Could not detect IP automatically.\nYour network uses mDNS (.local) — enter subnet manually.');
+    });
+  },
+
+  async startScan(){
+    if(this.scanning)return;
+    this.scanning=true; this.stopFlag=false; this.hosts=[];
+    $('host-grid').innerHTML='';
+    $('scan-progress').classList.remove('hidden');
+    $('btn-scan-lan').disabled=true; $('btn-stop-scan').disabled=false;
+    $('scan-count').textContent='';
+    const subnet=$('lan-subnet').value.trim()||'192.168.1';
+    const deepScan=$('deep-scan').checked;
+    const ips=[];
+    for(let i=1;i<=254;i++) if(!ip127(subnet+'.'+i)) ips.push(subnet+'.'+i);
+
+    let done=0;
+    const BATCH=24;
+    for(let i=0;i<ips.length&&!this.stopFlag;i+=BATCH){
+      await Promise.all(ips.slice(i,i+BATCH).map(async ip=>{
+        const r=await Probe.img(`http://${ip}/`,1500);
+        done++;
+        const pct=Math.round(done/ips.length*100);
+        $('scan-prog-fill').style.width=pct+'%';
+        $('scan-pct').textContent=pct+'%';
+        $('scan-progress-txt').textContent=`Scanning ${ip}… (${done}/${ips.length})`;
+        if(r.ok){
+          const host={ip,ms:r.ms,ports:[],services:[]};
+          this.hosts.push(host);
+          $('scan-count').textContent=this.hosts.length+' found';
+          this.renderHostCard(host);
+          if(deepScan) this.identifyServices(host);
+        }
+      }));
+    }
+    this.scanning=false;
+    $('scan-progress').classList.add('hidden');
+    $('btn-scan-lan').disabled=false; $('btn-stop-scan').disabled=true;
+    $('scan-progress-txt').textContent='Scan complete — '+this.hosts.length+' hosts found';
+    this.drawTopology();
+  },
+
+  stopScan(){this.stopFlag=true;},
+
+  async identifyServices(host){
+    const found=[];
+    await Promise.all(this.SERVICES.map(async svc=>{
+      const url=`http://${host.ip}:${svc.port}/`;
+      const r=await Probe.img(url,1200);
+      if(r.ok){found.push(svc);host.ports.push(svc.port);}
+    }));
+    host.services=found;
+    // Update card
+    const card=document.getElementById('hcard-'+host.ip.replace(/\./g,'_'));
+    if(card){
+      const svcDiv=card.querySelector('.host-services');
+      if(svcDiv)svcDiv.innerHTML=found.map(s=>`<span class="tag tag-info" style="font-size:8px;">${s.icon}${s.name}</span>`).join('');
+    }
+  },
+
+  renderHostCard(host){
+    const id='hcard-'+host.ip.replace(/\./g,'_');
+    const card=h('div',{cls:'host-card alive',id});
+    card.onclick=()=>{
+      document.querySelectorAll('.host-card').forEach(c=>c.classList.remove('selected'));
+      card.classList.add('selected');
+      $('port-target').value=host.ip;
+    };
+    const ip=h('div',{cls:'host-ip'},[host.ip]);
+    const ms=h('div',{cls:'host-ms'},[host.ms+'ms']);
+    const svc=h('div',{cls:'host-services'});
+    card.appendChild(ip);card.appendChild(ms);card.appendChild(svc);
+    $('host-grid').appendChild(card);
+  },
+
+  async scanPorts(){
+    const target=($('port-target').value||'').trim();
+    if(!target)return;
+    const el=$('port-results');
+    el.innerHTML='';
+    log('port-results',`Scanning ${target}…`,'info');
+    const found=[];
+    await Promise.all(this.SERVICES.map(async svc=>{
+      const r=await Probe.img(`http://${target}:${svc.port}/`,2000);
+      if(r.ok){
+        found.push(svc);
+        log('port-results',`:${svc.port} — ${svc.name} ${svc.icon} (${r.ms}ms)`,'ok');
+      }
+    }));
+    if(!found.length)log('port-results','No open HTTP ports found on common ports','warn');
+    else log('port-results',`Found ${found.length} service(s)`,'info');
+  },
+
+  drawTopology(){
+    const canvas=$('topo-canvas');
+    if(!canvas)return;
+    const ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#07090f'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    if(!this.hosts.length){
+      ctx.fillStyle='#304860'; ctx.font='12px JetBrains Mono';
+      ctx.textAlign='center'; ctx.fillText('Run a scan to see the topology map',canvas.width/2,canvas.height/2);
+      return;
+    }
+    const cx=60,cy=canvas.height/2;
+    // Router/gateway
+    ctx.strokeStyle='#203460'; ctx.lineWidth=1;
+    ctx.fillStyle='#0f1520';
+    ctx.beginPath();ctx.arc(cx,cy,22,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#00e5ff'; ctx.font='10px JetBrains Mono';ctx.textAlign='center';
+    ctx.fillText('GW',cx,cy+4);
+
+    const hosts=this.hosts.slice(0,20);
+    const step=(canvas.height-40)/Math.max(hosts.length,1);
+    hosts.forEach((host,i)=>{
+      const hx=220+Math.floor(i/10)*200, hy=20+((i%10)+.5)*((canvas.height-40)/Math.min(hosts.length,10));
+      ctx.strokeStyle='#203460'; ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(cx+22,cy);ctx.lineTo(hx-18,hy);ctx.stroke();
+      ctx.fillStyle='#0f1520';ctx.strokeStyle='#39ff14';
+      ctx.beginPath();ctx.arc(hx,hy,18,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#b8d4f0';ctx.font='9px JetBrains Mono';ctx.textAlign='center';
+      const parts=host.ip.split('.');
+      ctx.fillText('.'+parts[3],hx,hy+3);
+      if(host.services.length){
+        ctx.fillStyle='#6890b8';ctx.font='8px JetBrains Mono';
+        ctx.fillText(host.services[0].icon,hx,hy+14);
+      }
+    });
+    if(this.hosts.length>20){
+      ctx.fillStyle='#304860';ctx.font='10px JetBrains Mono';ctx.textAlign='left';
+      ctx.fillText(`+${this.hosts.length-20} more…`,10,canvas.height-8);
+    }
+  },
+
+  toggleMonitor(){
+    if(this.monitorActive){
+      clearInterval(this.monitorInterval);this.monitorActive=false;
+      $('btn-monitor').textContent='Start';$('monitor-dot').className='dot idle';
+    } else {
+      this.monitorActive=true;$('btn-monitor').textContent='Stop';
+      $('monitor-dot').className='dot ok';
+      log('monitor-log','Continuous host monitor started','info');
+      this.doMonitorCycle();
+      this.monitorInterval=setInterval(()=>this.doMonitorCycle(),30000);
+    }
+  },
+
+  async doMonitorCycle(){
+    const known=new Set(this.hosts.map(h=>h.ip));
+    const subnet=($('lan-subnet').value||'192.168.1').trim();
+    const nowIPs=new Set();
+    const BATCH=30;
+    const ips=Array.from({length:254},(_,i)=>subnet+'.'+(i+1)).filter(ip=>!ip127(ip));
+    for(let i=0;i<ips.length;i+=BATCH){
+      await Promise.all(ips.slice(i,i+BATCH).map(async ip=>{
+        const r=await Probe.img(`http://${ip}/`,1000);
+        if(r.ok)nowIPs.add(ip);
+      }));
+    }
+    nowIPs.forEach(ip=>{if(!known.has(ip)){log('monitor-log',`NEW HOST APPEARED: ${ip}`,'ok');known.add(ip);}});
+    known.forEach(ip=>{if(!nowIPs.has(ip)&&ip!=='known'){log('monitor-log',`HOST DISAPPEARED: ${ip}`,'err');}});
+    log('monitor-log',`Scan cycle done: ${nowIPs.size} hosts active`,'dim');
+  },
+};
+
+function ip127(ip){return ip.startsWith('127.')||ip.startsWith('169.254.');}
+
+// ═══════════════════════════════════════════════════════════════
+//  INSPECTOR
+// ═══════════════════════════════════════════════════════════════
+const Inspector = {
+  async run(){
+    const url=($('inspect-url').value||'').trim();
+    if(!url)return;
+    const out=$('inspect-results');
+    out.innerHTML='<div style="color:var(--t3);font-family:var(--mono);font-size:11px;padding:8px 0;display:flex;align-items:center;gap:8px;"><div class=\"spinner\"></div>Probing...</div>';
+    const [probe,sec]=await Promise.all([Probe.all(url),this.securityGrade(url)]);
+    this.render(url,probe,sec,out);
+  },
+
+  async runAll(){await this.run();},
+
+  async securityGrade(url){
+    const r=await Probe.fetchDetailed(url,8000);
+    if(!r.ok||!r.headers)return {checks:{},grade:'F',score:0,headers:null,failInfo:r};
+    const checks={
+      hsts:r.headers.get('strict-transport-security'),
+      csp:r.headers.get('content-security-policy'),
+      xframe:r.headers.get('x-frame-options'),
+      xctype:r.headers.get('x-content-type-options'),
+      ref:r.headers.get('referrer-policy'),
+      xss:r.headers.get('x-xss-protection'),
+      acao:r.headers.get('access-control-allow-origin'),
+    };
+    let score=0;
+    if(checks.hsts)score+=2; if(checks.csp)score+=2;
+    if(checks.xframe)score+=1; if(checks.xctype)score+=1;
+    if(checks.ref)score+=1;
+    const grade=score>=6?'A':score>=4?'B':score>=3?'C':score>=2?'D':'F';
+    return {checks,grade,score,headers:r.headers,status:r.status,ms:r.ms,acao:r.acao};
+  },
+
+  render(url,probe,sec,out){
+    out.innerHTML='';
+    // Origin warning banner inline in results
+    const isFile=location.protocol==='file:'||location.origin==='null';
+    const isMixed=location.protocol==='https:'&&url.startsWith('http:');
+    if(isFile||isMixed){
+      const warn=document.createElement('div');
+      warn.style.cssText='background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.35);border-radius:4px;padding:10px 12px;margin-bottom:10px;font-family:var(--mono);font-size:11px;color:var(--warn);line-height:1.7;';
+      warn.innerHTML=isFile
+        ? '<strong>File:// origin detected</strong> Most CORS servers reject the null origin browsers assign to file:// pages. Run: <code style="color:var(--ac);">python3 -m http.server 8000</code> and open <code style="color:var(--ac);">http://localhost:8000/netpulse.html</code>'
+        : '<strong>Mixed content</strong> Page is on HTTPS but URL is HTTP. Browser blocks this regardless of CORS headers. Use the HTTPS URL.';
+      out.appendChild(warn);
+    }
+    // All-methods probe table
+    const summary=h('div',{cls:'section',style:'margin-bottom:10px;'});
+    const sh=h('div',{cls:'section-head'});
+    const anyOk=probe.cors.ok||(probe.proxies||[]).some(p=>p.ok)||(probe.jsonp&&probe.jsonp.ok);
+    const badge=probe.cors.ok?'<span class="tag tag-ok">CORS OK</span>':anyOk?'<span class="tag tag-warn">PROXY ACCESSIBLE</span>':probe.status==='reachable'?'<span class="tag tag-warn">REACHABLE</span>':'<span class="tag tag-err">ALL METHODS BLOCKED</span>';
+    sh.innerHTML='<span class="section-title">All Access Methods</span>'
+      +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'
+      +badge+'<span class="tag tag-info">'+probe.ms+'ms</span>'
+      +'<span class="mono" style="font-size:9px;color:var(--t3);">origin:'+(isFile?'null':location.origin)+'</span></div>';
+    const sb=h('div',{cls:'section-body',style:'padding:0;'});
+    const mt=h('table',{cls:'result-table'});
+    mt.innerHTML='<thead><tr><th>Method</th><th>Result</th><th>ms</th><th>Detail</th></tr></thead>';
+    const mb=h('tbody');
+    const row=(method,ok,warn,ms,detail,dc)=>{
+      const tr=h('tr');
+      tr.innerHTML='<td class="mono" style="font-size:11px;color:var(--t2);">'+method+'</td>'
+        +'<td>'+(ok?'<span class="tag tag-ok" style="font-size:9px;">OK</span>':warn?'<span class="tag tag-warn" style="font-size:9px;">PARTIAL</span>':'<span class="tag tag-err" style="font-size:9px;">BLOCKED</span>')+'</td>'
+        +'<td class="mono" style="font-size:10px;color:var(--t3);">'+(ms||'--')+'</td>'
+        +'<td style="font-size:10px;color:'+(dc||'var(--t3)')+';">'+detail+'</td>';
+      mb.appendChild(tr);
+    };
+    row('fetch() direct CORS',probe.cors.ok,false,
+      probe.cors.ok?probe.cors.ms+'ms':null,
+      probe.cors.ok?'ACAO: '+(probe.cors.acao||'*'):(probe.cors.reason||'blocked').replace(/-/g,' ')+(probe.cors.fix?' — '+probe.cors.fix.split('.')[0]:''),
+      probe.cors.ok?'var(--ok)':probe.cors.reason==='null-origin'||probe.cors.reason==='mixed-content'?'var(--warn)':null);
+    row('fetch() no-cors',false,probe.nc.ok,probe.nc.ok?probe.nc.ms+'ms':null,
+      probe.nc.ok?'Reachable — response opaque, data not readable':'Unreachable',probe.nc.ok?'var(--warn)':null);
+    row('img ping',false,probe.img.ok,probe.img.ok?probe.img.ms+'ms':null,
+      probe.img.ok?'Reachable — binary probe only, no data':'Timeout',probe.img.ok?'var(--warn)':null);
+    const jpOk=probe.jsonp&&probe.jsonp.ok;
+    const jpTried=probe.jsonp&&probe.jsonp.err!=='not tried';
+    row('JSONP (script tag)',jpOk,false,jpOk?probe.jsonp.ms+'ms':null,
+      jpOk?'Server supports ?callback= param — data readable':jpTried?'No callback support: '+(probe.jsonp.err||'blocked'):'Skipped (direct/proxy worked)',
+      jpOk?'var(--ok)':null);
+    const PD={'corsproxy.io':'Free proxy — adds CORS headers to any response','allorigins.win':'Free proxy — wraps response in JSON envelope','cors-anywhere':'Heroku demo — visit cors-anywhere.herokuapp.com first to enable'};
+    (probe.proxies||[]).forEach(p=>row('proxy: '+p.name,p.ok,false,p.ok?p.ms+'ms':null,p.ok?'ACAO: '+(p.acao||'*'):PD[p.name]||'blocked',p.ok?'var(--ok)':null));
+    mt.appendChild(mb); sb.appendChild(mt);
+    const wp=(probe.proxies||[]).find(p=>p.ok);
+    if(!probe.cors.ok&&(wp||jpOk)){
+      const hint=document.createElement('div');
+      hint.style.cssText='padding:10px 14px;background:rgba(0,229,255,.06);border-top:1px solid var(--b1);font-family:var(--mono);font-size:11px;line-height:1.9;';
+      const snippet=wp
+        ? (wp.name==='corsproxy.io'?"fetch('https://corsproxy.io/?'+encodeURIComponent(url))":wp.name==='allorigins.win'?"fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url))":"fetch('https://cors-anywhere.herokuapp.com/'+url)")
+        : 'Use <script> tag with ?callback=myFn';
+      hint.innerHTML='<span style="color:var(--ac);font-weight:700;">Workaround '+(wp?'('+wp.name+')':'(JSONP)')+':</span><br>'
+        +'<code style="color:var(--ac2);word-break:break-all;font-size:10px;">'+snippet+'</code>';
+      sb.appendChild(hint);
+    }
+    if(!probe.cors.ok&&probe.cors.fix){
+      const d=document.createElement('div');
+      d.style.cssText='padding:10px 14px;background:rgba(255,51,102,.05);border-top:1px solid rgba(255,51,102,.15);font-family:var(--mono);font-size:11px;line-height:1.7;';
+      d.innerHTML='<span style="color:var(--err);font-weight:700;">Direct blocked: '+(probe.cors.reason||'').replace(/-/g,' ').toUpperCase()+'</span><br>'
+        +'<span style="color:var(--t2);">'+probe.cors.fix+'</span>';
+      sb.appendChild(d);
+    }
+    summary.appendChild(sh);summary.appendChild(sb);out.appendChild(summary);
+
+    // Headers
+    if(sec&&sec.headers){
+      const headerSec=h('div',{cls:'section',style:'margin-bottom:10px;'});
+      const hHead=h('div',{cls:'section-head'});
+      hHead.innerHTML=`<span class="section-title">Response Headers</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="grade-badge grade-${sec.grade}" style="width:40px;height:40px;font-size:20px;">${sec.grade}</div>
+          <span class="muted mono small">Security Score: ${sec.score}/8</span>
+        </div>`;
+      const hBody=h('div',{cls:'section-body'});
+      const table=h('table',{cls:'result-table'});
+      table.innerHTML='<thead><tr><th>Header</th><th>Value</th><th>Security</th></tr></thead>';
+      const tbody=h('tbody');
+      const SECURITY_HEADERS={'strict-transport-security':'HSTS','content-security-policy':'CSP','x-frame-options':'Clickjack','x-content-type-options':'MIME','referrer-policy':'Referrer','x-xss-protection':'XSS','access-control-allow-origin':'CORS','permissions-policy':'Permissions'};
+      const allHeaders=[];
+      sec.headers.forEach((v,k)=>allHeaders.push([k,v]));
+      allHeaders.sort((a,b)=>a[0].localeCompare(b[0])).forEach(([k,v])=>{
+        const tr=h('tr');
+        const secLabel=SECURITY_HEADERS[k.toLowerCase()];
+        tr.innerHTML=`<td class="mono" style="color:var(--t2);font-size:10px;">${k}</td>
+          <td class="mono" style="font-size:10px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${v}">${v}</td>
+          <td>${secLabel?`<span class="tag tag-ok">${secLabel}</span>`:''}</td>`;
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);hBody.appendChild(table);
+      headerSec.appendChild(hHead);headerSec.appendChild(hBody);
+      out.appendChild(headerSec);
+    }
+
+    // Security checklist
+    if(sec){
+      const secSec=h('div',{cls:'section'});
+      secSec.innerHTML=`<div class="section-head"><span class="section-title">Security Headers</span></div>`;
+      const secBody=h('div',{cls:'section-body'});
+      const checks=[
+        ['HSTS','Strict-Transport-Security',sec.checks.hsts,'Enforces HTTPS connections'],
+        ['CSP','Content-Security-Policy',sec.checks.csp,'Prevents XSS and injection'],
+        ['X-Frame','X-Frame-Options',sec.checks.xframe,'Prevents clickjacking'],
+        ['MIME','X-Content-Type-Options',sec.checks.xctype,'Prevents MIME sniffing'],
+        ['Referrer','Referrer-Policy',sec.checks.ref,'Controls referrer leakage'],
+        ['XSS','X-XSS-Protection',sec.checks.xss,'Legacy XSS filter'],
+        ['CORS','Access-Control-Allow-Origin',sec.checks.acao,'Cross-origin access policy'],
+      ];
+      const grid=h('div',{style:'display:flex;flex-direction:column;gap:5px;'});
+      checks.forEach(([name,,val,desc])=>{
+        const row=h('div',{style:'display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);'});
+        row.innerHTML=`<span class="tag ${val?'tag-ok':'tag-err'}" style="min-width:18px;text-align:center;">${val?'✓':'✗'}</span>
+          <span class="mono" style="font-size:11px;color:var(--t2);min-width:120px;">${name}</span>
+          <span style="font-size:11px;color:var(--t3);">${desc}</span>
+          ${val?`<span class="mono muted small" style="margin-left:auto;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${val}</span>`:''}`;
+        grid.appendChild(row);
+      });
+      secBody.appendChild(grid);secSec.appendChild(secBody);out.appendChild(secSec);
+    }
+  },
+
+  loadPreset(){
+    const URLS=[
+      'https://api.open-meteo.com/v1/forecast?latitude=51.5&longitude=-0.1&current_weather=true',
+      'https://pokeapi.co/api/v2/pokemon/1',
+      'https://restcountries.com/v3.1/all?fields=name&limit=5',
+      'https://swapi.dev/api/people/1/',
+      'https://api.frankfurter.app/latest?from=USD&to=EUR',
+      'https://dog.ceo/api/breeds/image/random',
+      'https://api.quotable.io/random',
+      'https://opentdb.com/api.php?amount=1',
+      'https://v2.jokeapi.dev/joke/Any?safe-mode',
+      'https://api.coindesk.com/v1/bpi/currentprice.json',
+      'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson',
+      'https://api.dictionaryapi.dev/api/v2/entries/en/hello',
+      'https://worldtimeapi.org/api/timezone/America/New_York',
+      'https://dummyjson.com/products/1',
+      'https://jsonplaceholder.typicode.com/posts/1',
+      'https://reqres.in/api/users/1',
+      'https://cloudflare-dns.com/dns-query?name=example.com&type=A',
+      'https://ipwho.is/8.8.8.8',
+      'https://api.ipify.org?format=json',
+      'https://api.le-systeme-solaire.net/rest/bodies/soleil',
+      'https://itunes.apple.com/search?term=radiohead&entity=album&limit=1',
+      'https://gutendex.com/books/?search=dickens&page=1',
+      'https://openlibrary.org/search.json?q=tolkien&limit=1',
+      'https://internetdb.shodan.io/1.1.1.1',
+      'https://data.police.uk/api/forces',
+      'https://randomfox.ca/floof/',
+      'https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY',
+      'https://raw.githubusercontent.com/public-apis/public-apis/master/README.md',
+      'https://cdn.jsdelivr.net/npm/lodash/package.json',
+      'https://registry.npmjs.org/react/latest',
+    ];
+    document.getElementById('bulk-urls').value=URLS.join('\n');
+  },
+
+  async bulkRun(){
+    const lines=(document.getElementById('bulk-urls').value||'').trim()
+      .split('\n').map(l=>l.trim()).filter(Boolean);
+    if(!lines.length)return;
+    const out=document.getElementById('bulk-results');
+    const prog=document.getElementById('bulk-progress');
+    const btn=document.getElementById('btn-bulk-run');
+    btn.disabled=true; out.innerHTML='';
+    const table=h('table',{cls:'result-table'});
+    table.innerHTML='<thead><tr><th>URL</th><th>Direct CORS</th><th>Reachable</th><th>ms</th><th>Best Method</th></tr></thead>';
+    const tbody=h('tbody'); table.appendChild(tbody); out.appendChild(table);
+    let done=0, passed=0;
+    const LABELS={
+      'null-origin':   'file:// origin — serve via http server',
+      'mixed-content': 'mixed content — use HTTPS URL',
+      'cors-header-missing':'no CORS header on server',
+      'timeout':       'timeout',
+      'network-error': 'unreachable',
+      'tls-error':     'TLS error',
+    };
+    for(const url of lines){
+      prog.textContent=done+'/'+lines.length;
+      const probe=await Probe.all(url).catch(()=>({status:'error',ms:0,cors:{ok:false},nc:{ok:false},img:{ok:false},proxies:[],jsonp:{ok:false,err:'exception'}}));
+      done++; if(probe.cors.ok)passed++;
+      const reason=probe.cors.reason||'';
+      const LABELS={'null-origin':'file:// (serve via http server)','mixed-content':'mixed content','cors-header-missing':'no CORS header','timeout':'timeout','network-error':'unreachable','tls-error':'TLS error'};
+      const wp=(probe.proxies||[]).find(p=>p.ok);
+      const anyAccess=probe.cors.ok||wp||(probe.jsonp&&probe.jsonp.ok);
+      const label=probe.cors.ok?'direct':wp?'via '+wp.name:(probe.jsonp&&probe.jsonp.ok)?'JSONP':(LABELS[reason]||(probe.status==='reachable'?'reachable, no CORS':'blocked'));
+      const lColor=probe.cors.ok?'var(--ok)':anyAccess?'var(--warn)':(reason==='null-origin'||reason==='mixed-content')?'var(--warn)':'var(--t3)';
+      const short=url.length>52?url.substring(0,49)+'...':url;
+      const tr=h('tr');
+      tr.innerHTML='<td class="mono" style="font-size:10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+url+'">'+short+'</td>'
+        +'<td>'+(probe.cors.ok?'<span class="tag tag-ok" style="font-size:9px;">CORS</span>':anyAccess?'<span class="tag tag-warn" style="font-size:9px;">PROXY</span>':'<span class="tag tag-err" style="font-size:9px;">BLOCKED</span>')+'</td>'
+        +'<td>'+((probe.nc.ok||probe.img.ok)?'<span class="tag tag-ok" style="font-size:9px;">YES</span>':'<span class="tag tag-err" style="font-size:9px;">NO</span>')+'</td>'
+        +'<td class="mono" style="font-size:10px;color:var(--t3);">'+probe.ms+'ms</td>'
+        +'<td style="font-size:10px;color:'+lColor+';">'+label+'</td>';
+      tbody.appendChild(tr);
+      prog.textContent=done+'/'+lines.length+' ('+passed+' OK)';
+      await new Promise(r=>setTimeout(r,100));
+    }
+    prog.textContent='Done: '+passed+'/'+lines.length+' passed CORS';
+    btn.disabled=false;
+  },
+
+  initOriginBanner(){
+    const el=document.getElementById('origin-banner');
+    if(!el)return;
+    const isFile=location.protocol==='file:'||location.origin==='null';
+    if(isFile){
+      el.style.cssText='margin-bottom:12px;padding:12px 14px;border-radius:4px;font-family:var(--mono);font-size:11px;line-height:1.8;border:1px solid rgba(255,170,0,.4);background:rgba(255,170,0,.07);';
+      el.innerHTML='<span style="color:var(--warn);font-weight:700;">Running from file:// — CORS blocked (null origin)</span>'
+        +' &nbsp;<span style="color:var(--t2);">Trying JavaScript workarounds below…</span>';
+      const fp=document.getElementById('origin-fix-panel');
+      if(fp)fp.style.display='';
+      setTimeout(()=>OriginFix.autoRun(),300);
+    } else {
+      el.style.cssText='margin-bottom:12px;padding:10px 14px;border-radius:4px;font-family:var(--mono);font-size:11px;line-height:1.7;border:1px solid rgba(57,255,20,.2);background:rgba(57,255,20,.04);';
+      el.innerHTML='<span style="color:var(--ok);">✓ Origin: <strong>'+location.origin+'</strong></span>'
+        +' &nbsp; Protocol: <span style="color:var(--ac);">'+location.protocol+'</span>'
+        +' &nbsp; CORS fetches reflect real server behaviour.'
+        +(location.protocol==='https:'?'<br><span style="color:var(--warn);">⚠ HTTP target URLs blocked by mixed-content policy.</span>':'');
+    }
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  ORIGIN FIX ENGINE — all JS techniques to escape null origin
+// ═══════════════════════════════════════════════════════════════
+const OriginFix = {
+  // Helpers
+  st(id,msg,cls){const e=document.getElementById(id);if(e){e.textContent=msg;e.className='ofix-st'+(cls?' '+cls:'');}},
+  card(id,state){const e=document.getElementById(id);if(e){e.className='ofix-card'+(state?' '+state:'');}},
+  result(html,ok){
+    const e=document.getElementById('ofix-result');if(!e)return;
+    e.style.display='';
+    e.style.cssText='margin-top:10px;padding:10px 12px;border-radius:4px;font-family:var(--mono);font-size:11px;line-height:1.8;border:1px solid '+(ok?'rgba(57,255,20,.3)':'rgba(0,229,255,.3)')+';background:'+(ok?'rgba(57,255,20,.05)':'rgba(0,229,255,.04)')+';';
+    e.innerHTML=html;
+  },
+
+  // 1. Detect active CORS extension by attempting a known-blocked fetch
+  async detectExtension(){
+    this.st('ofix-ext-st','Testing…','try');
+    const r=await Probe.fetchDetailed('https://api.ipify.org?format=json',4000);
+    if(r.ok){
+      this.card('ofix-ext','ok');
+      this.st('ofix-ext-st','✓ CORS extension active — fetches work!','ok');
+      document.getElementById('origin-banner').innerHTML+=
+        ' <span style="color:var(--ok);">✓ Extension detected — Inspector should work correctly.</span>';
+      return true;
+    }
+    this.card('ofix-ext','fail');
+    this.st('ofix-ext-st','✗ No extension detected ('+r.reason+')','err');
+    return false;
+  },
+
+  // 2. Blob URL self-relaunch
+  async blobRelaunch(){
+    this.st('ofix-blob-st','Opening…','try');
+    this.card('ofix-blob','trying');
+    try{
+      // XHR reads page HTML (works on file://)
+      const html=await new Promise((res,rej)=>{
+        const x=new XMLHttpRequest();
+        x.open('GET',location.href);
+        x.onload=()=>res(x.responseText);
+        x.onerror=()=>rej(new Error('XHR failed'));
+        x.send();
+      });
+
+      // Open blank window then write HTML directly into it.
+      // This avoids the blob:// black-screen bug where the new tab
+      // can't load a blob URL created in a different tab.
+      const w=window.open('about:blank','_blank');
+      if(!w){
+        this.card('ofix-blob','fail');
+        this.st('ofix-blob-st','✗ Popup blocked — allow popups then retry','err');
+        this.result('Allow popups for this page in the browser address bar, then click again.',false);
+        return;
+      }
+
+      try{
+        // document.write into the new window before it navigates anywhere
+        w.document.open('text/html','replace');
+        w.document.write(html);
+        w.document.close();
+        this.card('ofix-blob','ok');
+        this.st('ofix-blob-st','✓ Written into new tab — checking origin…','ok');
+
+        setTimeout(()=>{
+          let origin='unknown';
+          try{ origin=w.location.origin; }catch(_){}
+          const isNull=!origin||origin==='null'||origin==='about://';
+          OriginFix.result(
+            '<strong>'+(isNull?'⚠':'✓')+' New tab opened via document.write.</strong><br>'
+            +'Tab origin: <code>'+origin+'</code><br>'
+            +(isNull
+              ? 'Origin is still null — Chrome and Firefox assign null to windows opened from file://. '
+                +'The tab has the full NetPulse UI loaded. The Inspector in <em>that</em> tab will show the same '
+                +'blocked results because the origin problem follows the page, not the window.<br>'
+                +'<strong>What actually works:</strong> use Card 4 (SW Auto-Proxy) if it succeeds, '
+                +'or Card 6 to open from an https:// URL.'
+              : 'Non-null origin! CORS fetches should work in the new tab. Switch to it and use the Inspector there.'),
+            !isNull
+          );
+        },600);
+
+      }catch(writeErr){
+        // Fallback: navigate the window to a blob URL
+        // (May show black screen in Chrome — warn the user)
+        this.st('ofix-blob-st','document.write blocked, trying blob nav…','try');
+        const blob=new Blob([html],{type:'text/html'});
+        const burl=URL.createObjectURL(blob);
+        w.location.replace(burl);
+        setTimeout(()=>{
+          OriginFix.st('ofix-blob-st','⚠ Blob URL used — if black screen: copy URL, paste in new tab','try');
+          OriginFix.result(
+            '<strong>Fallback: blob URL navigated.</strong><br>'
+            +'If you see a black screen in the new tab, copy its address bar URL and paste it into another new tab manually — '
+            +'that forces a fresh load from the blob reference and the page will render.<br>'
+            +'Note: origin will still be <code>blob:null</code> in Chrome.',
+            false
+          );
+        },400);
+      }
+
+    }catch(e){
+      this.card('ofix-blob','fail');
+      this.st('ofix-blob-st','✗ '+e.message,'err');
+      this.result('Error: '+e.message,false);
+    }
+  },
+  // 3. Attempt raw Service Worker registration from blob URL
+  async trySW(){
+    this.st('ofix-sw-st','Attempting SW registration…','try');
+    this.card('ofix-sw','trying');
+    if(!('serviceWorker' in navigator)){
+      this.card('ofix-sw','fail');
+      this.st('ofix-sw-st','✗ Service Workers not supported','err');
+      return false;
+    }
+    const code='self.addEventListener("install",()=>self.skipWaiting());self.addEventListener("activate",e=>e.waitUntil(clients.claim()));';
+    try{
+      const swBlob=new Blob([code],{type:'application/javascript'});
+      const swUrl=URL.createObjectURL(swBlob);
+      const reg=await navigator.serviceWorker.register(swUrl,{scope:'./'});
+      await navigator.serviceWorker.ready;
+      this.card('ofix-sw','ok');
+      this.st('ofix-sw-st','✓ SW registered on this origin!','ok');
+      this.result('<strong>✓ Service Worker registered!</strong> This means SW works on your origin. Now try the SW Auto-Proxy (#4) to route all fetches through a CORS proxy automatically.',true);
+      return true;
+    }catch(e){
+      this.card('ofix-sw','fail');
+      this.st('ofix-sw-st','✗ '+e.message.substring(0,60),'err');
+      return false;
+    }
+  },
+
+  // 4. SW that transparently proxies all cross-origin fetches via corsproxy.io
+  async tryProxySW(){
+    this.st('ofix-proxysw-st','Registering proxy SW…','try');
+    this.card('ofix-proxysw','trying');
+    if(!('serviceWorker' in navigator)){
+      this.card('ofix-proxysw','fail');
+      this.st('ofix-proxysw-st','✗ SW not supported','err');
+      return;
+    }
+    const code=`
+const PROXY='https://corsproxy.io/?';
+self.addEventListener('fetch',ev=>{
+  const url=ev.request.url;
+  if(url.startsWith('http')&&!url.startsWith(self.location.origin)
+     &&!url.includes('corsproxy')&&!url.includes('allorigins')){
+    const proxied=PROXY+encodeURIComponent(url);
+    ev.respondWith(
+      fetch(proxied,{mode:'cors',cache:'no-store'})
+        .catch(()=>fetch(url,{mode:'no-cors'}))
+    );
+    return;
+  }
+});
+self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('activate',e=>e.waitUntil(clients.claim()));`;
+    try{
+      const swBlob=new Blob([code],{type:'application/javascript'});
+      const swUrl=URL.createObjectURL(swBlob);
+      await navigator.serviceWorker.register(swUrl,{scope:'./'});
+      await navigator.serviceWorker.ready;
+      this.card('ofix-proxysw','ok');
+      this.st('ofix-proxysw-st','✓ Proxy SW active! Re-run any Inspector test.','ok');
+      this.result(
+        '<strong>✓ Proxy Service Worker registered!</strong><br>'
+        +'All cross-origin fetch() calls are now silently rerouted through <code>corsproxy.io</code>. '
+        +'Re-run any URL in the Inspector above — direct CORS fetches should now succeed without code changes.',
+        true
+      );
+    }catch(e){
+      this.card('ofix-proxysw','fail');
+      this.st('ofix-proxysw-st','✗ '+e.message.substring(0,60),'err');
+      this.result(
+        '<strong>✗ Proxy SW blocked.</strong> '+e.message+'<br>'
+        +'Both Chrome and Firefox block SW registration on <code>file://</code>. '
+        +'This method requires NetPulse to be served over http:// or https://. '
+        +'The proxy approach still works manually — use the proxy methods in the Inspector results.',
+        false
+      );
+    }
+  },
+
+  // 5. BroadcastChannel fetch relay
+  broadcastRelay(){
+    this.st('ofix-relay-st','Opening relay tab…','try');
+    this.card('ofix-relay','trying');
+    // Inline relay page HTML
+    const relayHtml=`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>NetPulse Relay</title>
+<style>body{background:#070a0f;color:#b8d4f0;font-family:monospace;padding:20px;}
+code{color:#00e5ff;background:#0b0f18;padding:2px 6px;border-radius:3px;}
+.ok{color:#39ff14;} .err{color:#ff3366;}</style></head>
+<body>
+<h3>NetPulse BroadcastChannel Relay</h3>
+<p>Origin: <code id="orig"></code></p>
+<p id="st">Waiting for fetch requests from NetPulse…</p>
+<div id="log" style="font-size:11px;line-height:1.8;margin-top:12px;"></div>
+<script>
+document.getElementById('orig').textContent=location.origin;
+const bc=new BroadcastChannel('netpulse-relay');
+let count=0;
+bc.onmessage=async(ev)=>{
+  if(ev.data.type!=='fetch')return;
+  const {id,url}=ev.data;
+  const log=document.getElementById('log');
+  log.innerHTML='<span>Fetching: <code>'+url+'</code>…</span><br>'+log.innerHTML;
+  try{
+    const r=await fetch(url,{mode:'cors',cache:'no-store'});
+    const text=await r.text();
+    const hdrs={};r.headers.forEach((v,k)=>hdrs[k]=v);
+    bc.postMessage({type:'result',id,ok:true,status:r.status,headers:hdrs,text:text.substring(0,50000)});
+    log.innerHTML='<span class="ok">✓ '+r.status+' '+url.substring(0,60)+'</span><br>'+log.innerHTML;
+  }catch(e){
+    bc.postMessage({type:'result',id,ok:false,err:e.message});
+    log.innerHTML='<span class="err">✗ '+e.message+' '+url.substring(0,60)+'</span><br>'+log.innerHTML;
+  }
+  count++;
+  document.getElementById('st').textContent='Relayed '+count+' request(s). Keep this tab open.';
+};
+bc.postMessage({type:'ready',origin:location.origin});
+<\/script></body></html>`;
+    const blob=new Blob([relayHtml],{type:'text/html'});
+    const blobUrl=URL.createObjectURL(blob);
+    const w=window.open(blobUrl,'netpulse-relay','width=540,height=400');
+    if(!w){
+      this.card('ofix-relay','fail');
+      this.st('ofix-relay-st','✗ Popup blocked','err');
+      return;
+    }
+    // Set up listener
+    if(!window._npBC){
+      window._npBC=new BroadcastChannel('netpulse-relay');
+      window._npBC.onmessage=(ev)=>{
+        if(ev.data.type==='ready'){
+          const origin=ev.data.origin;
+          const works=origin&&origin!=='null';
+          OriginFix.card('ofix-relay',works?'ok':'fail');
+          OriginFix.st('ofix-relay-st',(works?'✓':'✗')+' Relay origin: '+origin,works?'ok':'err');
+          OriginFix.result(
+            '<strong>'+(works?'✓ Relay active':'Relay has null origin too')+'</strong> '
+            +'Relay tab origin: <code>'+origin+'</code><br>'
+            +(works
+              ? 'The relay can fetch on your behalf. The Inspector will use the relay for blocked requests automatically.'
+              : 'Both this tab and the relay are null (both from file://). For the relay to help, open the relay blob URL from an https:// page console instead.'),
+            works
+          );
+          if(works){
+            // Monkey-patch Probe.fetchDetailed to try relay on failure
+            const origFetch=Probe.fetchDetailed.bind(Probe);
+            Probe.fetchDetailed=async function(url,ms){
+              const direct=await origFetch(url,ms);
+              if(direct.ok)return direct;
+              // Try via relay
+              return new Promise((res)=>{
+                const id='r'+Date.now();
+                const tid=setTimeout(()=>res(direct),8000);
+                const handler=(ev)=>{
+                  if(ev.data.type==='result'&&ev.data.id===id){
+                    clearTimeout(tid);
+                    window._npBC.removeEventListener('message',handler);
+                    if(ev.data.ok){
+                      // Reconstruct a fake response-like object
+                      res({ok:true,status:ev.data.status,ms:0,acao:ev.data.headers['access-control-allow-origin'],
+                           headers:{get:k=>ev.data.headers[k]||null,forEach:(fn)=>Object.entries(ev.data.headers).forEach(([k,v])=>fn(v,k))}});
+                    } else {
+                      res({...direct,err:ev.data.err,reason:'relay-also-failed'});
+                    }
+                  }
+                };
+                window._npBC.addEventListener('message',handler);
+                window._npBC.postMessage({type:'fetch',id,url});
+              });
+            };
+          }
+        }
+      };
+    }
+    this.st('ofix-relay-st','Relay tab opened — waiting for ping…','try');
+  },
+
+  // 6. Open from any HTTPS URL
+  httpsLaunch(){
+    const url=(document.getElementById('ofix-gh-url').value||'').trim();
+    if(!url){this.st('ofix-gh-st','Paste a URL first','err');return;}
+    if(!url.startsWith('https://')){this.st('ofix-gh-st','Must start with https://','err');return;}
+    window.open(url,'_blank');
+    this.card('ofix-gh','ok');
+    this.st('ofix-gh-st','✓ Opened','ok');
+    this.result('<strong>✓ Opened from HTTPS.</strong> That tab will have a real https:// origin and all CORS fetches will work correctly.',true);
+  },
+
+  // Auto-run: silently try extension detection + SW on load
+  async autoRun(){
+    const extOk=await this.detectExtension();
+    if(extOk)return; // extension handles everything, done
+    const swOk=await this.trySW();
+    if(swOk){
+      // SW registered — now install the proxy SW automatically
+      await this.tryProxySW();
+    }
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  DNS
+// ═══════════════════════════════════════════════════════════════
+const DNS = {
+  async lookup(){
+    const domain=($('dns-domain').value||'').trim();
+    const type=$('dns-type').value;
+    if(!domain)return;
+    const out=$('dns-results');
+    out.innerHTML='<div class="muted mono small">Querying…</div>';
+    const data=await dnsQuery(domain,type);
+    this.renderAnswers(data,out);
+  },
+
+  renderAnswers(data,el){
+    el.innerHTML='';
+    if(data.Status!==0){
+      el.innerHTML=`<div class="tag tag-err">NXDOMAIN / Error (status ${data.Status})</div>`;return;
+    }
+    if(!data.Answer||!data.Answer.length){
+      el.innerHTML=`<div class="muted mono small">No records found</div>`;return;
+    }
+    const TYPES={1:'A',2:'NS',5:'CNAME',6:'SOA',12:'PTR',15:'MX',16:'TXT',28:'AAAA',33:'SRV'};
+    data.Answer.forEach(ans=>{
+      const d=h('div',{cls:'dns-answer'});
+      d.innerHTML=`<div class="dns-type">${TYPES[ans.type]||ans.type}</div>
+        <div class="dns-val">${ans.data}</div>
+        <div class="dns-ttl">TTL: ${ans.TTL}s</div>`;
+      el.appendChild(d);
+    });
+  },
+
+  async compare(){
+    const domain=($('dns-domain').value||'').trim();
+    const type=$('dns-type').value;
+    if(!domain)return;
+    const out=$('dns-results');
+    out.innerHTML='<div class="muted mono small">Querying all resolvers…</div>';
+    const results=await Promise.all(
+      Object.entries(DNS_RESOLVERS).map(async([name,url])=>{
+        const t=Date.now();
+        const data=await dnsQuery(domain,type,url);
+        return {name,data,ms:Date.now()-t};
+      })
+    );
+    out.innerHTML='';
+    results.forEach(({name,data,ms})=>{
+      const sec=h('div',{cls:'section',style:'margin-bottom:8px;'});
+      sec.innerHTML=`<div class="section-head"><span class="section-title">${name}</span><span class="tag tag-info">${ms}ms</span></div>`;
+      const body=h('div',{cls:'section-body'});
+      this.renderAnswers(data,body);
+      sec.appendChild(body);out.appendChild(sec);
+    });
+  },
+
+  async checkProp(){
+    const domain=($('prop-domain').value||'').trim();
+    if(!domain)return;
+    const out=$('prop-results');
+    out.innerHTML='<div class="muted mono small">Checking propagation…</div>';
+    const results=await Promise.all(
+      Object.entries(DNS_RESOLVERS).map(async([name,url])=>{
+        const data=await dnsQuery(domain,'A',url);
+        const ips=(data.Answer||[]).filter(a=>a.type===1).map(a=>a.data);
+        return {name,ips};
+      })
+    );
+    out.innerHTML='';
+    const allSame=results.every(r=>JSON.stringify(r.ips)===JSON.stringify(results[0].ips));
+    const summ=h('div',{cls:'section',style:'margin-bottom:8px;'});
+    summ.innerHTML=`<div class="section-body">
+      ${allSame?'<span class="tag tag-ok">✓ PROPAGATED — All resolvers agree</span>':'<span class="tag tag-warn">⚠ MIXED — Resolvers disagree (still propagating)</span>'}
+    </div>`;
+    out.appendChild(summ);
+    const table=h('table',{cls:'result-table'});
+    table.innerHTML='<thead><tr><th>Resolver</th><th>IPs</th><th>Match</th></tr></thead>';
+    const tbody=h('tbody');
+    results.forEach(({name,ips})=>{
+      const tr=h('tr');
+      tr.innerHTML=`<td class="mono">${name}</td>
+        <td class="mono" style="color:var(--ac);">${ips.join(', ')||'No result'}</td>
+        <td>${ips.join()===results[0].ips.join()?'<span class="tag tag-ok">✓</span>':'<span class="tag tag-warn">≠</span>'}</td>`;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);out.appendChild(table);
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  SPEED TEST
+// ═══════════════════════════════════════════════════════════════
+const Speed = {
+  histChart:null,
+
+  async run(){
+    const btn=$('btn-speed');btn.disabled=true;btn.textContent='Testing…';
+    $('speed-val').textContent='…';
+    const TESTS=[
+      {url:'https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js',size:87},
+      {url:'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',size:220},
+      {url:'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/editor/editor.main.js',size:1900},
+    ];
+    const bars=[];
+    $('speed-bars').innerHTML=TESTS.map(t=>`<div class="speed-bar-row">
+      <div class="speed-bar-label">${t.size}KB file</div>
+      <div class="speed-bar-track"><div class="speed-bar-fill" id="sb-${t.size}" style="width:0%"></div></div>
+      <div class="speed-bar-val" id="sv-${t.size}">—</div></div>`).join('');
+
+    let totalMbps=0;
+    for(const test of TESTS){
+      const t=Date.now();
+      try{
+        const r=await fetch(test.url+'?_t='+Date.now(),{cache:'no-store'});
+        await r.arrayBuffer();
+        const ms=Date.now()-t;
+        const mbps=((test.size*8)/ms*1000/1000).toFixed(1);
+        totalMbps=parseFloat(mbps);
+        const pct=Math.min(100,parseFloat(mbps)/100*100);
+        $('sb-'+test.size).style.width=pct+'%';
+        $('sv-'+test.size).textContent=mbps+' Mbps';
+        $('speed-val').textContent=mbps;
+      }catch(e){$('sv-'+test.size).textContent='Error';}
+    }
+    btn.disabled=false;btn.innerHTML='▶ Run Again';
+  },
+
+  async cdnRace(){
+    const cdns=[
+      {name:'jsDelivr',url:'https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js'},
+      {name:'Google APIs',url:'https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js'},
+      {name:'Cloudflare',url:'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js'},
+      {name:'Unpkg',url:'https://unpkg.com/jquery@3.7.1/dist/jquery.min.js'},
+    ];
+    $('cdn-results').innerHTML='<div class="muted mono small">Racing…</div>';
+    const results=await Promise.all(cdns.map(async cdn=>{
+      const t=Date.now();
+      const r=await Probe.img(cdn.url+'?_t='+Date.now(),5000);
+      return {...cdn,ms:r.ok?Date.now()-t:null};
+    }));
+    results.sort((a,b)=>(a.ms||9999)-(b.ms||9999));
+    const max=results.find(r=>r.ms)?.ms||1;
+    $('cdn-results').innerHTML=results.map((r,i)=>`
+      <div class="speed-bar-row" style="margin-bottom:6px;">
+        <div class="speed-bar-label" style="width:100px;">${i===0?'🏆 ':''}${r.name}</div>
+        <div class="speed-bar-track"><div class="speed-bar-fill" style="width:${r.ms?Math.round(r.ms/max*100):0}%;background:${i===0?'var(--ac2)':'var(--ac)'}"></div></div>
+        <div class="speed-bar-val">${r.ms?r.ms+'ms':'timeout'}</div>
+      </div>`).join('');
+  },
+
+  async histogram(){
+    const url=($('hist-url').value||'').trim();
+    const count=Math.min(100,Math.max(5,parseInt($('hist-count').value)||20));
+    if(!url)return;
+    $('hist-stats').innerHTML='<span class="muted mono small">Running '+count+' probes…</span>';
+    const times=[];
+    for(let i=0;i<count;i++){
+      const r=await Probe.img(url,5000);
+      if(r.ok)times.push(r.ms);
+      await new Promise(r=>setTimeout(r,100));
+    }
+    if(!times.length){$('hist-stats').innerHTML='<span style="color:var(--err)">All probes failed</span>';return;}
+    times.sort((a,b)=>a-b);
+    const p=(p)=>times[Math.floor(times.length*p/100)]||0;
+    const avg=Math.round(times.reduce((a,b)=>a+b,0)/times.length);
+    $('hist-stats').innerHTML=`
+      <span>Min: <strong class="ac mono">${times[0]}ms</strong></span>
+      <span>p50: <strong class="mono" style="color:var(--ac4)">${p(50)}ms</strong></span>
+      <span>p95: <strong class="mono" style="color:var(--warn)">${p(95)}ms</strong></span>
+      <span>p99: <strong class="mono" style="color:var(--err)">${p(99)}ms</strong></span>
+      <span>Max: <strong class="mono" style="color:var(--err)">${times[times.length-1]}ms</strong></span>
+      <span>Avg: <strong class="mono" style="color:var(--t2)">${avg}ms</strong></span>
+      <span>Samples: <strong class="mono">${times.length}</strong></span>`;
+    // Build histogram bins
+    const min=times[0],max2=times[times.length-1],bins=10;
+    const binSize=(max2-min)/bins||1;
+    const counts=Array(bins).fill(0);
+    times.forEach(t=>{const b=Math.min(bins-1,Math.floor((t-min)/binSize));counts[b]++;});
+    const labels=Array.from({length:bins},(_,i)=>Math.round(min+i*binSize)+'ms');
+    if(this.histChart)this.histChart.destroy();
+    this.histChart=new Chart($('hist-chart'),{
+      type:'bar',
+      data:{labels,datasets:[{label:'Count',data:counts,
+        backgroundColor:'rgba(0,229,255,.25)',borderColor:'rgba(0,229,255,.8)',borderWidth:1}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,animation:false,
+        scales:{
+          x:{ticks:{color:'#6890b8',font:{family:'JetBrains Mono',size:9}},grid:{color:'rgba(255,255,255,.04)'}},
+          y:{ticks:{color:'#6890b8',font:{family:'JetBrains Mono',size:9}},grid:{color:'rgba(255,255,255,.04)'}},
+        },
+        plugins:{legend:{display:false}},
+      }
+    });
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  IP & GEO
+// ═══════════════════════════════════════════════════════════════
+const IPGeo = {
+  async lookup(){
+    const ip=($('ip-input').value||'').trim();
+    const out=$('ip-results');
+    out.innerHTML='<div class="muted mono small">Querying…</div>';
+    const apis=[
+      {name:'ipinfo.io',url:`https://ipinfo.io/${ip}/json`},
+      {name:'ipwho.is',url:`https://ipwho.is/${ip}`},
+      {name:'freeipapi.com',url:`https://freeipapi.com/api/json/${ip}`},
+    ];
+    const results=await Promise.all(apis.map(async a=>{
+      try{const r=await fetch(a.url,{cache:'no-store'});const d=await r.json();return{name:a.name,data:d,ok:true};}
+      catch(e){return{name:a.name,ok:false};}
+    }));
+    out.innerHTML='';
+    const first=results.find(r=>r.ok&&r.data);
+    if(first){
+      const d=first.data;
+      const kv=h('div',{cls:'kv-grid'});
+      const normalised={
+        'IP':[d.ip||d.ipAddress||ip,'ac'],
+        'Hostname':[d.hostname||'—',''],
+        'City':[d.city||d.cityName||'—',''],
+        'Region':[d.region||d.regionName||'—',''],
+        'Country':[d.country||d.countryName||'—',''],
+        'ISP / Org':[d.org||d.isp||d.connection?.isp||'—',''],
+        'ASN':[d.asn||d.connection?.asn||'—',''],
+        'Timezone':[d.timezone||d.timeZone||'—',''],
+        'Lat/Lon':[d.loc||((d.latitude&&d.longitude)?`${d.latitude},${d.longitude}`:d.latitude||'—'),''],
+        'Postal':[d.postal||d.postalCode||'—',''],
+        'Source':[first.name,'ac'],
+      };
+      makeKV(normalised,kv);out.appendChild(kv);
+      // Show agreement between sources
+      const agree=h('div',{style:'margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;'});
+      results.forEach(r=>{
+        const tag=h('span',{cls:`tag ${r.ok?'tag-ok':'tag-err'}`},[r.name+' '+(r.ok?'✓':'✗')]);
+        agree.appendChild(tag);
+      });
+      out.appendChild(agree);
+    } else {
+      out.innerHTML='<div style="color:var(--err);font-family:var(--mono);font-size:11px;">All API queries failed — check connectivity</div>';
+    }
+  },
+
+  async myIP(){
+    $('ip-input').value='';
+    await this.lookup();
+  },
+
+  async threatCheck(){
+    const ip=($('threat-ip').value||'').trim();
+    const out=$('threat-results');
+    if(!ip){out.innerHTML='<div class="muted mono small">Enter an IP address</div>';return;}
+    out.innerHTML='<div class="muted mono small">Checking threat intelligence…</div>';
+    // Use multiple available APIs
+    const checks=await Promise.all([
+      // AbuseIPDB via public endpoint
+      Probe.fetch(`https://api.abuseipdb.com/api/v2/check?ipAddress=${ip}`,{mode:'cors'},5000),
+      // Shodan InternetDB (free, no key)
+      Probe.fetch(`https://internetdb.shodan.io/${ip}`,{mode:'cors'},5000),
+    ]);
+    const results=[];
+    // Shodan InternetDB
+    const shodan=checks[1];
+    if(shodan.ok&&shodan.res){
+      try{
+        const d=await shodan.res.json();
+        results.push({source:'Shodan InternetDB',data:{
+          'Open Ports':[(d.ports||[]).join(', ')||'None found',''],
+          'Hostnames':[(d.hostnames||[]).join(', ')||'None',''],
+          'Tags':[(d.tags||[]).join(', ')||'None','ok'],
+          'Vulns':[(d.vulns||[]).length+' CVEs',d.vulns?.length?'err':'ok'],
+          'CPEs':[String((d.cpes||[]).length)+' services',''],
+        }});
+      }catch(_){}
+    }
+    out.innerHTML='';
+    if(!results.length){
+      // Fallback: show what we can from basic probe
+      const basic=await Probe.all(`http://${ip}/`);
+      const kv=h('div',{cls:'kv-grid'});
+      makeKV({
+        'IP':[ip,'ac'],
+        'HTTP Reachable':[basic.status!=='blocked'?'Yes':'No',basic.status!=='blocked'?'warn':'ok'],
+        'Response Time':[basic.ms+'ms',''],
+        'Note':['Detailed threat intel requires API keys (AbuseIPDB, VirusTotal)',''],
+      },kv);
+      out.appendChild(kv);
+      return;
+    }
+    results.forEach(({source,data})=>{
+      const sec=h('div',{cls:'section',style:'margin-bottom:8px;'});
+      sec.innerHTML=`<div class="section-head"><span class="section-title">${source}</span></div>`;
+      const body=h('div',{cls:'section-body'});
+      const kv=h('div',{cls:'kv-grid'});
+      makeKV(data,kv);body.appendChild(kv);
+      sec.appendChild(body);out.appendChild(sec);
+    });
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  TOOLS
+// ═══════════════════════════════════════════════════════════════
+const Tools = {
+  ws:null,
+
+  parseURL(){
+    const raw=($('url-parse-input').value||'').trim();
+    const out=$('url-parse-out');
+    if(!raw){out.innerHTML='';return;}
+    try{
+      const u=new URL(raw);
+      makeKV({
+        'Protocol':[u.protocol,'ac'],
+        'Username':[u.username||'—',''],
+        'Password':[u.password?'(set)':'—',''],
+        'Hostname':[u.hostname,''],
+        'Port':[u.port||'(default)',''],
+        'Pathname':[u.pathname||'/',''],
+        'Search':[u.search||'—',''],
+        'Hash':[u.hash||'—',''],
+        'Origin':[u.origin,'ac'],
+      },out);
+    }catch(e){out.innerHTML='<div style="color:var(--err);font-family:var(--mono);font-size:11px;">Invalid URL</div>';}
+  },
+
+  calcSubnet(){
+    const raw=($('cidr-input').value||'').trim();
+    const out=$('cidr-out');
+    if(!raw){out.innerHTML='';return;}
+    try{
+      const [addr,prefix]=raw.split('/');
+      const p=parseInt(prefix||24);
+      if(p<0||p>32)throw new Error('Bad prefix');
+      const parts=addr.split('.').map(Number);
+      if(parts.length!==4||parts.some(n=>isNaN(n)||n<0||n>255))throw new Error('Bad IP');
+      const ip32=parts.reduce((acc,o)=>(acc<<8)|o,0)>>>0;
+      const mask32=p===0?0:(0xffffffff<<(32-p))>>>0;
+      const net32=(ip32&mask32)>>>0;
+      const bcast32=(net32|(~mask32))>>>0;
+      const toIP=n=>[(n>>24)&255,(n>>16)&255,(n>>8)&255,n&255].join('.');
+      const hosts=p>=31?Math.pow(2,32-p):Math.pow(2,32-p)-2;
+      makeKV({
+        'Network':[toIP(net32)+'/'+p,'ac'],
+        'Broadcast':[toIP(bcast32),'warn'],
+        'First Host':[toIP(net32+1),'ok'],
+        'Last Host':[toIP(bcast32-1),'ok'],
+        'Subnet Mask':[toIP(mask32),''],
+        'Wildcard':[toIP(~mask32>>>0),''],
+        'Usable Hosts':[hosts.toLocaleString(),'ac'],
+        'CIDR':[raw,''],
+      },out);
+    }catch(e){out.innerHTML='<div style="color:var(--err);font-family:var(--mono);font-size:11px;">Invalid CIDR notation (e.g. 192.168.1.0/24)</div>';}
+  },
+
+  decodeJWT(){
+    const token=($('jwt-input').value||'').trim();
+    const out=$('jwt-out');
+    if(!token){out.innerHTML='';return;}
+    try{
+      const parts=token.split('.');
+      if(parts.length!==3)throw new Error('Not a JWT');
+      const decode=b64=>{const pad='='.repeat((4-b64.length%4)%4);return JSON.parse(atob(b64.replace(/-/g,'+').replace(/_/g,'/')+pad));};
+      const header=decode(parts[0]),payload=decode(parts[1]);
+      out.innerHTML=`
+        <div class="jwt-part jwt-header"><div class="jwt-label">HEADER</div><pre>${JSON.stringify(header,null,2)}</pre></div>
+        <div class="jwt-part jwt-payload"><div class="jwt-label">PAYLOAD</div><pre>${JSON.stringify(payload,null,2)}</pre>
+          ${payload.exp?`<div style="margin-top:6px;font-size:10px;color:${Date.now()/1000>payload.exp?'var(--err)':'var(--ok)'};">Expires: ${new Date(payload.exp*1000).toLocaleString()} — ${Date.now()/1000>payload.exp?'⚠ EXPIRED':'✓ Valid'}</div>`:''}
+        </div>
+        <div class="jwt-part jwt-sig"><div class="jwt-label">SIGNATURE</div><div style="font-family:var(--mono);font-size:11px;color:var(--t3);word-break:break-all;">${parts[2]}</div>
+          <div style="margin-top:6px;font-size:10px;color:var(--t3);">Algorithm: ${header.alg} — Signature cannot be verified client-side without the secret key</div>
+        </div>`;
+    }catch(e){out.innerHTML=`<div style="color:var(--err);font-family:var(--mono);font-size:11px;">Invalid JWT: ${e.message}</div>`;}
+  },
+
+  encode(type){
+    const input=$('enc-input').value;
+    let result='';
+    try{
+      if(type==='base64')result=btoa(unescape(encodeURIComponent(input)));
+      else if(type==='base64d')result=decodeURIComponent(escape(atob(input)));
+      else if(type==='url')result=encodeURIComponent(input);
+      else if(type==='urld')result=decodeURIComponent(input);
+      else if(type==='html')result=input.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      else if(type==='htmld'){const d=document.createElement('div');d.innerHTML=input;result=d.textContent;}
+    }catch(e){result='Error: '+e.message;}
+    $('enc-output').value=result;
+  },
+
+  wsConnect(){
+    const url=($('ws-url').value||'').trim();
+    if(!url)return;
+    this.wsDisconnect();
+    try{
+      this.ws=new WebSocket(url);
+      this.wsMsg('Connecting to '+url+'…','sys');
+      this.ws.onopen=()=>{
+        this.wsMsg('Connected ✓','sys');
+        $('ws-dot').className='dot ok';
+        $('ws-connect-btn').disabled=true;
+        $('ws-disc-btn').disabled=false;
+        $('ws-send-btn').disabled=false;
+      };
+      this.ws.onmessage=e=>this.wsMsg('← '+e.data,'recv');
+      this.ws.onerror=()=>{this.wsMsg('Error occurred','sys');$('ws-dot').className='dot err';};
+      this.ws.onclose=()=>{
+        this.wsMsg('Disconnected','sys');$('ws-dot').className='dot idle';
+        $('ws-connect-btn').disabled=false;$('ws-disc-btn').disabled=true;$('ws-send-btn').disabled=true;
+      };
+    }catch(e){this.wsMsg('Failed: '+e.message,'sys');}
+  },
+
+  wsDisconnect(){
+    if(this.ws){try{this.ws.close();}catch(_){}this.ws=null;}
+  },
+
+  wsSend(){
+    const msg=$('ws-send-input').value;
+    if(!msg||!this.ws||this.ws.readyState!==1)return;
+    this.ws.send(msg);
+    this.wsMsg('→ '+msg,'sent');
+    $('ws-send-input').value='';
+  },
+
+  wsMsg(text,cls){
+    const el=$('ws-messages');
+    const d=h('div',{cls:'ws-msg '+cls},[`[${new Date().toLocaleTimeString()}] ${text}`]);
+    el.appendChild(d);el.scrollTop=el.scrollHeight;
+  },
+
+  async sendRequest(){
+    const method=$('req-method').value;
+    const url=($('req-url').value||'').trim();
+    if(!url)return;
+    const headerLines=($('req-headers').value||'').trim().split('\n').filter(Boolean);
+    const headers={};
+    headerLines.forEach(line=>{const[k,...v]=line.split(':');if(k)headers[k.trim()]=v.join(':').trim();});
+    const body=$('req-body').value;
+    const out=$('req-results');
+    out.innerHTML='<div class="muted mono small">Sending…</div>';
+    const t=Date.now();
+    try{
+      const opts={method,headers,cache:'no-store'};
+      if(['POST','PUT','PATCH'].includes(method)&&body)opts.body=body;
+      const r=await fetch(url,opts);
+      const ms=Date.now()-t;
+      const text=await r.text();
+      const headerMap={};r.headers.forEach((v,k)=>headerMap[k]=v);
+      out.innerHTML=`
+        <div class="kv-grid" style="margin-bottom:8px;">
+          <div class="kv-k">Status</div><div class="kv-v ${r.ok?'ok':'err'}">${r.status} ${r.statusText}</div>
+          <div class="kv-k">Time</div><div class="kv-v ac">${ms}ms</div>
+          <div class="kv-k">Size</div><div class="kv-v">${text.length} bytes</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--t3);margin-bottom:4px;">RESPONSE HEADERS</div>
+        <div class="kv-grid" style="margin-bottom:8px;">${Object.entries(headerMap).map(([k,v])=>`<div class="kv-k">${k}</div><div class="kv-v" style="font-size:10px;">${v}</div>`).join('')}</div>
+        <div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--t3);margin-bottom:4px;">RESPONSE BODY</div>
+        <div class="log-box" style="max-height:200px;"><pre style="font-size:10px;">${text.substring(0,2000)+(text.length>2000?'\n…(truncated)':'')}</pre></div>`;
+    }catch(e){out.innerHTML=`<div style="color:var(--err);font-family:var(--mono);font-size:11px;">${e.message}</div>`;}
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  TAB ROUTING
+// ═══════════════════════════════════════════════════════════════
+document.querySelectorAll('.nav-tab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    const pane=$('tab-'+btn.dataset.tab);
+    if(pane)pane.classList.add('active');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener('load',()=>{
+  Dash.init();
+  Inspector.initOriginBanner();
+  // Init URL parser placeholder
+  $('url-parse-input').value='https://user:pass@example.com:8080/path?key=val#section';
+  Tools.parseURL();
+  // Init subnet calc placeholder
+  $('cidr-input').value='192.168.1.0/24';
+  Tools.calcSubnet();
+  // Monitor online/offline
+  window.addEventListener('online',()=>{$('net-dot').className='dot ok';$('net-label').textContent='Online';});
+  window.addEventListener('offline',()=>{$('net-dot').className='dot err';$('net-label').textContent='Offline';});
+});
+</script>
+</body>
+</html>
