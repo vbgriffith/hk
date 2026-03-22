@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Scripture — Offline Bible</title>
+<link rel="stylesheet" href="style.css">
+
+<!-- Preload all four Bible data files so they're cached immediately -->
+<link rel="preload" href="data/kjv.js" as="script">
+<link rel="preload" href="data/asv.js" as="script">
+<link rel="preload" href="data/ylt.js" as="script">
+<link rel="preload" href="data/bbe.js" as="script">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     LOADING SCREEN
+═══════════════════════════════════════════ -->
+<div id="loading-screen">
+  <div class="loading-cross">✝</div>
+  <div class="loading-title">Scripture</div>
+  <div class="loading-sub">Offline Bible · Four Translations</div>
+  <div class="loading-bar-track">
+    <div class="loading-bar-fill" id="loading-bar"></div>
+  </div>
+  <div class="loading-status" id="loading-status">Initializing…</div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     MAIN APP
+═══════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- ── TOP BAR ── -->
+  <header id="topbar">
+    <!-- Sidebar toggle -->
+    <button class="icon-btn" id="btn-sidebar-toggle" title="Toggle navigation" aria-label="Toggle sidebar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>
+      </svg>
+    </button>
+
+    <!-- Logo -->
+    <div class="topbar-logo">Scrip<span>ture</span></div>
+
+    <!-- Passage pill -->
+    <button id="passage-pill" aria-label="Select book and chapter">
+      <span class="pill-text">Genesis 1</span>
+      <span class="pill-arrow">▼</span>
+    </button>
+
+    <div class="topbar-spacer"></div>
+
+    <!-- Version pill -->
+    <button id="version-pill" aria-label="Select translation">
+      <span>KJV</span>
+    </button>
+
+    <!-- Search icon -->
+    <button class="icon-btn" onclick="openPanel('search')" title="Search" aria-label="Search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+    </button>
+  </header>
+
+  <!-- ── DAILY VERSE BANNER ── -->
+  <div id="daily-verse-banner">
+    <div class="dv-label">✦ Verse of the Day</div>
+    <div class="dv-text"></div>
+    <div class="dv-ref"></div>
+  </div>
+
+  <!-- ── MAIN CONTENT ── -->
+  <div id="main">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar">
+      <!-- Sidebar tab strip -->
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" data-pane="books">Books</button>
+        <button class="sidebar-tab" data-pane="search-side" onclick="openPanel('search')">Search</button>
+        <button class="sidebar-tab" data-pane="bm-side" onclick="openPanel('bookmarks')">Saved</button>
+      </div>
+
+      <!-- Books pane -->
+      <div class="sidebar-pane active" id="pane-books">
+        <!-- OT / NT toggle -->
+        <div id="testament-toggle">
+          <button class="testament-btn active" data-t="OT">Old Testament</button>
+          <button class="testament-btn" data-t="NT">New Testament</button>
+        </div>
+
+        <!-- Book list OR chapter grid -->
+        <div id="book-list-wrap" style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+          <div id="book-list"></div>
+
+          <!-- Chapter grid (shown when a book is selected) -->
+          <div id="chapter-grid-wrap">
+            <div class="chapter-grid-header">
+              <button class="chapter-back-btn" title="Back to books">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M15 18l-6-6 6-6"/>
+                </svg>
+              </button>
+              <span class="chapter-book-title">Genesis</span>
+            </div>
+            <div id="chapter-grid"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- READING PANE -->
+    <main id="reading-pane">
+      <!-- Chapter navigation strip -->
+      <div id="chapter-nav">
+        <button class="ch-nav-btn" id="btn-prev-ch" aria-label="Previous chapter">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+          Prev
+        </button>
+        <div style="text-align:center">
+          <div class="ch-nav-title">Genesis 1</div>
+          <div class="ch-nav-subtitle">King James Version</div>
+        </div>
+        <button class="ch-nav-btn" id="btn-next-ch" aria-label="Next chapter">
+          Next
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+
+      <!-- Verse content area -->
+      <div id="verse-container" role="main" aria-label="Bible text"></div>
+    </main>
+
+  </div><!-- /#main -->
+
+  <!-- ── BOTTOM TAB BAR ── -->
+  <nav id="tabbar" aria-label="Main navigation">
+    <button class="tab-item active" data-tab="read">
+      <span class="tab-icon">📖</span>
+      <span class="tab-label">Read</span>
+    </button>
+    <button class="tab-item" data-tab="search">
+      <span class="tab-icon">🔍</span>
+      <span class="tab-label">Search</span>
+    </button>
+    <button class="tab-item" data-tab="bookmarks">
+      <span class="tab-icon">🔖</span>
+      <span class="tab-label">Saved</span>
+    </button>
+    <button class="tab-item" data-tab="plans">
+      <span class="tab-icon">📅</span>
+      <span class="tab-label">Plans</span>
+    </button>
+    <button class="tab-item" data-tab="settings">
+      <span class="tab-icon">⚙️</span>
+      <span class="tab-label">Settings</span>
+    </button>
+  </nav>
+
+</div><!-- /#app -->
+
+
+<!-- ═══════════════════════════════════════════
+     VERSE POPUP (floats over selected verse)
+═══════════════════════════════════════════ -->
+<div id="verse-popup" role="menu" aria-label="Verse actions">
+  <button class="popup-btn" id="popup-bookmark" title="Bookmark">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+    </svg>
+    Save
+  </button>
+  <!-- Highlight colors -->
+  <button class="popup-btn hl-color-btn hl-yellow" data-color="hl-yellow" title="Yellow highlight" aria-label="Highlight yellow"></button>
+  <button class="popup-btn hl-color-btn hl-green"  data-color="hl-green"  title="Green highlight"  aria-label="Highlight green"></button>
+  <button class="popup-btn hl-color-btn hl-blue"   data-color="hl-blue"   title="Blue highlight"   aria-label="Highlight blue"></button>
+  <button class="popup-btn hl-color-btn hl-pink"   data-color="hl-pink"   title="Pink highlight"   aria-label="Highlight pink"></button>
+  <button class="popup-btn" id="popup-note" title="Add note">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
+    Note
+  </button>
+  <button class="popup-btn" id="popup-copy" title="Copy verse">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+    </svg>
+    Copy
+  </button>
+  <button class="popup-btn" id="popup-share" title="Share verse">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+    </svg>
+    Share
+  </button>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     OVERLAY PANELS
+═══════════════════════════════════════════ -->
+
+<!-- ── SEARCH PANEL ── -->
+<div class="overlay-panel" id="panel-search" role="dialog" aria-label="Search">
+  <div class="overlay-backdrop"></div>
+  <div class="overlay-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">Search Scripture</div>
+      <button class="sheet-close" onclick="closePanel()">✕</button>
+    </div>
+    <div class="sheet-body">
+      <!-- Go to reference -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:0.72rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text4);margin-bottom:8px">Go to Reference</div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="goto-input" placeholder="e.g. John 3:16 or Ps 23"
+            style="flex:1;background:var(--bg2);border:1.5px solid var(--bdr);border-radius:10px;padding:9px 14px;font-size:0.95rem;color:var(--text);outline:none;transition:border-color 0.15s"
+            onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--bdr)'">
+          <button id="goto-btn" style="padding:9px 16px;background:var(--gold);color:#fff;border-radius:10px;font-size:0.85rem;font-weight:600;transition:background 0.15s"
+            onmouseover="this.style.background='var(--gold-light)'" onmouseout="this.style.background='var(--gold)'">Go</button>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--bdr);margin-bottom:14px"></div>
+
+      <!-- Full text search -->
+      <div style="font-size:0.72rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text4);margin-bottom:8px">Search Text</div>
+      <div class="search-input-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="text" id="search-input" placeholder="Search all of Scripture…" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="search-filter-row">
+        <button class="filter-chip active" data-f="all">All Books</button>
+        <button class="filter-chip" data-f="ot">Old Testament</button>
+        <button class="filter-chip" data-f="nt">New Testament</button>
+      </div>
+      <div id="search-results">
+        <div class="search-empty">
+          <div class="search-icon">📖</div>
+          Search across all 31,102 verses
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── BOOKMARKS PANEL ── -->
+<div class="overlay-panel" id="panel-bookmarks" role="dialog" aria-label="Saved verses">
+  <div class="overlay-backdrop"></div>
+  <div class="overlay-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">🔖 Saved Verses</div>
+      <button class="sheet-close" onclick="closePanel()">✕</button>
+    </div>
+    <div class="sheet-body" id="bookmarks-body"></div>
+  </div>
+</div>
+
+<!-- ── NOTES PANEL ── -->
+<div class="overlay-panel" id="panel-notes" role="dialog" aria-label="Notes">
+  <div class="overlay-backdrop"></div>
+  <div class="overlay-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">📝 Notes</div>
+      <button class="sheet-close" onclick="closePanel()">✕</button>
+    </div>
+    <div class="sheet-body" id="notes-body"></div>
+  </div>
+</div>
+
+<!-- ── VERSIONS PANEL ── -->
+<div class="overlay-panel" id="panel-versions" role="dialog" aria-label="Select translation">
+  <div class="overlay-backdrop"></div>
+  <div class="overlay-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">Choose Translation</div>
+      <button class="sheet-close" onclick="closePanel()">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div style="font-size:0.82rem;color:var(--text3);margin-bottom:14px;line-height:1.5">
+        All four translations are fully offline and preloaded. All are public domain.
+      </div>
+      <!-- Version list rendered by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- ── READING PLANS PANEL ── -->
+<div class="overlay-panel" id="panel-plans" role="dialog" aria-label="Reading plans">
+  <div class="overlay-backdrop"></div>
+  <div class="overlay-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">📅 Reading Plans</div>
+      <button class="sheet-close" onclick="closePanel()">✕</button>
+    </div>
+    <div class="sheet-body"></div>
+  </div>
+</div>
+
+<!-- ── SETTINGS PANEL ── -->
+<div class="overlay-panel" id="panel-settings" role="dialog" aria-label="Settings">
+  <div class="overlay-backdrop"></div>
+  <div class="overlay-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">⚙️ Settings</div>
+      <button class="sheet-close" onclick="closePanel()">✕</button>
+    </div>
+    <div class="sheet-body">
+
+      <!-- Appearance -->
+      <div class="settings-section">
+        <div class="settings-label">Theme</div>
+        <div class="theme-btns">
+          <button class="theme-btn active" data-theme="light">
+            <div class="theme-preview light"></div>
+            Light
+          </button>
+          <button class="theme-btn" data-theme="sepia">
+            <div class="theme-preview sepia"></div>
+            Sepia
+          </button>
+          <button class="theme-btn" data-theme="dark">
+            <div class="theme-preview dark"></div>
+            Dark
+          </button>
+        </div>
+      </div>
+
+      <!-- Font size -->
+      <div class="settings-section">
+        <div class="settings-label">Text Size</div>
+        <div class="settings-row">
+          <span class="settings-row-label">Verse font size</span>
+          <div class="font-size-row">
+            <button class="font-size-btn" id="btn-font-smaller">A−</button>
+            <span id="font-size-display">1.25rem</span>
+            <button class="font-size-btn" id="btn-font-larger">A+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reading mode -->
+      <div class="settings-section">
+        <div class="settings-label">Reading Mode</div>
+        <div class="mode-btns">
+          <button class="mode-btn active" data-mode="verse">Verse by Verse</button>
+          <button class="mode-btn" data-mode="para">Paragraph</button>
+        </div>
+      </div>
+
+      <!-- Red letter -->
+      <div class="settings-section">
+        <div class="settings-label">Display</div>
+        <div class="settings-row">
+          <span class="settings-row-label">Red letter (Words of Christ)</span>
+          <label class="toggle-switch" title="Red letter">
+            <input type="checkbox" id="redletter-toggle">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Translation -->
+      <div class="settings-section">
+        <div class="settings-label">Translation</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:0.82rem;color:var(--text3);line-height:1.5;margin-bottom:4px">
+            All translations are preloaded offline. Tap one to switch instantly.
+          </div>
+          <button style="padding:10px 16px;background:var(--gold);color:#fff;border-radius:10px;font-size:0.85rem;font-weight:600;text-align:center"
+            onclick="openPanel('versions')">Change Translation →</button>
+        </div>
+      </div>
+
+      <!-- About -->
+      <div class="settings-section">
+        <div class="settings-label">About</div>
+        <div style="background:var(--bg2);border-radius:10px;padding:14px;font-size:0.82rem;color:var(--text3);line-height:1.6">
+          <strong style="color:var(--text)">Scripture</strong> — Fully offline Bible app<br>
+          31,102 verses · 4 translations · No internet required<br><br>
+          <strong>KJV</strong> King James Version (1769)<br>
+          <strong>ASV</strong> American Standard Version (1901)<br>
+          <strong>YLT</strong> Young's Literal Translation (1898)<br>
+          <strong>BBE</strong> Bible in Basic English (1949)<br><br>
+          All texts are in the public domain. Data from the
+          Scrollmapper Bible Databases project.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     SCRIPTS  — data files first, then app
+═══════════════════════════════════════════ -->
+<script src="app.js"></script>
+
+</body>
+</html>
