@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head><title>cors.io YouTube Diagnostic</title>
+<style>
+body{background:#111;color:#eee;font-family:monospace;font-size:13px;padding:20px}
+pre{background:#1a1a1a;border:1px solid #333;padding:12px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+h3{color:#4af;margin-top:20px}
+.ok{color:#4f4} .err{color:#f44} .warn{color:#fa0}
+button{background:#333;color:#eee;border:1px solid #555;padding:8px 16px;cursor:pointer;border-radius:4px;margin:4px}
+button:hover{background:#444}
+</style>
+</head>
+<body>
+<h2>cors.io YouTube Diagnostic Tool</h2>
+<p>Fetches YouTube through cors.io and shows the raw response structure</p>
+<button onclick="run('https://www.youtube.com')">Test YouTube</button>
+<button onclick="run('https://www.youtube.com/watch?v=dQw4w9WgXcQ')">Test YT Video</button>
+<button onclick="run('https://news.ycombinator.com')">Test HN (control)</button>
+<button onclick="run('https://httpbin.org/get')">Test httpbin JSON</button>
+<button onclick="run('https://httpbin.org/image/jpeg')">Test httpbin Image</button>
+<div id="out"></div>
+
+<script>
+async function run(url) {
+  const out = document.getElementById('out');
+  out.innerHTML = '<h3>Fetching...</h3>';
+  const t0 = Date.now();
+  
+  try {
+    const proxyUrl = 'https://cors.io/?url=' + encodeURIComponent(url);
+    const res = await fetch(proxyUrl, {cache:'no-store'});
+    const ms = Date.now() - t0;
+    
+    // Collect ALL response headers
+    const headers = {};
+    res.headers.forEach((v, k) => { headers[k] = v; });
+    
+    // Read body as ArrayBuffer to see raw bytes
+    const buf = await res.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    
+    // Try to decode as text
+    let bodyText = '';
+    try { bodyText = new TextDecoder('utf-8', {fatal:false}).decode(buf); }
+    catch(e) { bodyText = '[decode error: ' + e.message + ']'; }
+    
+    // Analyze body
+    const firstBytes = Array.from(bytes.slice(0, 16)).map(b => b.toString(16).padStart(2,'0')).join(' ');
+    const bodyStart = bodyText.trimStart().substring(0, 300);
+    const looksLike = bodyText.trimStart().startsWith('{') ? 'JSON object' 
+      : bodyText.trimStart().startsWith('[') ? 'JSON array'
+      : bodyText.trimStart().toLowerCase().startsWith('<!doctype') ? 'HTML (DOCTYPE)'
+      : bodyText.trimStart().toLowerCase().startsWith('<html') ? 'HTML (html tag)'
+      : bodyText.trimStart().startsWith('<?xml') ? 'XML'
+      : bodyText.trimStart().startsWith('%PDF') ? 'PDF'
+      : bytes[0] === 0xFF && bytes[1] === 0xD8 ? 'JPEG image'
+      : bytes[0] === 0x89 && bytes[1] === 0x50 ? 'PNG image'
+      : 'Unknown';
+
+    // Check for ytInitialData (YouTube-specific)
+    const hasYTData = bodyText.includes('ytInitialData');
+    const hasYTConfig = bodyText.includes('ytcfg');
+    const hasConsentPage = bodyText.includes('consent.youtube') || bodyText.includes('CONSENT');
+    const hasJSOnly = bodyText.includes('enable JavaScript') || bodyText.includes('enablejsapi');
+    
+    // Extract any JSON envelope if present
+    let envelope = null;
+    if (looksLike === 'JSON object') {
+      try {
+        envelope = JSON.parse(bodyText);
+      } catch(e) { envelope = 'parse error: ' + e.message; }
+    }
+
+    let html = '<h3>Response for: ' + url + '</h3>';
+    html += '<pre>';
+    html += '<span class="ok">HTTP Status:</span> ' + res.status + ' ' + res.statusText + '\n';
+    html += '<span class="ok">Duration:</span> ' + ms + 'ms\n';
+    html += '<span class="ok">Body size:</span> ' + buf.byteLength.toLocaleString() + ' bytes (' + (buf.byteLength/1024).toFixed(1) + ' KB)\n\n';
+    
+    html += '<span class="ok">--- ALL RESPONSE HEADERS ---</span>\n';
+    for (const [k,v] of Object.entries(headers)) {
+      const important = ['content-type','content-length','x-final-url','x-request-url',
+                         'location','access-control-allow-origin','cache-control'].includes(k.toLowerCase());
+      html += (important ? '<span class="warn">' : '') + k + ': ' + v + (important ? '</span>' : '') + '\n';
+    }
+    
+    html += '\n<span class="ok">--- BODY ANALYSIS ---</span>\n';
+    html += 'Body looks like: <span class="' + (looksLike.includes('Unknown') ? 'err' : 'ok') + '">' + looksLike + '</span>\n';
+    html += 'First 16 bytes (hex): ' + firstBytes + '\n\n';
+    
+    if (hasYTData)      html += '<span class="warn">⚠ Contains ytInitialData (YouTube JS data)</span>\n';
+    if (hasYTConfig)    html += '<span class="warn">⚠ Contains ytcfg (YouTube config)</span>\n';
+    if (hasConsentPage) html += '<span class="err">✗ Consent/cookie gate page detected</span>\n';
+    if (hasJSOnly)      html += '<span class="err">✗ JS-required page detected</span>\n';
+    
+    html += '\n<span class="ok">--- BODY START (first 300 chars) ---</span>\n';
+    html += bodyStart.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '\n';
+    
+    if (envelope && typeof envelope === 'object') {
+      html += '\n<span class="warn">--- JSON ENVELOPE DETECTED ---</span>\n';
+      html += 'Envelope keys: ' + Object.keys(envelope).join(', ') + '\n';
+      if (envelope.status) html += 'Envelope status: ' + envelope.status + '\n';
+      if (envelope.headers) html += 'Envelope headers: ' + JSON.stringify(envelope.headers).substring(0,200) + '\n';
+      if (envelope.body) html += 'Envelope body start: ' + String(envelope.body).substring(0,200).replace(/</g,'&lt;') + '\n';
+      if (envelope.url) html += 'Envelope url: ' + envelope.url + '\n';
+    }
+    
+    html += '</pre>';
+    out.innerHTML = html;
+    
+  } catch(e) {
+    out.innerHTML = '<h3 class="err">FETCH FAILED</h3><pre>' + e.message + '\n' + e.stack + '</pre>';
+  }
+}
+</script>
+</body>
+</html>
