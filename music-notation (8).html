@@ -1,0 +1,3943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maestro — Music Notation Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<style>
+:root {
+  --paper:#faf6ee; --ink:#1a1208; --muted:#7a6a52;
+  --ui:#1e1208; --ui2:#150d04; --bdr:#3e2a14;
+  --txt:#f0e6d0; --dim:#8a7055;
+  --gold:#c8922a; --gol:#e8b84b;
+  --red:#8b2500; --redl:#c44a1a;
+  --blue:#1e4fa8; --blul:#5599ff;
+  --green:#1a6b2a; --grnl:#44cc66;
+  --sel-stripe: rgba(30,79,168,.18);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--ui);font-family:'IBM Plex Mono',monospace;color:var(--txt);display:flex;flex-direction:column;}
+
+/* HEADER */
+header{background:linear-gradient(135deg,#110800,#1e1208,#110800);border-bottom:1px solid var(--bdr);padding:5px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;box-shadow:0 2px 16px rgba(0,0,0,.7);}
+.logo{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--gol);letter-spacing:2px;text-transform:uppercase;}
+.logo span{color:var(--redl);}
+.hdiv{width:1px;height:20px;background:var(--bdr);}
+.tb{display:flex;align-items:center;gap:3px;flex-wrap:wrap;}
+.tg{display:flex;align-items:center;gap:2px;padding:0 5px;border-right:1px solid var(--bdr);}
+.tg:last-child{border:none;}
+.tl{font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-right:2px;white-space:nowrap;}
+.btn{background:rgba(255,255,255,.05);border:1px solid var(--bdr);color:var(--txt);padding:3px 7px;border-radius:3px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;transition:all .1s;white-space:nowrap;display:inline-flex;align-items:center;gap:2px;}
+.btn:hover{background:rgba(200,146,42,.14);border-color:var(--gold);color:var(--gol);}
+.btn.on{background:var(--red);border-color:var(--redl);color:#fff;}
+.btn.pri{background:var(--gold);border-color:var(--gol);color:var(--ink);font-weight:700;}
+.btn.pri:hover{background:var(--gol);}
+.btn.chord-on{background:rgba(30,79,168,.5);border-color:var(--blul);color:#bbddff;}
+.btn.tie-on{background:rgba(26,107,42,.5);border-color:var(--grnl);color:#bbffcc;}
+.btn.ins-on{background:rgba(140,80,0,.6);border-color:#c8922a;color:#ffe0a0;}
+.btn.danger{border-color:var(--red);}
+.btn.danger:hover{background:var(--red);color:#fff;}
+.btn.copy-active{background:rgba(30,79,168,.35);border-color:var(--blul);}
+select,input[type=number],input[type=text]{background:rgba(255,255,255,.06);border:1px solid var(--bdr);color:var(--txt);padding:3px 5px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:10px;outline:none;cursor:pointer;}
+select:hover,input[type=number]:hover,input[type=text]:hover{border-color:var(--gold);}
+select option{background:#1e1208;}
+
+/* LAYOUT */
+.main{display:flex;flex:1;min-height:0;overflow:hidden;}
+
+/* SIDEBAR */
+.sidebar{width:238px;background:var(--ui2);border-right:1px solid var(--bdr);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;min-height:0;}
+.sidebar::-webkit-scrollbar{width:4px;}
+.sidebar::-webkit-scrollbar-track{background:#0d0800;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px;}
+.sidebar::-webkit-scrollbar-thumb:hover{background:var(--gold);}
+.ss{border-bottom:1px solid var(--bdr);padding:7px 8px;}
+.stitle{font-size:7px;color:var(--gold);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px;font-weight:700;}
+
+/* Duration */
+.dgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;}
+.nb{background:rgba(255,255,255,.04);border:1px solid var(--bdr);color:var(--txt);padding:4px 2px;border-radius:2px;cursor:pointer;text-align:center;transition:all .1s;font-family:'IBM Plex Mono',monospace;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:9px;}
+.nb:hover{background:rgba(200,146,42,.12);border-color:var(--gold);}
+.nb.active{background:var(--red);border-color:var(--redl);color:#fff;}
+.nsym{font-size:14px;line-height:1.2;}
+
+/* Piano keyboard */
+.kbd{position:relative;height:46px;margin-bottom:4px;}
+.wrow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;height:100%;}
+.wk{background:rgba(255,255,255,.9);border:1px solid #999;border-radius:0 0 3px 3px;cursor:pointer;font-size:7px;color:#1a1208;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px;font-weight:700;transition:all .08s;user-select:none;}
+.wk:hover{background:#fff;border-color:var(--gold);}
+.wk.sel-pitch{background:var(--gold)!important;border-color:var(--gol)!important;color:var(--ink)!important;}
+.wk.in-chord{background:var(--blue)!important;border-color:var(--blul)!important;color:#fff!important;}
+.brow{position:absolute;top:0;left:0;right:0;height:58%;display:grid;grid-template-columns:repeat(7,1fr);gap:2px;pointer-events:none;}
+.bk{background:#2a1a08;border:1px solid #444;border-radius:0 0 3px 3px;cursor:pointer;font-size:6px;color:var(--dim);display:flex;align-items:center;justify-content:center;transition:all .08s;pointer-events:all;user-select:none;}
+.bk:hover{background:#3a2510;border-color:var(--gold);}
+.bk.sel-pitch{background:var(--gold)!important;border-color:var(--gol)!important;color:var(--ink)!important;}
+.bk.in-chord{background:var(--blue)!important;border-color:var(--blul)!important;color:#fff!important;}
+.bk.gap{background:transparent;border:none;pointer-events:none;}
+
+/* Chord queue */
+.cpills{display:flex;flex-wrap:wrap;gap:2px;min-height:18px;background:rgba(0,0,0,.25);border-radius:3px;padding:3px;margin-bottom:3px;}
+.cpill{background:rgba(30,79,168,.5);border:1px solid var(--blul);color:#bbddff;border-radius:8px;padding:1px 6px;font-size:8px;cursor:pointer;}
+.cpill:hover{background:var(--red);border-color:var(--redl);color:#fff;}
+
+/* Chord name builder */
+.cgrid6{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;margin-bottom:3px;}
+.cgrid3{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-bottom:3px;}
+.crbtn{background:rgba(255,255,255,.06);border:1px solid var(--bdr);color:var(--txt);border-radius:2px;padding:3px 1px;font-size:8px;text-align:center;cursor:pointer;transition:all .08s;}
+.crbtn:hover{border-color:var(--gold);color:var(--gol);}
+.crbtn.active{background:var(--blue);border-color:var(--blul);color:#fff;}
+.ctbtn{background:rgba(255,255,255,.04);border:1px solid var(--bdr);color:var(--dim);border-radius:2px;padding:3px 2px;font-size:8px;text-align:center;cursor:pointer;transition:all .08s;line-height:1.3;}
+.ctbtn:hover{border-color:var(--gold);color:var(--gol);}
+.ctbtn.active{background:rgba(30,79,168,.4);border-color:var(--blul);color:#bbddff;}
+.ivbtn{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--bdr);color:var(--dim);border-radius:2px;padding:3px;font-size:7.5px;text-align:center;cursor:pointer;transition:all .08s;}
+.ivbtn:hover{border-color:var(--gold);}
+.ivbtn.active{background:rgba(26,107,42,.4);border-color:var(--grnl);color:#bbffcc;}
+#chord-preview{font-size:8px;color:#bbddff;background:rgba(30,79,168,.1);border:1px solid rgba(30,79,168,.3);border-radius:3px;padding:5px;margin-bottom:4px;min-height:28px;line-height:1.6;}
+
+/* Selection box */
+.selbox{background:rgba(200,146,42,.08);border:1px solid rgba(200,146,42,.3);border-radius:3px;padding:6px;display:none;}
+.selbox.open{display:block;}
+.sel-label{font-size:8px;color:var(--gol);line-height:1.6;word-break:break-word;}
+
+/* Range selection indicator */
+.range-bar{background:rgba(30,79,168,.15);border:1px solid rgba(30,79,168,.4);border-radius:3px;padding:4px 6px;font-size:8px;color:#bbddff;display:none;}
+.range-bar.open{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+
+/* Perc list */
+.plist{display:flex;flex-direction:column;gap:2px;}
+.pi{display:flex;align-items:center;gap:4px;padding:3px 5px;border:1px solid var(--bdr);border-radius:2px;cursor:pointer;transition:all .1s;font-size:9px;}
+.pi:hover{background:rgba(200,146,42,.1);border-color:var(--gold);}
+.pi.active{background:var(--red);border-color:var(--redl);color:#fff;}
+
+/* Score area */
+.canvas-area{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+.score-wrap{flex:1;overflow:auto;padding:28px;background:#160e04;min-height:0;}
+.score-wrap::-webkit-scrollbar{width:8px;height:8px;}
+.score-wrap::-webkit-scrollbar-track{background:#0d0800;}
+.score-wrap::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:4px;}
+.score-wrap::-webkit-scrollbar-thumb:hover{background:var(--gold);}
+.score-page{display:table;background:var(--paper);box-shadow:0 8px 48px rgba(0,0,0,.7);border-radius:2px;padding:40px 36px 64px;min-width:820px;}
+.score-title{text-align:center;margin-bottom:16px;}
+.score-title h1{font-family:'Playfair Display',serif;font-size:22px;color:var(--ink);}
+.score-title p{font-family:'Crimson Pro',serif;font-style:italic;font-size:12px;color:var(--muted);margin-top:2px;}
+
+/* Status bar */
+.statusbar{background:#0d0800;border-top:1px solid var(--bdr);padding:3px 10px;display:flex;align-items:center;gap:10px;font-size:8px;color:var(--dim);flex-shrink:0;flex-wrap:wrap;}
+.sdot{width:5px;height:5px;border-radius:50%;background:var(--gold);display:inline-block;margin-right:3px;}
+.badge{display:inline-block;padding:1px 5px;border-radius:6px;font-size:7px;font-weight:700;}
+.badge.norm{background:rgba(200,146,42,.2);color:var(--gol);border:1px solid rgba(200,146,42,.3);}
+.badge.chord{background:rgba(30,79,168,.3);color:#bbddff;border:1px solid rgba(30,79,168,.5);}
+.badge.tie{background:rgba(26,107,42,.3);color:#bbffcc;border:1px solid rgba(26,107,42,.5);}
+.badge.ins{background:rgba(140,80,0,.4);color:#ffe0a0;border:1px solid rgba(200,146,42,.5);}
+.badge.sel{background:rgba(30,79,168,.3);color:#bbddff;border:1px solid rgba(30,79,168,.5);}
+.save-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px;background:var(--grnl);}
+.save-dot.dirty{background:var(--gold);}
+
+/* Modals */
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:9999;}
+.mbg.open{display:flex;}
+.modal{background:#150d04;border:1px solid var(--bdr);border-radius:6px;padding:20px;box-shadow:0 24px 64px rgba(0,0,0,.9);max-width:95vw;max-height:90vh;overflow-y:auto;}
+.modal h2{font-family:'Playfair Display',serif;font-size:15px;color:var(--gol);margin-bottom:12px;}
+.field{margin-bottom:8px;}
+.field label{display:block;font-size:7.5px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;}
+.field input,.field select{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--bdr);color:var(--txt);padding:5px 7px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:11px;outline:none;}
+.field input:focus,.field select:focus{border-color:var(--gold);}
+.mact{display:flex;gap:4px;justify-content:flex-end;margin-top:12px;}
+.ekeys{display:flex;flex-direction:column;gap:3px;max-height:140px;overflow-y:auto;margin-bottom:8px;}
+.ekrow{display:flex;align-items:center;gap:5px;padding:3px 6px;border:1px solid var(--bdr);border-radius:2px;font-size:9px;}
+.eklbl{flex:1;color:var(--gol);font-weight:600;}
+.ekrm{cursor:pointer;color:var(--redl);}
+
+/* Measure props badge row */
+.mprop-row{display:flex;gap:3px;flex-wrap:wrap;margin-top:4px;}
+.mprop{font-size:8px;padding:2px 6px;border-radius:3px;border:1px solid var(--bdr);cursor:pointer;transition:all .1s;color:var(--dim);}
+.mprop:hover{border-color:var(--gold);color:var(--gol);}
+.mprop.active{background:rgba(30,79,168,.3);border-color:var(--blul);color:#bbddff;}
+.mprop.red.active{background:rgba(139,37,0,.3);border-color:var(--redl);color:#ffbbbb;}
+
+/* Articulation buttons */
+.art-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;}
+.art-btn{background:rgba(255,255,255,.04);border:1px solid var(--bdr);color:var(--txt);padding:5px 2px;border-radius:2px;cursor:pointer;text-align:center;transition:all .1s;font-size:11px;line-height:1;}
+.art-btn:hover{background:rgba(200,146,42,.12);border-color:var(--gold);color:var(--gol);}
+.art-btn.active{background:var(--red);border-color:var(--redl);color:#fff;}
+.art-label{font-size:7px;opacity:.75;display:block;margin-top:1px;}
+
+/* Tuplet row */
+.tup-row{display:flex;gap:3px;margin-top:4px;}
+.tup-btn{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--bdr);color:var(--dim);border-radius:2px;padding:4px 2px;font-size:9px;text-align:center;cursor:pointer;transition:all .1s;}
+.tup-btn:hover{border-color:var(--gold);color:var(--gol);}
+.tup-btn.active{background:rgba(30,79,168,.4);border-color:var(--blul);color:#bbddff;}
+
+/* Grace note toggle */
+.badge.grace{background:rgba(100,60,180,.4);color:#ddc0ff;border:1px solid rgba(140,90,220,.6);}
+
+/* Slur mode */
+.btn.slur-on{background:rgba(180,60,100,.45);border-color:#ff88aa;color:#ffccdd;}
+.badge.slur{background:rgba(180,60,100,.3);color:#ffccdd;border:1px solid rgba(180,60,100,.5);}
+
+/* Session 5 — hairpins, tempo, expression, lyrics */
+.expr-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:4px;}
+.expr-btn{background:rgba(255,255,255,.04);border:1px solid var(--bdr);color:var(--dim);border-radius:2px;padding:4px 3px;font-size:8.5px;text-align:center;cursor:pointer;transition:all .1s;line-height:1.2;}
+.expr-btn:hover{border-color:var(--gold);color:var(--gol);}
+.expr-btn.active{background:var(--red);border-color:var(--redl);color:#fff;}
+.lyric-input-row{display:flex;gap:3px;margin-top:4px;}
+.lyric-pill{display:inline-flex;align-items:center;gap:3px;background:rgba(26,107,42,.25);border:1px solid var(--grnl);color:#bbffcc;border-radius:8px;padding:1px 6px;font-size:8px;}
+.badge.expr{background:rgba(180,130,0,.3);color:#ffe090;border:1px solid rgba(200,160,0,.5);}
+
+/* Session 6 — navigation, rehearsal, text boxes, fingering */
+.nav-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:4px;}
+.nav-btn{background:rgba(255,255,255,.04);border:1px solid var(--bdr);color:var(--dim);border-radius:2px;padding:4px 2px;font-size:8px;text-align:center;cursor:pointer;transition:all .1s;}
+.nav-btn:hover{border-color:var(--gold);color:var(--gol);}
+.nav-btn.active{background:rgba(30,79,168,.35);border-color:var(--blul);color:#bbddff;}
+.rehmark{display:inline-block;border:2px solid #1a1208;padding:1px 5px;font-weight:700;font-size:10px;font-family:'IBM Plex Mono',monospace;color:#1a1208;border-radius:2px;}
+
+/* Session 7 — layout, staves, multipage */
+.page-break-line{border-top:2px dashed #c8922a;margin:12px 0;position:relative;}
+.page-break-label{position:absolute;right:0;top:-9px;font-size:8px;color:var(--gold);background:#160e04;padding:0 4px;}
+.inst-item{display:flex;align-items:center;gap:4px;padding:3px 5px;border:1px solid var(--bdr);border-radius:2px;cursor:pointer;font-size:9px;transition:all .1s;}
+.inst-item:hover{border-color:var(--gold);color:var(--gol);}
+.inst-item.active{background:var(--red);border-color:var(--redl);color:#fff;}
+.inst-list{display:flex;flex-direction:column;gap:2px;}
+.tab-staff-line{stroke:#1a1208;stroke-width:0.8;}
+.page-label{font-family:'Playfair Display',serif;font-size:10px;color:var(--muted);text-align:center;margin:4px 0 8px;padding:2px;border-top:1px solid var(--paper2);}
+
+/* Session 8 — export, colour, XML */
+.color-swatch{width:20px;height:20px;border-radius:3px;border:2px solid transparent;cursor:pointer;display:inline-block;transition:all .1s;}
+.color-swatch:hover{transform:scale(1.15);}
+.color-swatch.active{border-color:#fff;}
+.color-row{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;}
+.badge.xml{background:rgba(26,107,42,.3);color:#bbffcc;border:1px solid rgba(26,107,42,.5);}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">Maestro <span>Studio</span></div>
+  <div class="hdiv"></div>
+  <div class="tb">
+
+    <div class="tg">
+      <span class="tl">File</span>
+      <button class="btn" onclick="showTitleModal()">📄 Title</button>
+      <button class="btn" onclick="saveJSON()" title="Save score as JSON file">💾 Save</button>
+      <button class="btn" onclick="gid('file-input').click()" title="Load a saved JSON file">📂 Load</button>
+      <input type="file" id="file-input" accept=".json" style="display:none" onchange="loadJSON(event)">
+      <button class="btn pri" id="pdf-btn" onclick="exportPDF()">⬇ PDF</button>
+      <button class="btn danger" onclick="clearScore()">🗑</button>
+    </div>
+
+    <div class="tg">
+      <span class="tl">Edit</span>
+      <button class="btn" onclick="doUndo()" title="Ctrl+Z">↩ Undo</button>
+      <button class="btn" onclick="doRedo()" title="Ctrl+Y">↪ Redo</button>
+      <button class="btn danger" onclick="doDelete()" title="Del">✕ Del</button>
+    </div>
+
+    <div class="tg">
+      <span class="tl">Clipboard</span>
+      <button class="btn" id="copy-btn" onclick="doCopy()" title="Ctrl+C — copy selected range">⎘ Copy</button>
+      <button class="btn" id="paste-btn" onclick="doPaste()" title="Ctrl+V — paste after last measure">⎗ Paste</button>
+    </div>
+
+    <div class="tg">
+      <span class="tl">Mode</span>
+      <button class="btn" id="ins-btn" onclick="toggleInsert()" title="I key — insert between notes">⊳ Insert</button>
+      <button class="btn" id="chord-btn" onclick="toggleChordMode()" title="C key">⊕ Chord</button>
+      <button class="btn" id="tie-btn" onclick="toggleTie()" title="T key">⌢ Tie</button>
+    </div>
+
+    <div class="tg">
+      <span class="tl">Bars</span>
+      <button class="btn" onclick="addBar()">＋</button>
+      <button class="btn" onclick="removeBar()">−</button>
+    </div>
+
+    <div class="tg">
+      <span class="tl">Time</span>
+      <select id="sel-time" onchange="setTimeSig()">
+        <option>4/4</option><option>3/4</option><option>2/4</option>
+        <option>6/8</option><option>12/8</option><option>2/2</option><option>5/4</option>
+      </select>
+    </div>
+
+    <div class="tg">
+      <span class="tl">Key</span>
+      <select id="sel-key" onchange="setKeySig()">
+        <option value="C">C</option><option value="G">G</option><option value="D">D</option>
+        <option value="A">A</option><option value="E">E</option><option value="B">B</option>
+        <option value="F#">F#</option><option value="F">F</option>
+        <option value="Bb">Bb</option><option value="Eb">Eb</option><option value="Ab">Ab</option>
+        <option value="Am">Am</option><option value="Em">Em</option>
+        <option value="Dm">Dm</option><option value="Gm">Gm</option>
+      </select>
+    </div>
+
+    <div class="tg">
+      <span class="tl">View</span>
+      <button class="btn" id="view-btn" onclick="cycleView()">Piano+Perc</button>
+      <select id="barnum-sel" onchange="setBarNumStyle()" title="Bar number display">
+        <option value="system">Nums/system</option>
+        <option value="every">Every bar</option>
+        <option value="5">Every 5</option>
+        <option value="none">No nums</option>
+      </select>
+    </div>
+
+    <div class="tg">
+      <span class="tl">♩=</span>
+      <input type="number" id="inp-tempo" value="120" min="20" max="320" style="width:50px;">
+    </div>
+
+    <div class="tg">
+      <span class="tl">Layout</span>
+      <select id="paper-size" onchange="setPaperSize()" title="Paper size">
+        <option value="A4">A4</option>
+        <option value="Letter">Letter</option>
+        <option value="A3">A3</option>
+        <option value="Legal">Legal</option>
+      </select>
+      <select id="page-orient" onchange="setPaperSize()" title="Orientation">
+        <option value="portrait">Portrait</option>
+        <option value="landscape">Landscape</option>
+      </select>
+    </div>
+
+    <div class="tg">
+      <span class="tl">Export</span>
+      <button class="btn" onclick="exportMusicXML()" title="Export MusicXML">⎘ XML</button>
+      <button class="btn" onclick="exportPNG()" title="Export PNG">🖼 PNG</button>
+      <button class="btn" onclick="gid('xml-file-input').click()" title="Import MusicXML">📂 XML In</button>
+      <input type="file" id="xml-file-input" accept=".xml,.musicxml" style="display:none" onchange="importMusicXML(event)">
+    </div>
+
+  </div>
+</header>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+
+  <!-- DURATION -->
+  <div class="ss">
+    <div class="stitle">Duration <span style="color:var(--dim);font-size:6px;">[1–7]</span></div>
+    <div class="dgrid">
+      <button class="nb" data-dur="w" onclick="selDur('w',this)"><div class="nsym">𝅝</div>Whole</button>
+      <button class="nb" data-dur="h" onclick="selDur('h',this)"><div class="nsym">𝅗𝅥</div>Half</button>
+      <button class="nb active" data-dur="q" onclick="selDur('q',this)"><div class="nsym">♩</div>Qtr</button>
+      <button class="nb" data-dur="8" onclick="selDur('8',this)"><div class="nsym">♪</div>8th</button>
+      <button class="nb" data-dur="16" onclick="selDur('16',this)"><div class="nsym">𝅘𝅥𝅯</div>16th</button>
+      <button class="nb" data-dur="32" onclick="selDur('32',this)"><div class="nsym">𝅘𝅥𝅰</div>32nd</button>
+      <button class="nb" data-dur="r" onclick="selDur('r',this)"><div class="nsym">𝄽</div>Rest</button>
+      <button class="nb" id="dot-btn" onclick="togDot()"><div class="nsym" style="font-size:18px;">·</div>Dot</button>
+    </div>
+  </div>
+
+  <!-- PITCH -->
+  <div class="ss">
+    <div class="stitle">Pitch <span style="color:var(--dim);font-size:6px;">[A–G]</span>
+      &nbsp;Oct:<span id="oct-disp" style="color:var(--gol);">4</span>
+      <span style="float:right;">
+        <button class="btn" style="padding:1px 4px;" onclick="chgOct(-1)">▼</button>
+        <button class="btn" style="padding:1px 4px;" onclick="chgOct(1)">▲</button>
+      </span>
+    </div>
+    <div class="kbd">
+      <div class="wrow" id="wrow">
+        <div class="wk" data-p="c" onclick="whiteKeyClick('c',this)">C</div>
+        <div class="wk" data-p="d" onclick="whiteKeyClick('d',this)">D</div>
+        <div class="wk" data-p="e" onclick="whiteKeyClick('e',this)">E</div>
+        <div class="wk" data-p="f" onclick="whiteKeyClick('f',this)">F</div>
+        <div class="wk" data-p="g" onclick="whiteKeyClick('g',this)">G</div>
+        <div class="wk" data-p="a" onclick="whiteKeyClick('a',this)">A</div>
+        <div class="wk" data-p="b" onclick="whiteKeyClick('b',this)">B</div>
+      </div>
+      <div class="brow">
+        <div class="bk" data-p="c" data-a="#" onclick="blackKeyClick('c','#',this)">C♯</div>
+        <div class="bk" data-p="d" data-a="#" onclick="blackKeyClick('d','#',this)">D♯</div>
+        <div class="bk gap"></div>
+        <div class="bk" data-p="f" data-a="#" onclick="blackKeyClick('f','#',this)">F♯</div>
+        <div class="bk" data-p="g" data-a="#" onclick="blackKeyClick('g','#',this)">G♯</div>
+        <div class="bk" data-p="a" data-a="#" onclick="blackKeyClick('a','#',this)">A♯</div>
+        <div class="bk gap"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:2px;margin-bottom:4px;">
+      <button class="btn" id="acc-b-btn" style="flex:1;justify-content:center;font-size:9px;" onclick="setAccNext('b')">♭ Flat</button>
+      <button class="btn" id="acc-n-btn" style="flex:1;justify-content:center;font-size:9px;" onclick="setAccNext('n')">♮ Nat</button>
+      <button class="btn" id="acc-bb-btn" style="flex:1;justify-content:center;font-size:9px;" onclick="setAccNext('bb')">𝄫 D♭</button>
+    </div>
+    <div class="cpills" id="cpills"></div>
+    <div id="chord-actions" style="display:none;">
+      <button class="btn pri" style="width:100%;justify-content:center;margin-bottom:2px;" onclick="placeManualChord()">✓ Place Chord (Enter)</button>
+      <button class="btn" style="width:100%;justify-content:center;font-size:8px;" onclick="clearChordQueue()">✕ Clear</button>
+    </div>
+    <div style="font-size:7.5px;color:var(--dim);line-height:1.5;" id="pitch-hint">Normal: click key → Enter or click staff.<br>Chord: ⊕ mode → queue keys → Enter.</div>
+  </div>
+
+  <!-- CHORD BY NAME -->
+  <div class="ss">
+    <div class="stitle">Chord by Name</div>
+    <div style="font-size:7px;color:var(--dim);margin-bottom:2px;">Root</div>
+    <div class="cgrid6" id="chord-roots"></div>
+    <div style="font-size:7px;color:var(--dim);margin:2px 0;">Type</div>
+    <div class="cgrid3" id="chord-types"></div>
+    <div style="font-size:7px;color:var(--dim);margin:2px 0;">Inversion</div>
+    <div style="display:flex;gap:2px;margin-bottom:3px;" id="chord-invs"></div>
+    <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+      <span style="font-size:8px;color:var(--dim);">Oct:</span>
+      <button class="btn" style="padding:1px 4px;" onclick="chgChordOct(-1)">▼</button>
+      <span id="chord-oct" style="color:var(--gol);font-size:12px;padding:0 4px;">4</span>
+      <button class="btn" style="padding:1px 4px;" onclick="chgChordOct(1)">▲</button>
+    </div>
+    <div style="font-size:7px;color:var(--dim);margin-bottom:2px;">Chord symbol text (shown above staff)</div>
+    <div style="display:flex;gap:3px;margin-bottom:4px;">
+      <input type="text" id="chord-sym-text" placeholder="e.g. Cmaj7" style="flex:1;font-size:9px;padding:3px 5px;">
+      <button class="btn" style="font-size:8px;" onclick="clearChordSymText()" title="Clear">✕</button>
+    </div>
+    <div id="chord-preview"></div>
+    <button class="btn pri" style="width:100%;justify-content:center;" onclick="placeNamedChord()">⊕ Insert Named Chord</button>
+  </div>
+
+  <!-- MEASURE PROPERTIES -->
+  <div class="ss">
+    <div class="stitle">Measure Properties</div>
+    <div style="font-size:8px;color:var(--dim);margin-bottom:5px;">Select a measure, then toggle properties below.</div>
+    <div id="msel-info" style="font-size:8px;color:var(--gol);margin-bottom:5px;">No measure selected.</div>
+    <div class="mprop-row">
+      <button class="mprop" id="mp-pickup"     onclick="toggleMprop('pickup')"     title="Pickup/anacrusis bar">Pickup</button>
+      <button class="mprop" id="mp-rstart"     onclick="toggleMprop('rstart')"     title="Start repeat">|: Repeat start</button>
+      <button class="mprop" id="mp-rend"       onclick="toggleMprop('rend')"       title="End repeat">Repeat end :|</button>
+      <button class="mprop" id="mp-volta1"     onclick="toggleMprop('volta1')"     title="1st ending bracket">1st ending</button>
+      <button class="mprop" id="mp-volta2"     onclick="toggleMprop('volta2')"     title="2nd ending bracket">2nd ending</button>
+    </div>
+    <div style="margin-top:5px;font-size:7.5px;color:var(--dim);">Chord symbol on this bar:</div>
+    <div style="display:flex;gap:3px;margin-top:3px;">
+      <input type="text" id="bar-chord-sym" placeholder="e.g. Dm7" style="flex:1;font-size:9px;padding:3px 5px;">
+      <button class="btn" style="font-size:8px;" onclick="applyBarChordSym()">✓</button>
+      <button class="btn danger" style="font-size:8px;" onclick="clearBarChordSym()">✕</button>
+    </div>
+  </div>
+
+  <!-- SELECTED NOTE EDITOR -->
+  <div class="ss">
+    <div class="stitle">Selected</div>
+    <div class="range-bar" id="range-bar">
+      <span id="range-label">—</span>
+      <button class="btn" style="font-size:8px;padding:2px 5px;" onclick="doCopy()">⎘ Copy range</button>
+      <button class="btn danger" style="font-size:8px;padding:2px 5px;" onclick="deleteRange()">🗑 Delete</button>
+    </div>
+    <div class="selbox" id="selbox">
+      <div class="sel-label" id="sel-label">—</div>
+      <div style="display:flex;gap:2px;margin-top:5px;">
+        <button class="btn" style="flex:1;justify-content:center;font-size:8px;" onclick="applyDurToSel()">↺ Dur</button>
+        <button class="btn" style="flex:1;justify-content:center;font-size:8px;" onclick="openEditModal()">✏ Edit</button>
+        <button class="btn danger" style="flex:1;justify-content:center;font-size:8px;" onclick="doDelete()">🗑</button>
+      </div>
+    </div>
+    <div id="no-sel-txt" style="font-size:8px;color:var(--dim);margin-top:3px;">Click note = select it.<br>Shift+click = range select.</div>
+  </div>
+
+  <!-- SESSION 3: TUPLETS / GRACE / TREMOLO / TRANSPOSE -->
+  <div class="ss">
+    <div class="stitle">Rhythm — Session 3</div>
+    <div style="font-size:7px;color:var(--dim);margin-bottom:2px;text-transform:uppercase;letter-spacing:1px;">Tuplet (select notes first)</div>
+    <div class="tup-row">
+      <button class="tup-btn" id="tup-3" onclick="applyTuplet(3,2)" title="Triplet">3</button>
+      <button class="tup-btn" id="tup-5" onclick="applyTuplet(5,4)" title="Quintuplet">5</button>
+      <button class="tup-btn" id="tup-6" onclick="applyTuplet(6,4)" title="Sextuplet">6</button>
+      <button class="tup-btn" id="tup-7" onclick="applyTuplet(7,4)" title="Septuplet">7</button>
+      <button class="tup-btn" id="tup-off" onclick="clearTuplet()" title="Remove tuplet" style="font-size:8px;">x</button>
+    </div>
+    <div style="font-size:7px;color:var(--dim);margin:4px 0 2px;text-transform:uppercase;letter-spacing:1px;">Grace note</div>
+    <div style="display:flex;gap:3px;">
+      <button class="btn" id="grace-btn" onclick="toggleGrace()">Grace</button>
+      <button class="btn" id="grace-slash" onclick="toggleGraceSlash()" title="Acciaccatura slash">/ Slash</button>
+    </div>
+    <div style="font-size:7px;color:var(--dim);margin:4px 0 2px;text-transform:uppercase;letter-spacing:1px;">Tremolo slashes (on selected note)</div>
+    <div class="tup-row">
+      <button class="tup-btn" onclick="applyTremolo(1)" title="1 slash">/</button>
+      <button class="tup-btn" onclick="applyTremolo(2)" title="2 slashes">//</button>
+      <button class="tup-btn" onclick="applyTremolo(3)" title="3 slashes">///</button>
+      <button class="tup-btn" onclick="applyTremolo(0)" title="Remove" style="font-size:8px;">x</button>
+    </div>
+    <div style="font-size:7px;color:var(--dim);margin:4px 0 2px;text-transform:uppercase;letter-spacing:1px;">Transpose selected</div>
+    <div style="display:flex;gap:2px;flex-wrap:wrap;">
+      <button class="btn" onclick="transposeSelected(-1)" title="Down 1 semitone">-1</button>
+      <button class="btn" onclick="transposeSelected(1)"  title="Up 1 semitone">+1</button>
+      <button class="btn" onclick="transposeSelected(-12)" title="Down octave">-Oct</button>
+      <button class="btn" onclick="transposeSelected(12)"  title="Up octave">+Oct</button>
+    </div>
+    <div style="font-size:7px;color:var(--dim);margin-top:3px;line-height:1.5;">Drag a selected note up/down on the staff to repitch it.</div>
+  </div>
+
+  <!-- SESSION 4: ARTICULATIONS + SLURS -->
+  <div class="ss">
+    <div class="stitle">Articulations + Slurs — Session 4</div>
+    <div style="font-size:7.5px;color:var(--dim);margin-bottom:5px;">Select a note first, then click to apply or remove.</div>
+    <div class="art-grid">
+      <button class="art-btn" id="art-stac"  onclick="toggleArt('staccato')">.<span class="art-label">Stacc</span></button>
+      <button class="art-btn" id="art-stacs" onclick="toggleArt('staccatissimo')">v<span class="art-label">Stacc+</span></button>
+      <button class="art-btn" id="art-acc"   onclick="toggleArt('accent')">&gt;<span class="art-label">Accent</span></button>
+      <button class="art-btn" id="art-marc"  onclick="toggleArt('marcato')">^<span class="art-label">Marc</span></button>
+      <button class="art-btn" id="art-ten"   onclick="toggleArt('tenuto')">-<span class="art-label">Tenuto</span></button>
+      <button class="art-btn" id="art-ferm"  onclick="toggleArt('fermata')">o<span class="art-label">Ferm</span></button>
+      <button class="art-btn" id="art-arp"   onclick="toggleArt('arpeggio')">=<span class="art-label">Arpeg</span></button>
+      <button class="art-btn" id="art-brth"  onclick="toggleArt('breath')">,<span class="art-label">Breath</span></button>
+    </div>
+    <div style="font-size:7px;color:var(--dim);margin:5px 0 3px;text-transform:uppercase;letter-spacing:1px;">Slurs</div>
+    <button class="btn" id="slur-btn" onclick="toggleSlurMode()" title="S key">Slur Mode</button>
+    <div style="font-size:7.5px;color:var(--dim);margin-top:3px;line-height:1.5;">In Slur mode: click first note then last note of phrase.</div>
+  </div>
+
+  <!-- SESSION 5: HAIRPINS, TEMPO, EXPRESSION, LYRICS -->
+  <div class="ss">
+    <div class="stitle">Dynamics &amp; Expression — S5</div>
+
+    <!-- Hairpins -->
+    <div style="font-size:7px;color:var(--dim);margin-bottom:2px;text-transform:uppercase;letter-spacing:1px;">Hairpins (select note range first)</div>
+    <div class="expr-grid">
+      <button class="expr-btn" onclick="addHairpin('cresc')" title="Crescendo">&#60; cresc.</button>
+      <button class="expr-btn" onclick="addHairpin('dim')" title="Diminuendo">&gt; dim.</button>
+      <button class="expr-btn" onclick="removeHairpin()" style="grid-column:span 2;font-size:7.5px;">✕ Remove hairpin</button>
+    </div>
+
+    <!-- Tempo markings -->
+    <div style="font-size:7px;color:var(--dim);margin:4px 0 2px;text-transform:uppercase;letter-spacing:1px;">Tempo marking (above bar)</div>
+    <div style="display:flex;gap:2px;margin-bottom:3px;flex-wrap:wrap;">
+      <button class="expr-btn" onclick="quickTempo('Allegro')">Allegro</button>
+      <button class="expr-btn" onclick="quickTempo('Andante')">Andante</button>
+      <button class="expr-btn" onclick="quickTempo('Adagio')">Adagio</button>
+      <button class="expr-btn" onclick="quickTempo('Moderato')">Mod.</button>
+      <button class="expr-btn" onclick="quickTempo('Vivace')">Vivace</button>
+      <button class="expr-btn" onclick="quickTempo('Presto')">Presto</button>
+    </div>
+    <div style="display:flex;gap:3px;">
+      <input type="text" id="tempo-text-inp" placeholder="Custom tempo text" style="flex:1;font-size:9px;padding:3px 5px;">
+      <button class="btn" style="font-size:8px;" onclick="applyTempoText()">+</button>
+    </div>
+
+    <!-- Expression text -->
+    <div style="font-size:7px;color:var(--dim);margin:4px 0 2px;text-transform:uppercase;letter-spacing:1px;">Expression text (below staff)</div>
+    <div class="expr-grid" style="margin-bottom:3px;">
+      <button class="expr-btn" onclick="addExpr('cresc.')">cresc.</button>
+      <button class="expr-btn" onclick="addExpr('dim.')">dim.</button>
+      <button class="expr-btn" onclick="addExpr('rall.')">rall.</button>
+      <button class="expr-btn" onclick="addExpr('rit.')">rit.</button>
+      <button class="expr-btn" onclick="addExpr('a tempo')">a tempo</button>
+      <button class="expr-btn" onclick="addExpr('dolce')">dolce</button>
+      <button class="expr-btn" onclick="addExpr('espressivo')">espress.</button>
+      <button class="expr-btn" onclick="addExpr('legato')">legato</button>
+    </div>
+    <div style="display:flex;gap:3px;margin-bottom:3px;">
+      <input type="text" id="expr-text-inp" placeholder="Custom expression" style="flex:1;font-size:9px;padding:3px 5px;">
+      <button class="btn" style="font-size:8px;" onclick="addCustomExpr()">+</button>
+    </div>
+    <button class="btn danger" style="width:100%;justify-content:center;font-size:8px;" onclick="removeExprFromSel()">✕ Remove expression</button>
+
+    <!-- Lyrics -->
+    <div style="font-size:7px;color:var(--dim);margin:4px 0 2px;text-transform:uppercase;letter-spacing:1px;">Lyrics (select note, then type)</div>
+    <div class="lyric-input-row">
+      <input type="text" id="lyric-inp" placeholder="Syllable" style="flex:1;font-size:9px;padding:3px 5px;">
+      <button class="btn" style="font-size:8px;" onclick="applyLyric()">✓</button>
+      <button class="btn danger" style="font-size:8px;" onclick="clearLyric()">✕</button>
+    </div>
+    <div style="font-size:7.5px;color:var(--dim);margin-top:3px;line-height:1.5;">
+      Hyphens between syllables, underscore for word extender.
+    </div>
+  </div>
+
+  <!-- SESSION 6: NAVIGATION, REHEARSAL MARKS, TEXT, FINGERING, ENHARMONIC -->
+  <div class="ss">
+    <div class="stitle">Structure &amp; Navigation — S6</div>
+
+    <!-- Navigation symbols (on measure) -->
+    <div style="font-size:7px;color:var(--dim);margin-bottom:2px;text-transform:uppercase;letter-spacing:1px;">Navigation (select measure first)</div>
+    <div class="nav-grid">
+      <button class="nav-btn" onclick="setNavSym('dc')" title="Da Capo">D.C.</button>
+      <button class="nav-btn" onclick="setNavSym('ds')" title="Dal Segno">D.S.</button>
+      <button class="nav-btn" onclick="setNavSym('fine')" title="Fine">Fine</button>
+      <button class="nav-btn" onclick="setNavSym('coda')" title="To Coda">Coda</button>
+      <button class="nav-btn" onclick="setNavSym('segno')" title="Segno sign">Segno</button>
+      <button class="nav-btn" onclick="setNavSym(null)" title="Remove">✕ Clear</button>
+    </div>
+
+    <!-- Rehearsal marks -->
+    <div style="font-size:7px;color:var(--dim);margin:4px 0 2px;text-transform:uppercase;letter-spacing:1px;">Rehearsal mark (on selected measure)</div>
+    <div style="display:flex;gap:3px;">
+      <input type="text" id="reh-inp" placeholder="A, B, 1..." style="flex:1;font-size:9px;padding:3px 5px;width:50px;">
+      <button class="btn" style="font-size:8px;" onclick="applyRehearsalMark()">✓ Set</button>
+      <button class="btn danger" style="font-size:8px;" onclick="clearRehearsalMark()">✕</button>
+    </div>
+
+    <!-- Free text boxes -->
+    <div style="font-size:7px;color:var(--dim);margin:4px 0 2px;text-transform:uppercase;letter-spacing:1px;">Free text annotation (on measure)</div>
+    <div style="display:flex;gap:3px;margin-bottom:3px;">
+      <input type="text" id="text-box-inp" placeholder="Annotation text" style="flex:1;font-size:9px;padding:3px 5px;">
+      <button class="btn" style="font-size:8px;" onclick="applyTextBox()">+</button>
+    </div>
+    <button class="btn danger" style="width:100%;justify-content:center;font-size:8px;" onclick="clearTextBox()">✕ Remove annotation</button>
+
+    <!-- Fingering -->
+    <div style="font-size:7px;color:var(--dim);margin:4px 0 2px;text-transform:uppercase;letter-spacing:1px;">Fingering (select note)</div>
+    <div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:3px;">
+      <button class="nav-btn" onclick="applyFingering(1)">1</button>
+      <button class="nav-btn" onclick="applyFingering(2)">2</button>
+      <button class="nav-btn" onclick="applyFingering(3)">3</button>
+      <button class="nav-btn" onclick="applyFingering(4)">4</button>
+      <button class="nav-btn" onclick="applyFingering(5)">5</button>
+      <button class="nav-btn" onclick="applyFingering(0)">T</button>
+      <button class="nav-btn danger" onclick="clearFingering()" style="font-size:8px;">✕</button>
+    </div>
+
+    <!-- Enharmonic respelling -->
+    <div style="font-size:7px;color:var(--dim);margin:4px 0 2px;text-transform:uppercase;letter-spacing:1px;">Enharmonic respelling (select note)</div>
+    <button class="btn" style="width:100%;justify-content:center;" onclick="enharmonicRespell()" title="Toggle e.g. C# ↔ Db">C♯ ↔ D♭ Respell</button>
+  </div>
+
+  <!-- SESSION 7A: LAYOUT & PAGE BREAKS -->
+  <div class="ss">
+    <div class="stitle">Layout — Session 7</div>
+
+    <div style="font-size:7px;color:var(--dim);margin-bottom:2px;text-transform:uppercase;letter-spacing:1px;">Page / system break (on selected measure)</div>
+    <div style="display:flex;gap:2px;margin-bottom:4px;flex-wrap:wrap;">
+      <button class="nav-btn" onclick="setBreak('page')" title="Force page break after this measure">⊡ Page Break</button>
+      <button class="nav-btn" onclick="setBreak('system')" title="Force new system row after this measure">↵ System Break</button>
+      <button class="nav-btn" onclick="setBreak(null)" title="Remove break">✕ Clear</button>
+    </div>
+
+    <div style="font-size:7px;color:var(--dim);margin-bottom:2px;text-transform:uppercase;letter-spacing:1px;">Staff spacing</div>
+    <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+      <span style="font-size:8px;color:var(--dim);">Gap:</span>
+      <input type="range" id="staff-gap" min="6" max="60" value="16" step="2" style="flex:1;" oninput="setStaffGap(this.value)">
+      <span id="staff-gap-val" style="font-size:8px;color:var(--gol);min-width:24px;">16</span>
+    </div>
+
+    <div style="font-size:7px;color:var(--dim);margin-bottom:2px;text-transform:uppercase;letter-spacing:1px;">Measure width adjustment (selected measure)</div>
+    <div style="display:flex;gap:2px;margin-bottom:4px;">
+      <button class="nav-btn" onclick="adjustMeasureWidth(-20)" title="Narrow measure">− 20px</button>
+      <button class="nav-btn" onclick="adjustMeasureWidth(20)"  title="Widen measure">+ 20px</button>
+      <button class="nav-btn" onclick="resetMeasureWidth()"     title="Reset to auto">Auto</button>
+    </div>
+
+    <div style="font-size:7px;color:var(--dim);margin-bottom:2px;text-transform:uppercase;letter-spacing:1px;">Bars per system</div>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <input type="range" id="mpr-slider" min="2" max="8" value="4" step="1" style="flex:1;" oninput="setMPR(this.value)">
+      <span id="mpr-val" style="font-size:8px;color:var(--gol);min-width:20px;">4</span>
+    </div>
+  </div>
+
+  <!-- SESSION 7B: INSTRUMENT STAVES -->
+  <div class="ss">
+    <div class="stitle">Instrument Staves</div>
+    <div style="font-size:7.5px;color:var(--dim);margin-bottom:5px;line-height:1.5;">Add or remove staves. Each renders its own system row.</div>
+    <div class="inst-list" id="inst-list"></div>
+    <div style="margin-top:4px;display:flex;gap:2px;">
+      <button class="btn" onclick="addInstrument()" title="Add instrument stave">＋ Add Staff</button>
+      <button class="btn danger" onclick="removeLastInstrument()" title="Remove last staff">− Remove</button>
+    </div>
+    <div style="font-size:7px;color:var(--dim);margin-top:3px;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Tab staff</div>
+    <div style="display:flex;gap:2px;flex-wrap:wrap;">
+      <button class="nav-btn" id="tab-guitar-btn" onclick="toggleTabStaff('guitar')" title="Guitar tab (6-string)">Guitar Tab</button>
+      <button class="nav-btn" id="tab-bass-btn"   onclick="toggleTabStaff('bass')"   title="Bass tab (4-string)">Bass Tab</button>
+    </div>
+    <div style="font-size:7px;color:var(--dim);margin-top:3px;line-height:1.5;">Tab staff uses fret numbers instead of noteheads. Add fret numbers via the selected note panel.</div>
+  </div>
+
+  <!-- SESSION 7C: PART EXTRACTION -->
+  <div class="ss">
+    <div class="stitle">Part Extraction</div>
+    <div style="font-size:7.5px;color:var(--dim);margin-bottom:4px;line-height:1.5;">Show only one part for printing or export.</div>
+    <div style="display:flex;gap:2px;flex-wrap:wrap;">
+      <button class="nav-btn" onclick="setPartView('both')"       title="Show all staves">All Parts</button>
+      <button class="nav-btn" onclick="setPartView('piano')"      title="Piano only">Piano</button>
+      <button class="nav-btn" onclick="setPartView('percussion')" title="Percussion only">Perc</button>
+    </div>
+    <div style="margin-top:4px;" id="extra-inst-filters"></div>
+  </div>
+
+  <!-- SESSION 8: NOTE COLOUR, XML, PNG EXPORT -->
+  <div class="ss">
+    <div class="stitle">Colour &amp; Export — Session 8</div>
+
+    <div style="font-size:7px;color:var(--dim);margin-bottom:2px;text-transform:uppercase;letter-spacing:1px;">Highlight colour (select note first)</div>
+    <div class="color-row" id="color-swatches"></div>
+    <button class="btn" style="margin-top:3px;width:100%;justify-content:center;font-size:8px;" onclick="clearNoteColor()">✕ Clear colour</button>
+
+    <div style="font-size:7px;color:var(--dim);margin:5px 0 2px;text-transform:uppercase;letter-spacing:1px;">MusicXML fret (tab staff — select note)</div>
+    <div style="display:flex;gap:3px;margin-bottom:3px;">
+      <input type="number" id="fret-inp" min="0" max="24" placeholder="Fret" style="width:55px;font-size:9px;padding:3px 4px;">
+      <input type="number" id="string-inp" min="1" max="6" placeholder="String" style="width:55px;font-size:9px;padding:3px 4px;">
+      <button class="btn" style="font-size:8px;" onclick="applyFret()">✓</button>
+    </div>
+
+    <div style="font-size:7px;color:var(--dim);margin:4px 0 3px;text-transform:uppercase;letter-spacing:1px;">Quick export</div>
+    <div style="display:flex;gap:2px;flex-wrap:wrap;">
+      <button class="btn pri" onclick="exportPDF()" style="font-size:9px;">⬇ PDF</button>
+      <button class="btn" onclick="exportMusicXML()" style="font-size:9px;">⎘ MusicXML</button>
+      <button class="btn" onclick="exportPNG()" style="font-size:9px;">🖼 PNG</button>
+      <button class="btn" onclick="exportSVGRows()" style="font-size:9px;">▣ SVG</button>
+    </div>
+  </div>
+
+  <!-- PERCUSSION -->
+  <div class="ss" id="perc-section">
+    <div class="stitle">Percussion</div>
+    <div class="plist" id="perc-list"></div>
+  </div>
+
+  <!-- DYNAMICS -->
+  <div class="ss">
+    <div class="stitle">Dynamics</div>
+    <div class="dgrid">
+      <button class="nb" data-dyn="pp" onclick="selDyn('pp',this)"><div style="font-style:italic;font-size:11px;">pp</div></button>
+      <button class="nb" data-dyn="p" onclick="selDyn('p',this)"><div style="font-style:italic;font-size:11px;">p</div></button>
+      <button class="nb" data-dyn="mp" onclick="selDyn('mp',this)"><div style="font-style:italic;font-size:11px;">mp</div></button>
+      <button class="nb" data-dyn="mf" onclick="selDyn('mf',this)"><div style="font-style:italic;font-size:11px;">mf</div></button>
+      <button class="nb" data-dyn="f" onclick="selDyn('f',this)"><div style="font-style:italic;font-size:11px;">f</div></button>
+      <button class="nb" data-dyn="ff" onclick="selDyn('ff',this)"><div style="font-style:italic;font-size:11px;">ff</div></button>
+    </div>
+  </div>
+
+  <!-- ADD NOTE -->
+  <div class="ss">
+    <button class="btn pri" style="width:100%;justify-content:center;padding:8px;font-size:11px;" onclick="addNoteAction()">♩ Add Note [Enter]</button>
+    <div style="font-size:7.5px;color:var(--dim);margin-top:4px;line-height:1.6;">
+      Shift+click staff = always add.<br>
+      Click note = select.<br>
+      Shift+click note = extend range.
+    </div>
+  </div>
+
+</div><!-- /sidebar -->
+
+<!-- SCORE AREA -->
+<div class="canvas-area">
+  <div class="score-wrap" id="score-wrap">
+    <div class="score-page" id="score-page">
+      <div class="score-title">
+        <h1 id="disp-title">Untitled Score</h1>
+        <p id="disp-composer">Composer</p>
+      </div>
+      <div id="notation-area"></div>
+    </div>
+  </div>
+  <div class="statusbar">
+    <span><span class="save-dot" id="save-dot"></span><span id="st-save">Saved</span></span>
+    <span><span class="sdot"></span><span id="st-mode">Piano+Perc</span></span>
+    <span id="st-time">4/4</span>
+    <span id="st-key">C</span>
+    <span id="st-bars">4 bars</span>
+    <span>Mode: <span id="st-badge" class="badge norm">Normal</span></span>
+    <span id="st-sel" style="color:var(--gol);">—</span>
+    <span style="margin-left:auto;font-size:7px;">1-7=dur · A-G=pitch · ↑↓=oct · C=chord · T=tie · I=insert · S=slur · G=grace · E=enharmonic · L=lyric · Shift+↑↓=transpose · Ctrl+S=save · Ctrl+Z/Y=undo/redo</span>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- TITLE MODAL -->
+<div class="mbg" id="title-modal">
+  <div class="modal" style="width:320px;">
+    <h2>Score Details</h2>
+    <div class="field"><label>Title</label><input id="inp-title" value="Untitled Score"></div>
+    <div class="field"><label>Composer</label><input id="inp-comp" value="Composer"></div>
+    <div class="mact">
+      <button class="btn" onclick="closeModal('title-modal')">Cancel</button>
+      <button class="btn pri" onclick="applyTitle()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PITCHES MODAL -->
+<div class="mbg" id="edit-modal">
+  <div class="modal" style="width:360px;">
+    <h2>Edit Note Pitches</h2>
+    <div class="ekeys" id="edit-keys"></div>
+    <div style="border-top:1px solid var(--bdr);padding-top:8px;">
+      <div style="font-size:7.5px;color:var(--dim);margin-bottom:5px;">Add pitch</div>
+      <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px;" id="edit-pitch-row"></div>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <span style="font-size:8px;color:var(--dim);">Oct:</span>
+        <button class="btn" onclick="editOctDelta(-1)">▼</button>
+        <span id="edit-oct" style="color:var(--gol);padding:0 5px;font-size:12px;">4</span>
+        <button class="btn" onclick="editOctDelta(1)">▲</button>
+        <span style="font-size:8px;color:var(--dim);margin-left:5px;">Acc:</span>
+        <select id="edit-acc">
+          <option value="n">♮</option><option value="#">♯</option><option value="b">♭</option>
+          <option value="##">♯♯</option><option value="bb">♭♭</option>
+        </select>
+      </div>
+    </div>
+    <div class="mact">
+      <button class="btn" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="btn pri" onclick="applyEditNote()">✓ Apply</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// VEXFLOW
+// ═══════════════════════════════════════════════════════════
+const { Renderer, Stave, StaveNote, Voice, Formatter,
+        Accidental, Dot, Beam, Tie, Barline } = Vex.Flow;
+
+// ═══════════════════════════════════════════════════════════
+// PERCUSSION DB
+// ═══════════════════════════════════════════════════════════
+const PERC_DB = [
+  {id:'hh_c', name:'Hi-Hat ×',     pos:'a/5',glyph:'noteheadXBlack',         stem:1},
+  {id:'hh_o', name:'Hi-Hat ○',     pos:'a/5',glyph:'noteheadCircleX',         stem:1},
+  {id:'hh_f', name:'Hi-Hat Foot',  pos:'e/3',glyph:'noteheadXBlack',         stem:-1},
+  {id:'ride', name:'Ride ×',       pos:'f/5',glyph:'noteheadXBlack',          stem:1},
+  {id:'ride_b',name:'Ride Bell ◆', pos:'f/5',glyph:'noteheadDiamondBlack',    stem:1},
+  {id:'crash',name:'Crash ×',      pos:'b/5',glyph:'noteheadXBlack',          stem:1},
+  {id:'crash2',name:'Crash 2 ×',   pos:'g/5',glyph:'noteheadXBlack',          stem:1},
+  {id:'sn',   name:'Snare ●',      pos:'c/5',glyph:null,                      stem:1},
+  {id:'rim',  name:'Rim Shot ×',   pos:'c/5',glyph:'noteheadXBlack',          stem:1},
+  {id:'tom1', name:'Hi Tom ●',     pos:'e/5',glyph:null,                      stem:1},
+  {id:'tom2', name:'Mid Tom ●',    pos:'d/5',glyph:null,                      stem:1},
+  {id:'flr',  name:'Floor Tom ●',  pos:'a/4',glyph:null,                      stem:-1},
+  {id:'bd',   name:'Bass Drum ○',  pos:'f/4',glyph:'noteheadCircleX',        stem:-1},
+  {id:'cowb', name:'Cowbell △',    pos:'g/5',glyph:'noteheadTriangleUpBlack', stem:1},
+  {id:'tamb', name:'Tambourine ×', pos:'b/4',glyph:'noteheadXBlack',          stem:1},
+  {id:'clap', name:'Clap ×',       pos:'c/5',glyph:'noteheadXBlack',          stem:1},
+];
+
+// ═══════════════════════════════════════════════════════════
+// CHORD TYPES DB
+// ═══════════════════════════════════════════════════════════
+const CHORD_TYPES_DB = [
+  {id:'maj',  lbl:'maj', name:'Major',       iv:[4,7]},
+  {id:'min',  lbl:'min', name:'Minor',       iv:[3,7]},
+  {id:'dim',  lbl:'dim', name:'Diminished',  iv:[3,6]},
+  {id:'aug',  lbl:'aug', name:'Augmented',   iv:[4,8]},
+  {id:'sus2', lbl:'sus2',name:'Sus2',        iv:[2,7]},
+  {id:'sus4', lbl:'sus4',name:'Sus4',        iv:[5,7]},
+  {id:'maj7', lbl:'Δ7',  name:'Major 7',    iv:[4,7,11]},
+  {id:'min7', lbl:'m7',  name:'Minor 7',    iv:[3,7,10]},
+  {id:'dom7', lbl:'7',   name:'Dominant 7', iv:[4,7,10]},
+  {id:'dim7', lbl:'°7',  name:'Dim 7',      iv:[3,6,9]},
+  {id:'hdim7',lbl:'ø7',  name:'Half-Dim',   iv:[3,6,10]},
+  {id:'aug7', lbl:'+7',  name:'Aug 7',      iv:[4,8,10]},
+  {id:'maj9', lbl:'Δ9',  name:'Major 9',    iv:[4,7,11,14]},
+  {id:'min9', lbl:'m9',  name:'Minor 9',    iv:[3,7,10,14]},
+  {id:'dom9', lbl:'9',   name:'Dom 9',      iv:[4,7,10,14]},
+  {id:'add9', lbl:'add9',name:'Add 9',      iv:[4,7,14]},
+  {id:'6',    lbl:'6',   name:'Major 6',    iv:[4,7,9]},
+  {id:'m6',   lbl:'m6',  name:'Minor 6',    iv:[3,7,9]},
+];
+
+const ROOT_IDS   = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+const SEMI_NAMES = [
+  {p:'c',a:'n'},{p:'c',a:'#'},{p:'d',a:'n'},{p:'d',a:'#'},{p:'e',a:'n'},
+  {p:'f',a:'n'},{p:'f',a:'#'},{p:'g',a:'n'},{p:'g',a:'#'},{p:'a',a:'n'},
+  {p:'a',a:'#'},{p:'b',a:'n'}
+];
+const BEAT_VAL = {w:4,h:2,q:1,'8':0.5,'16':0.25,'32':0.125};
+const KEY_VEX  = {C:'C',G:'G',D:'D',A:'A',E:'E',B:'B','F#':'F#',F:'F',
+                  Bb:'Bb',Eb:'Eb',Ab:'Ab',Am:'Am',Em:'Em',Dm:'Dm',Gm:'Gm'};
+
+const AUTOSAVE_KEY = 'maestro_autosave_v2';
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+const S = {
+  title:'Untitled Score', composer:'Composer', tempo:120,
+  timeSig:'4/4', keySig:'C', view:'both',
+  barNumStyle:'system',
+
+  dur:'q', oct:4, accNext:'n', dotted:false,
+  percId:'hh_c', dyn:null,
+  chordMode:false, tieMode:false, insertMode:false,
+  activePitch:'c', activeAcc:'n',
+  chordQueue:[],
+  chordRoot:0, chordType:'maj', chordInv:0, chordOct:4,
+
+  // Each measure:
+  // { treble:[], bass:[], perc:[],
+  //   pickup:bool,
+  //   repeatStart:bool, repeatEnd:bool,
+  //   volta:null|1|2,
+  //   chordSym:string|null   ← chord symbol text shown above bar
+  // }
+  measures:[],
+  lastM:0, lastStaff:'treble',
+
+  // Selection — single note
+  sel:null,      // {mi, staff, ni}
+
+  // Range selection — multiple notes across same staff
+  range:null,    // {staff, mi1, ni1, mi2, ni2}
+
+  // Selected measure (for properties panel)
+  selMeasure:null,  // integer index
+
+  // Clipboard
+  clipboard:null,   // {staff, entries:[]}
+
+  history:[], future:[],
+  dirty:false,
+
+  editOct:4, editKeys:[], editAccs:{},
+};
+
+// ═══════════════════════════════════════════════════════════
+// AUTOSAVE
+// ═══════════════════════════════════════════════════════════
+function autosave() {
+  try {
+    const data = buildSaveObj();
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
+    setDirty(false);
+  } catch(e) { console.warn('Autosave failed:', e); }
+}
+
+function buildSaveObj() {
+  return {
+    version: 2,
+    title: S.title, composer: S.composer, tempo: S.tempo,
+    timeSig: S.timeSig, keySig: S.keySig, view: S.view,
+    barNumStyle: S.barNumStyle,
+    measures: S.measures,
+  };
+}
+
+function loadSaveObj(data) {
+  if (!data || !data.measures) return false;
+  S.title = data.title || 'Untitled Score';
+  S.composer = data.composer || 'Composer';
+  S.tempo = data.tempo || 120;
+  S.timeSig = data.timeSig || '4/4';
+  S.keySig = data.keySig || 'C';
+  S.view = data.view || 'both';
+  S.barNumStyle = data.barNumStyle || 'system';
+  S.measures = data.measures;
+  // Ensure all measures have the new fields
+  S.measures.forEach(m => {
+    if (!m.treble) m.treble = [];
+    if (!m.bass)   m.bass   = [];
+    if (!m.perc)   m.perc   = [];
+    if (m.pickup   === undefined) m.pickup = false;
+    if (m.repeatStart === undefined) m.repeatStart = false;
+    if (m.repeatEnd   === undefined) m.repeatEnd   = false;
+    if (m.volta    === undefined) m.volta = null;
+    if (m.chordSym === undefined) m.chordSym = null;
+  });
+  return true;
+}
+
+function setDirty(v) {
+  S.dirty = v;
+  const dot = gid('save-dot');
+  const lbl = gid('st-save');
+  if (v) { dot.className='save-dot dirty'; lbl.textContent='Unsaved'; }
+  else   { dot.className='save-dot';       lbl.textContent='Saved'; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SAVE / LOAD JSON
+// ═══════════════════════════════════════════════════════════
+function saveJSON() {
+  const data = buildSaveObj();
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = (S.title||'score').replace(/\s+/g,'_')+'.json';
+  a.click(); URL.revokeObjectURL(url);
+  setDirty(false);
+}
+
+function loadJSON(ev) {
+  const file = ev.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!loadSaveObj(data)) { alert('Invalid score file.'); return; }
+      clearSel(); clearRange(); S.selMeasure=null;
+      syncUIFromState();
+      render(); updateStatus();
+      setDirty(false);
+    } catch(err) { alert('Could not load file: '+err.message); }
+  };
+  reader.readAsText(file);
+  ev.target.value='';
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+function init() {
+  buildPercList();
+  buildChordRootBtns();
+  buildChordTypeBtns();
+  buildChordInvBtns();
+  buildEditPitchRow();
+
+  // Try to restore from localStorage
+  try {
+    const saved = localStorage.getItem(AUTOSAVE_KEY);
+    if (saved) {
+      const data = JSON.parse(saved);
+      if (loadSaveObj(data)) {
+        syncUIFromState();
+        render(); updateStatus(); setDirty(false);
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // Fresh start
+  S.measures = Array.from({length:4}, () => newMeasure());
+  updateChordPreview();
+  render(); updateStatus(); setDirty(false);
+}
+
+function newMeasure() {
+  return {treble:[],bass:[],perc:[],pickup:false,repeatStart:false,repeatEnd:false,volta:null,chordSym:null};
+}
+
+function syncUIFromState() {
+  gid('disp-title').textContent    = S.title;
+  gid('disp-composer').textContent = `♩= ${S.tempo}  ·  ${S.composer}`;
+  gid('inp-title').value  = S.title;
+  gid('inp-comp').value   = S.composer;
+  gid('inp-tempo').value  = S.tempo;
+  gid('sel-time').value   = S.timeSig;
+  gid('sel-key').value    = S.keySig;
+  gid('barnum-sel').value = S.barNumStyle;
+  gid('view-btn').textContent = {both:'Piano+Perc',piano:'Piano Only',percussion:'Perc Only'}[S.view];
+  gid('perc-section').style.display = S.view==='piano'?'none':'';
+  updateChordPreview();
+}
+
+// ═══════════════════════════════════════════════════════════
+// BUILD SIDEBAR UI
+// ═══════════════════════════════════════════════════════════
+function buildPercList() {
+  const el=gid('perc-list'); el.innerHTML='';
+  PERC_DB.forEach(p=>{
+    const d=document.createElement('div');
+    d.className='pi'+(p.id===S.percId?' active':'');
+    d.innerHTML=`<div><div style="font-size:9px;">${p.name}</div><div style="font-size:7px;opacity:.55;">${p.pos}</div></div>`;
+    d.onclick=()=>{ S.percId=p.id; qsa('.pi').forEach(x=>x.classList.remove('active')); d.classList.add('active'); };
+    el.appendChild(d);
+  });
+}
+function buildChordRootBtns() {
+  const el=gid('chord-roots'); el.innerHTML='';
+  ROOT_IDS.forEach((r,i)=>{
+    const b=ce('button','crbtn'+(i===S.chordRoot?' active':''));
+    b.textContent=r;
+    b.onclick=()=>{ S.chordRoot=i; qsa('.crbtn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); updateChordPreview(); };
+    el.appendChild(b);
+  });
+}
+function buildChordTypeBtns() {
+  const el=gid('chord-types'); el.innerHTML='';
+  CHORD_TYPES_DB.forEach(ct=>{
+    const b=ce('button','ctbtn'+(ct.id===S.chordType?' active':''));
+    b.title=ct.name;
+    b.innerHTML=`<div style="font-size:8px;font-weight:700;">${ct.lbl}</div><div style="font-size:6.5px;opacity:.65;">${ct.name}</div>`;
+    b.onclick=()=>{ S.chordType=ct.id; qsa('.ctbtn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); updateChordPreview(); };
+    el.appendChild(b);
+  });
+}
+function buildChordInvBtns() {
+  const el=gid('chord-invs'); el.innerHTML='';
+  ['Root','1st','2nd','3rd'].forEach((lbl,i)=>{
+    const b=ce('button','ivbtn'+(i===S.chordInv?' active':''));
+    b.textContent=lbl;
+    b.onclick=()=>{ S.chordInv=i; qsa('.ivbtn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); updateChordPreview(); };
+    el.appendChild(b);
+  });
+}
+function buildEditPitchRow() {
+  const el=gid('edit-pitch-row'); el.innerHTML='';
+  ['c','d','e','f','g','a','b'].forEach(p=>{
+    const b=ce('button','btn');
+    b.style.cssText='font-size:9px;padding:2px 5px;';
+    b.textContent=p.toUpperCase();
+    b.onclick=()=>addEditPitch(p);
+    el.appendChild(b);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// KEYBOARD INPUT
+// ═══════════════════════════════════════════════════════════
+function whiteKeyClick(pitch,el) {
+  const acc=S.accNext; S.accNext='n'; refreshAccBtns();
+  _handlePitchInput(pitch,acc);
+}
+function blackKeyClick(pitch,acc,el) {
+  const useAcc = S.accNext!=='n' ? S.accNext : acc;
+  S.accNext='n'; refreshAccBtns();
+  _handlePitchInput(pitch,useAcc);
+}
+function _handlePitchInput(pitch,acc) {
+  if (S.chordMode) {
+    const idx=S.chordQueue.findIndex(n=>n.p===pitch&&n.o===S.oct&&n.a===acc);
+    if (idx>=0) S.chordQueue.splice(idx,1); else S.chordQueue.push({p:pitch,o:S.oct,a:acc});
+    refreshChordQueue();
+  } else {
+    S.activePitch=pitch; S.activeAcc=acc; highlightActivePitch();
+  }
+}
+function setAccNext(a) { S.accNext=a; refreshAccBtns(); }
+function refreshAccBtns() {
+  gid('acc-b-btn').classList.toggle('on',S.accNext==='b');
+  gid('acc-bb-btn').classList.toggle('on',S.accNext==='bb');
+  gid('acc-n-btn').classList.toggle('on',false);
+}
+function highlightActivePitch() {
+  qsa('.wk,.bk:not(.gap)').forEach(k=>k.classList.remove('sel-pitch','in-chord'));
+  if (S.chordMode) {
+    S.chordQueue.forEach(n=>{
+      const el=document.querySelector(`.wk[data-p="${n.p}"]`);
+      if(el&&n.a==='n') el.classList.add('in-chord');
+      const bl=document.querySelector(`.bk[data-p="${n.p}"][data-a="${n.a}"]`);
+      if(bl) bl.classList.add('in-chord');
+    });
+  } else {
+    const wEl=document.querySelector(`.wk[data-p="${S.activePitch}"]`);
+    if(wEl&&S.activeAcc==='n') wEl.classList.add('sel-pitch');
+    const bEl=document.querySelector(`.bk[data-p="${S.activePitch}"][data-a="${S.activeAcc}"]`);
+    if(bEl) bEl.classList.add('sel-pitch');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// CHORD MODE
+// ═══════════════════════════════════════════════════════════
+function toggleChordMode() {
+  S.chordMode=!S.chordMode;
+  if(!S.chordMode){S.chordQueue=[];refreshChordQueue();}
+  if(S.chordMode){S.tieMode=false;gid('tie-btn').className='btn';}
+  gid('chord-btn').className='btn'+(S.chordMode?' chord-on':'');
+  highlightActivePitch(); updateStatus();
+}
+function refreshChordQueue() {
+  const pills=gid('cpills'); pills.innerHTML='';
+  S.chordQueue.forEach((n,i)=>{
+    const acc=n.a==='#'?'♯':n.a==='b'?'♭':n.a==='##'?'♯♯':n.a==='bb'?'♭♭':'';
+    const d=ce('div','cpill');
+    d.textContent=n.p.toUpperCase()+acc+n.o;
+    d.onclick=()=>{ S.chordQueue.splice(i,1); refreshChordQueue(); highlightActivePitch(); };
+    pills.appendChild(d);
+  });
+  gid('chord-actions').style.display=S.chordQueue.length>0?'':'none';
+  highlightActivePitch();
+}
+function clearChordQueue() { S.chordQueue=[]; refreshChordQueue(); }
+function placeManualChord() {
+  if(!S.chordQueue.length){addNoteAction();return;}
+  pushHist();
+  const entry=buildChordEntry(S.chordQueue,S.dur,S.dotted,S.dyn);
+  insertOrAppend(S.lastM,S.lastStaff,entry);
+  S.chordQueue=[]; refreshChordQueue(); render(); autoSaveDebounced();
+}
+function buildChordEntry(q,dur,dotted,dyn) {
+  const keys=q.map(n=>n.p+'/'+n.o);
+  const accs={}; q.forEach((n,i)=>{if(n.a!=='n')accs[i]=n.a;});
+  return {type:q.length===1?'note':'chord',dur,dotted,keys,accs,dyn};
+}
+
+// ═══════════════════════════════════════════════════════════
+// INSERT MODE
+// ═══════════════════════════════════════════════════════════
+function toggleInsert() {
+  S.insertMode=!S.insertMode;
+  gid('ins-btn').className='btn'+(S.insertMode?' ins-on':'');
+  updateStatus();
+}
+
+// insertOrAppend: respects insert mode and selection position
+function insertOrAppend(mi,staff,entry) {
+  const arr=getArr(mi,staff);
+  if (S.insertMode && S.sel && S.sel.mi===mi && S.sel.staff===staff) {
+    arr.splice(S.sel.ni,0,entry);
+  } else {
+    arr.push(entry);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// ADD NOTE
+// ═══════════════════════════════════════════════════════════
+function addNoteAction() {
+  if(S.chordQueue.length>0){placeManualChord();return;}
+  addNoteAt(S.lastM,S.lastStaff);
+}
+function addNoteAt(mi,staff) {
+  S.lastM=mi; S.lastStaff=staff;
+  if(S.chordQueue.length>0&&staff!=='perc'){
+    pushHist();
+    const entry=buildChordEntry(S.chordQueue,S.dur,S.dotted,S.dyn);
+    insertOrAppend(mi,staff,entry);
+    S.chordQueue=[]; refreshChordQueue(); render(); autoSaveDebounced(); return;
+  }
+  pushHist();
+  const arr=getArr(mi,staff);
+  let entry;
+  if(S.dur==='r'){
+    entry={type:'rest',dur:'q',dotted:S.dotted,keys:['b/4'],dyn:S.dyn};
+  } else if(staff==='perc'){
+    const inst=PERC_DB.find(p=>p.id===S.percId)||PERC_DB[0];
+    entry={type:'perc',dur:S.dur,dotted:S.dotted,keys:[inst.pos],percId:S.percId,dyn:S.dyn};
+  } else {
+    const pitch=S.activePitch, acc=S.activeAcc;
+    if(S.tieMode&&arr.length>0&&!arr[arr.length-1].tiedTo) arr[arr.length-1].tiedTo=true;
+    entry={type:'note',dur:S.dur,dotted:S.dotted,keys:[pitch+'/'+S.oct],
+           accs:acc!=='n'?{0:acc}:{},dyn:S.dyn,
+           tiedFrom:S.tieMode&&arr.length>0};
+  }
+  insertOrAppend(mi,staff,entry);
+  render(); autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// NAMED CHORD ENGINE
+// ═══════════════════════════════════════════════════════════
+function chordFromName(rootIdx,typeId,inv,baseOct) {
+  const ct=CHORD_TYPES_DB.find(c=>c.id===typeId); if(!ct) return [];
+  const semis=[0,...ct.iv];
+  const cnt=Math.min(inv,semis.length-1);
+  for(let i=0;i<cnt;i++) semis[i]+=12;
+  const mn=Math.min(...semis);
+  return semis.map(s=>s-mn).map(offset=>{
+    const total=rootIdx+offset;
+    const n=SEMI_NAMES[((total%12)+12)%12];
+    return {p:n.p,a:n.a,o:baseOct+Math.floor(total/12)};
+  });
+}
+function updateChordPreview() {
+  const notes=chordFromName(S.chordRoot,S.chordType,S.chordInv,S.chordOct);
+  const ct=CHORD_TYPES_DB.find(c=>c.id===S.chordType);
+  const invLbl=['Root','1st inv','2nd inv','3rd inv'][Math.min(S.chordInv,3)];
+  const noteStr=notes.map(n=>{
+    const as=n.a==='n'?'':n.a==='#'?'♯':n.a==='b'?'♭':n.a==='##'?'♯♯':'♭♭';
+    return n.p.toUpperCase()+as+n.o;
+  }).join(' ');
+  gid('chord-preview').innerHTML=`<b style="color:var(--gol);">${ROOT_IDS[S.chordRoot]}${ct?ct.lbl:''}</b> <span style="color:var(--dim);">${invLbl}</span><br><span>${noteStr}</span>`;
+}
+function chgChordOct(d){S.chordOct=clamp(S.chordOct+d,1,7);gid('chord-oct').textContent=S.chordOct;updateChordPreview();}
+function clearChordSymText(){gid('chord-sym-text').value='';}
+function placeNamedChord() {
+  const notes=chordFromName(S.chordRoot,S.chordType,S.chordInv,S.chordOct);
+  if(!notes.length) return;
+  pushHist();
+  const keys=notes.map(n=>n.p+'/'+n.o);
+  const accs={}; notes.forEach((n,i)=>{if(n.a!=='n')accs[i]=n.a;});
+  const symText=gid('chord-sym-text').value.trim();
+  const entry={type:'chord',dur:S.dur,dotted:S.dotted,keys,accs,dyn:S.dyn,chordSym:symText||null};
+  insertOrAppend(S.lastM,S.lastStaff,entry);
+  render(); autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// MEASURE PROPERTIES (repeat, volta, pickup, chord symbol)
+// ═══════════════════════════════════════════════════════════
+function selectMeasure(mi) {
+  S.selMeasure = mi;
+  const m = S.measures[mi];
+  gid('msel-info').textContent = `Bar ${mi+1} selected`;
+  refreshMprops();
+  gid('bar-chord-sym').value = m.chordSym||'';
+}
+function refreshMprops() {
+  if(S.selMeasure===null){['pickup','rstart','rend','volta1','volta2'].forEach(k=>gid('mp-'+k).classList.remove('active'));return;}
+  const m=S.measures[S.selMeasure];
+  gid('mp-pickup').classList.toggle('active',!!m.pickup);
+  gid('mp-rstart').classList.toggle('active',!!m.repeatStart);
+  gid('mp-rend').classList.toggle('active',!!m.repeatEnd);
+  gid('mp-volta1').classList.toggle('active',m.volta===1);
+  gid('mp-volta2').classList.toggle('active',m.volta===2);
+}
+function toggleMprop(key) {
+  if(S.selMeasure===null){alert('Click a measure number first to select it.');return;}
+  pushHist();
+  const m=S.measures[S.selMeasure];
+  if(key==='pickup')  m.pickup=!m.pickup;
+  if(key==='rstart')  m.repeatStart=!m.repeatStart;
+  if(key==='rend')    m.repeatEnd=!m.repeatEnd;
+  if(key==='volta1')  m.volta = m.volta===1?null:1;
+  if(key==='volta2')  m.volta = m.volta===2?null:2;
+  refreshMprops(); render(); autoSaveDebounced();
+}
+function applyBarChordSym() {
+  if(S.selMeasure===null) return;
+  pushHist();
+  S.measures[S.selMeasure].chordSym = gid('bar-chord-sym').value.trim()||null;
+  render(); autoSaveDebounced();
+}
+function clearBarChordSym() {
+  if(S.selMeasure===null) return;
+  pushHist();
+  S.measures[S.selMeasure].chordSym=null;
+  gid('bar-chord-sym').value='';
+  render(); autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// RANGE SELECTION
+// ═══════════════════════════════════════════════════════════
+function startRange(mi,staff,ni) {
+  S.range={staff,mi1:mi,ni1:ni,mi2:mi,ni2:ni};
+  S.sel=null; gid('selbox').classList.remove('open'); gid('no-sel-txt').style.display='none';
+  refreshRangeBar();
+}
+function extendRange(mi,staff,ni) {
+  if(!S.range||S.range.staff!==staff) {startRange(mi,staff,ni);return;}
+  if(mi<S.range.mi1||(mi===S.range.mi1&&ni<S.range.ni1)){S.range.mi2=S.range.mi1;S.range.ni2=S.range.ni1;S.range.mi1=mi;S.range.ni1=ni;}
+  else{S.range.mi2=mi;S.range.ni2=ni;}
+  refreshRangeBar();
+}
+function clearRange() {
+  S.range=null;
+  gid('range-bar').classList.remove('open');
+}
+function refreshRangeBar() {
+  if(!S.range){clearRange();return;}
+  const r=S.range;
+  const n1=r.ni1+1,n2=r.ni2+1,m1=r.mi1+1,m2=r.mi2+1;
+  const desc=m1===m2?`Bar ${m1} notes ${n1}–${n2}`:`Bar ${m1} n${n1} → Bar ${m2} n${n2}`;
+  gid('range-label').textContent=`${r.staff} · ${desc}`;
+  gid('range-bar').classList.add('open');
+  gid('no-sel-txt').style.display='none';
+  gid('st-sel').textContent='Range: '+desc;
+}
+function getRangeEntries() {
+  if(!S.range) return [];
+  const r=S.range; const entries=[];
+  for(let mi=r.mi1;mi<=r.mi2;mi++){
+    const arr=getArr(mi,r.staff);
+    const ni1=(mi===r.mi1?r.ni1:0);
+    const ni2=(mi===r.mi2?r.ni2:arr.length-1);
+    for(let ni=ni1;ni<=ni2;ni++){if(arr[ni])entries.push({mi,ni,e:arr[ni]});}
+  }
+  return entries;
+}
+function deleteRange() {
+  if(!S.range) return;
+  pushHist();
+  const r=S.range;
+  for(let mi=r.mi2;mi>=r.mi1;mi--){
+    const arr=getArr(mi,r.staff);
+    const ni1=(mi===r.mi1?r.ni1:0);
+    const ni2=(mi===r.mi2?r.ni2:arr.length-1);
+    arr.splice(ni1,ni2-ni1+1);
+  }
+  clearRange(); render(); autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// COPY / PASTE
+// ═══════════════════════════════════════════════════════════
+function doCopy() {
+  if(S.range){
+    const entries=getRangeEntries();
+    S.clipboard={staff:S.range.staff,entries:entries.map(x=>JSON.parse(JSON.stringify(x.e)))};
+    gid('paste-btn').classList.add('copy-active');
+    gid('st-sel').textContent='Copied '+entries.length+' note(s)';
+  } else if(S.sel){
+    const e=getArr(S.sel.mi,S.sel.staff)[S.sel.ni];
+    S.clipboard={staff:S.sel.staff,entries:[JSON.parse(JSON.stringify(e))]};
+    gid('paste-btn').classList.add('copy-active');
+    gid('st-sel').textContent='Copied 1 note';
+  }
+}
+function doPaste() {
+  if(!S.clipboard||!S.clipboard.entries.length) return;
+  pushHist();
+  const staff=S.clipboard.staff;
+  let mi=S.lastM;
+  S.clipboard.entries.forEach(e=>{
+    if(mi>=S.measures.length) S.measures.push(newMeasure());
+    getArr(mi,staff).push(JSON.parse(JSON.stringify(e)));
+  });
+  render(); autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// UI CONTROLS
+// ═══════════════════════════════════════════════════════════
+function selDur(v,el){S.dur=v;qsa('[data-dur]').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+function selDyn(v,el){
+  if(S.dyn===v){S.dyn=null;qsa('[data-dyn]').forEach(b=>b.classList.remove('active'));}
+  else{S.dyn=v;qsa('[data-dyn]').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+}
+function chgOct(d){S.oct=clamp(S.oct+d,2,7);gid('oct-disp').textContent=S.oct;refreshChordQueue();}
+function togDot(){S.dotted=!S.dotted;gid('dot-btn').classList.toggle('active',S.dotted);}
+function toggleTie(){
+  S.tieMode=!S.tieMode;
+  if(S.tieMode){S.chordMode=false;gid('chord-btn').className='btn';S.chordQueue=[];refreshChordQueue();}
+  gid('tie-btn').className='btn'+(S.tieMode?' tie-on':'');
+  updateStatus();
+}
+function cycleView(){
+  const vs=['both','piano','percussion'];
+  S.view=vs[(vs.indexOf(S.view)+1)%vs.length];
+  gid('view-btn').textContent={both:'Piano+Perc',piano:'Piano Only',percussion:'Perc Only'}[S.view];
+  gid('perc-section').style.display=S.view==='piano'?'none':'';
+  clearSel();updateStatus();render();
+}
+function setTimeSig(){S.timeSig=gid('sel-time').value;updateStatus();render();autoSaveDebounced();}
+function setKeySig(){S.keySig=gid('sel-key').value;updateStatus();render();autoSaveDebounced();}
+function setBarNumStyle(){S.barNumStyle=gid('barnum-sel').value;render();}
+
+function addBar(){pushHist();S.measures.push(newMeasure());updateStatus();render();autoSaveDebounced();}
+function removeBar(){
+  if(S.measures.length<=1)return;
+  pushHist();S.measures.pop();
+  S.lastM=Math.min(S.lastM,S.measures.length-1);
+  clearSel();clearRange();updateStatus();render();autoSaveDebounced();
+}
+function clearScore(){
+  if(!confirm('Clear all notation?'))return;
+  pushHist();
+  S.measures=Array.from({length:4},()=>newMeasure());
+  S.lastM=0;S.selMeasure=null;
+  clearSel();clearRange();updateStatus();render();autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// UNDO / REDO
+// ═══════════════════════════════════════════════════════════
+function pushHist(){
+  S.history.push(JSON.stringify(S.measures));
+  if(S.history.length>80)S.history.shift();
+  S.future=[];  // Clear redo on new action
+  setDirty(true);
+}
+function doUndo(){
+  if(!S.history.length)return;
+  S.future.push(JSON.stringify(S.measures));
+  S.measures=JSON.parse(S.history.pop());
+  clearSel();clearRange();updateStatus();render();autoSaveDebounced();
+}
+function doRedo(){
+  if(!S.future.length)return;
+  S.history.push(JSON.stringify(S.measures));
+  S.measures=JSON.parse(S.future.pop());
+  clearSel();clearRange();updateStatus();render();autoSaveDebounced();
+}
+
+function doDelete(){
+  if(S.range){deleteRange();return;}
+  if(!S.sel)return;
+  pushHist();
+  getArr(S.sel.mi,S.sel.staff).splice(S.sel.ni,1);
+  clearSel();render();autoSaveDebounced();
+}
+function applyDurToSel(){
+  if(!S.sel)return;
+  pushHist();
+  const e=getArr(S.sel.mi,S.sel.staff)[S.sel.ni];
+  e.dur=S.dur;e.dotted=S.dotted;
+  render();refreshSelPanel();autoSaveDebounced();
+}
+function getArr(mi,st){const m=S.measures[mi];return st==='treble'?m.treble:st==='bass'?m.bass:m.perc;}
+
+// ═══════════════════════════════════════════════════════════
+// SELECTION (single note)
+// ═══════════════════════════════════════════════════════════
+function setSel(mi,staff,ni){
+  S.sel={mi,staff,ni};S.range=null;
+  gid('range-bar').classList.remove('open');
+  refreshSelPanel();
+}
+function refreshSelPanel(){
+  if(!S.sel)return;
+  const e=getArr(S.sel.mi,S.sel.staff)[S.sel.ni];
+  if(!e){clearSel();return;}
+  let desc='';
+  if(e.type==='rest') desc='Rest — '+e.dur;
+  else if(e.type==='perc'){const p=PERC_DB.find(x=>x.id===e.percId);desc='Perc: '+(p?p.name:'?')+' — '+e.dur;}
+  else{
+    const names=e.keys.map((k,i)=>{
+      const[p,o]=k.split('/');const ac=(e.accs&&e.accs[i])?e.accs[i]:'';
+      return p.toUpperCase()+ac+o;
+    }).join(', ');
+    desc=(e.type==='chord'?'Chord':'Note')+': '+names+' — '+e.dur+(e.dotted?'.':'');
+    if(e.chordSym) desc+=' ['+e.chordSym+']';
+  }
+  gid('sel-label').textContent=desc;
+  gid('selbox').classList.add('open');
+  gid('no-sel-txt').style.display='none';
+  gid('st-sel').textContent=desc;
+}
+function clearSel(){
+  S.sel=null;
+  gid('selbox').classList.remove('open');
+  gid('no-sel-txt').style.display='';
+  gid('st-sel').textContent='—';
+}
+
+// ═══════════════════════════════════════════════════════════
+// EDIT PITCHES MODAL
+// ═══════════════════════════════════════════════════════════
+function openEditModal(){
+  if(!S.sel)return;
+  const e=getArr(S.sel.mi,S.sel.staff)[S.sel.ni];
+  if(e.type==='rest'||e.type==='perc'){alert('Rests and percussion use sidebar controls.');return;}
+  S.editKeys=[...e.keys];S.editAccs={...e.accs};S.editOct=4;
+  gid('edit-oct').textContent=S.editOct;
+  refreshEditModal();openModal('edit-modal');
+}
+function refreshEditModal(){
+  const list=gid('edit-keys');list.innerHTML='';
+  S.editKeys.forEach((k,i)=>{
+    const[p,o]=k.split('/');const ac=S.editAccs[i]||'n';
+    const as=ac==='n'?'':ac==='#'?'♯':ac==='b'?'♭':ac==='##'?'♯♯':'♭♭';
+    const row=ce('div','ekrow');
+    row.innerHTML=`<span class="eklbl">${p.toUpperCase()}${as}/${o}</span><span class="ekrm" onclick="removeEditKey(${i})">✕</span>`;
+    list.appendChild(row);
+  });
+}
+function removeEditKey(i){
+  S.editKeys.splice(i,1);
+  const na={};Object.entries(S.editAccs).forEach(([k,v])=>{const ki=+k;if(ki<i)na[ki]=v;else if(ki>i)na[ki-1]=v;});
+  S.editAccs=na;refreshEditModal();
+}
+function addEditPitch(p){
+  const acc=gid('edit-acc').value;
+  S.editKeys.push(p+'/'+S.editOct);
+  if(acc!=='n')S.editAccs[S.editKeys.length-1]=acc;
+  refreshEditModal();
+}
+function editOctDelta(d){S.editOct=clamp(S.editOct+d,2,7);gid('edit-oct').textContent=S.editOct;}
+function applyEditNote(){
+  if(!S.sel||!S.editKeys.length){alert('Need at least one pitch.');return;}
+  pushHist();
+  const arr=getArr(S.sel.mi,S.sel.staff);
+  const e=arr[S.sel.ni];
+  e.keys=[...S.editKeys];e.accs={...S.editAccs};
+  e.type=e.keys.length>1?'chord':'note';
+  closeModal('edit-modal');render();refreshSelPanel();autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// VEXFLOW NOTE BUILDER
+// ═══════════════════════════════════════════════════════════
+function buildVN(e,clef){
+  try{
+    let vn;
+    if(e.type==='rest'){
+      vn=new StaveNote({keys:['b/4'],duration:e.dur+'r',align_center:true});
+    } else if(e.type==='perc'){
+      const inst=PERC_DB.find(p=>p.id===e.percId)||PERC_DB[0];
+      vn=new StaveNote({keys:[inst.pos],duration:e.dur,stem_direction:inst.stem});
+      if(inst.glyph&&vn.note_heads&&vn.note_heads[0]){
+        try{vn.note_heads[0].glyph_props=Object.assign({},vn.note_heads[0].glyph_props,{code_head:inst.glyph,code:inst.glyph});}catch(_){}
+      }
+    } else {
+      const sortedKeys=[...e.keys].sort((a,b)=>{
+        const pv=p=>{const[n,o]=p.split('/');return parseInt(o)*12+'cdefgab'.indexOf(n[0]);};
+        return pv(a)-pv(b);
+      });
+      vn=new StaveNote({keys:sortedKeys,duration:e.dur,clef});
+      if(e.accs){
+        e.keys.forEach((k,i)=>{
+          if(e.accs[i]){const si=sortedKeys.indexOf(k);try{vn.addModifier(new Accidental(e.accs[i]),si);}catch(_){}}
+        });
+      }
+    }
+    if(e.dotted) try{Dot.buildAndAttach([vn]);}catch(_){}
+    return vn;
+  }catch(err){console.warn('buildVN:',err.message,e);return null;}
+}
+
+// ═══════════════════════════════════════════════════════════
+// BEAMING & TIES
+// ═══════════════════════════════════════════════════════════
+function makeBeams(vns,entries){
+  const ok=new Set(['8','16','32']);
+  const res=[];let grp=[],pos=0;
+  for(let i=0;i<vns.length;i++){
+    const e=entries[i],vn=vns[i];if(!vn){grp=[];continue;}
+    const b=eBeats(e);
+    if(e.type==='rest'){if(grp.length>=2)res.push(tryB(grp));grp=[];}
+    else if(ok.has(e.dur)){grp.push(vn);pos+=b;if(Math.round(pos*1000)%1000===0||i===vns.length-1){if(grp.length>=2)res.push(tryB(grp));grp=[];}}
+    else{if(grp.length>=2)res.push(tryB(grp));grp=[];pos+=b;}
+  }
+  if(grp.length>=2)res.push(tryB(grp));
+  return res.filter(Boolean);
+}
+function tryB(ns){try{return new Beam(ns);}catch(e){return null;}}
+function makeTies(vns,entries,isPerc){
+  if(isPerc)return[];
+  const res=[];
+  for(let i=0;i<entries.length-1;i++){
+    if(entries[i].tiedTo&&vns[i]&&vns[i+1]){
+      try{res.push(new Tie({first_note:vns[i],last_note:vns[i+1],first_indices:[0],last_indices:[0]}));}catch(_){}
+    }
+  }
+  return res;
+}
+
+// ═══════════════════════════════════════════════════════════
+// REST FILL
+// ═══════════════════════════════════════════════════════════
+function restFill(entries,isPickup){
+  if(isPickup) return {fe:[],fvn:[]};  // Pickup bars: don't pad
+  const bpm=beatsPerM();
+  let used=entries.reduce((s,e)=>s+eBeats(e),0);
+  const fe=[],fvn=[];const durs=['w','h','q','8','16','32'];let wd=0;
+  while(used<bpm-0.0001&&wd++<64){
+    const rem=bpm-used;let ch='32';
+    for(const d of durs)if(BEAT_VAL[d]<=rem+0.0001){ch=d;break;}
+    fe.push({type:'rest',dur:ch,dotted:false});
+    fvn.push(new StaveNote({keys:['b/4'],duration:ch+'r',align_center:true}));
+    used+=BEAT_VAL[ch];if(used>=bpm)break;
+  }
+  return{fe,fvn};
+}
+function eBeats(e){const d=e.dur==='r'?'q':e.dur;let b=BEAT_VAL[d]||1;if(e.dotted)b*=1.5;return b;}
+function beatsPerM(){const[n,d]=S.timeSig.split('/').map(Number);return d===8?n/2:n;}
+
+// ═══════════════════════════════════════════════════════════
+// BAR NUMBER HELPER
+// ═══════════════════════════════════════════════════════════
+function shouldShowBarNum(mi,isFirstInRow){
+  const style=S.barNumStyle;
+  if(style==='none') return false;
+  if(style==='every') return true;
+  if(style==='5')     return (mi+1)%5===0||(mi===0&&isFirstInRow);
+  if(style==='system') return isFirstInRow;
+  return isFirstInRow;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER — main draw loop
+// ═══════════════════════════════════════════════════════════
+function render(){
+  const area=gid('notation-area');area.innerHTML='';
+  const PW=788,MPR=4,FE=68;
+  const SW=Math.floor((PW-FE)/MPR);
+  const rows=Math.ceil(S.measures.length/MPR);
+
+  for(let row=0;row<rows;row++){
+    const s0=row*MPR,s1=Math.min(s0+MPR,S.measures.length),mInRow=s1-s0;
+    const scs=[];let yy=24;
+    const GH=88,GAP=16,PGAP=4;
+    if(S.view==='both'||S.view==='piano'){
+      scs.push({type:'treble',y:yy,h:GH});yy+=GH+PGAP;
+      scs.push({type:'bass',  y:yy,h:GH});yy+=GH+GAP;
+    }
+    if(S.view==='both'||S.view==='percussion'){
+      scs.push({type:'perc',  y:yy,h:GH});yy+=GH+GAP;
+    }
+    const TH=yy+20; // extra for voltas/chord syms
+
+    const rowDiv=document.createElement('div');
+    rowDiv.style.cssText='position:relative;display:block;';
+    area.appendChild(rowDiv);
+
+    const ren=new Renderer(rowDiv,Renderer.Backends.SVG);
+    ren.resize(PW,TH);
+    const ctx=ren.getContext();
+
+    // Draw each staff
+    for(const sc of scs){
+      let x=0;
+      for(let mi=s0;mi<s1;mi++){
+        const isF=(mi===s0);
+        const m=S.measures[mi];
+        const sw=isF?SW+FE:SW;
+        const stave=new Stave(x,sc.y,sw);
+
+        // Barline types
+        if(m.repeatStart){
+          stave.setBegBarType(Vex.Flow.Barline.type.REPEAT_BEGIN);
+        }
+        if(m.repeatEnd){
+          stave.setEndBarType(Vex.Flow.Barline.type.REPEAT_END);
+        }
+
+        if(isF){
+          const cn=sc.type==='bass'?'bass':sc.type==='perc'?'percussion':'treble';
+          stave.addClef(cn);
+          if(sc.type==='treble'||sc.type==='perc') stave.addTimeSignature(S.timeSig);
+          if(sc.type!=='perc'){
+            const k=KEY_VEX[S.keySig]||'C';
+            if(k&&k!=='C'&&k!=='Am'&&k!=='Em'&&k!=='Dm'&&k!=='Gm')
+              try{stave.addKeySignature(k);}catch(_){}
+          }
+        }
+        stave.setContext(ctx).draw();
+
+        // Bar number
+        if(sc===scs[0]&&shouldShowBarNum(mi,mi===s0)){
+          ctx.fillStyle='#9a8570';ctx.font='8px IBM Plex Mono';
+          ctx.fillText(String(mi+1),x+(isF?FE:4),sc.y-5);
+        }
+
+        // Volta bracket (1st/2nd ending) — drawn above treble only
+        if(sc.type==='treble'&&m.volta){
+          const voltaX=x+(isF?FE:0);
+          const voltaW=sw-(isF?FE:0);
+          const vy=sc.y-14;
+          ctx.save();
+          ctx.strokeStyle='#1a1208';ctx.lineWidth=1.5;
+          // Draw bracket top and left edge
+          ctx.beginPath();
+          ctx.moveTo(voltaX,vy+12);
+          ctx.lineTo(voltaX,vy);
+          ctx.lineTo(voltaX+voltaW,vy);
+          // Close right only for 1st ending
+          if(m.volta===1){ctx.lineTo(voltaX+voltaW,vy+12);}
+          ctx.stroke();
+          ctx.fillStyle='#1a1208';ctx.font='bold 9px IBM Plex Mono';
+          ctx.fillText(m.volta+'.',voltaX+4,vy+9);
+          ctx.restore();
+        }
+
+        // Chord symbol above treble staff
+        const mChordSym=m.chordSym;
+        if(sc.type==='treble'&&mChordSym){
+          ctx.save();
+          ctx.fillStyle='#2c1f0e';
+          ctx.font='italic bold 11px serif';
+          ctx.fillText(mChordSym,x+(isF?FE:4),sc.y-20);
+          ctx.restore();
+        }
+
+        // Pickup indicator (italic "pickup" text)
+        if(sc===scs[0]&&m.pickup){
+          ctx.save();
+          ctx.fillStyle='#8a7055';ctx.font='italic 8px IBM Plex Mono';
+          ctx.fillText('pickup',x+(isF?FE:4),sc.y-18);
+          ctx.restore();
+        }
+
+        // Selected measure highlight
+        if(S.selMeasure===mi&&sc===scs[0]){
+          ctx.save();
+          ctx.strokeStyle='rgba(200,146,42,.6)';ctx.lineWidth=1.5;
+          ctx.setLineDash([4,3]);
+          ctx.strokeRect(x+(isF?FE:1),sc.y,sw-(isF?FE:2),TH-sc.y-8);
+          ctx.setLineDash([]);
+          ctx.restore();
+        }
+
+        const rawE=sc.type==='treble'?m.treble:sc.type==='bass'?m.bass:m.perc;
+        const isPerc=sc.type==='perc';
+        const clef=sc.type==='bass'?'bass':'treble';
+
+        const vns=[],entries=[];
+        rawE.forEach((e,ni)=>{const vn=buildVN(e,clef);if(vn){vns.push(vn);entries.push(e);}});
+
+        const{fe,fvn}=restFill(entries,m.pickup);
+        const allVns=[...vns,...fvn];
+        const allE=[...entries,...fe];
+
+        if(allVns.length>0){
+          try{
+            const[nb,bv]=S.timeSig.split('/').map(Number);
+            const voice=new Voice({num_beats:nb,beat_value:bv});
+            voice.setMode(Vex.Flow.Voice.Mode.SOFT);
+            voice.addTickables(allVns);
+            new Formatter().joinVoices([voice]).format([voice],sw-(isF?FE+4:10));
+            voice.draw(ctx,stave);
+            makeBeams(vns,entries).forEach(b=>{try{b.setContext(ctx).draw();}catch(_){}});
+            makeTies(vns,entries,isPerc).forEach(t=>{try{t.setContext(ctx).draw();}catch(_){}});
+
+            // Per-note chord symbols (from named chord insertion)
+            vns.forEach((vn,i)=>{
+              const e=entries[i];
+              if(e.chordSym){
+                try{
+                  const bb=vn.getBoundingBox();
+                  ctx.save();
+                  ctx.fillStyle='#185FA5';
+                  ctx.font='italic 10px serif';
+                  ctx.fillText(e.chordSym,bb.x,sc.y-22);
+                  ctx.restore();
+                }catch(_){}
+              }
+            });
+
+            // Selection highlight — single note
+            if(S.sel&&S.sel.mi===mi&&S.sel.staff===sc.type&&vns[S.sel.ni]){
+              try{
+                const bb=vns[S.sel.ni].getBoundingBox();
+                ctx.save();
+                ctx.fillStyle='rgba(196,74,26,.12)';ctx.strokeStyle='#c44a1a';ctx.lineWidth=1.5;
+                ctx.fillRect(bb.x-4,bb.y-4,bb.w+8,bb.h+8);
+                ctx.strokeRect(bb.x-4,bb.y-4,bb.w+8,bb.h+8);
+                ctx.restore();
+              }catch(_){}
+            }
+
+            // Range selection highlight
+            if(S.range&&S.range.staff===sc.type){
+              const r=S.range;
+              vns.forEach((vn,i)=>{
+                const ni=i;
+                const inRange=(mi>r.mi1||(mi===r.mi1&&ni>=r.ni1))&&(mi<r.mi2||(mi===r.mi2&&ni<=r.ni2));
+                if(inRange){
+                  try{
+                    const bb=vn.getBoundingBox();
+                    ctx.save();
+                    ctx.fillStyle='rgba(30,79,168,.2)';ctx.strokeStyle='rgba(85,153,255,.7)';ctx.lineWidth=1;
+                    ctx.fillRect(bb.x-3,bb.y-3,bb.w+6,bb.h+6);
+                    ctx.strokeRect(bb.x-3,bb.y-3,bb.w+6,bb.h+6);
+                    ctx.restore();
+                  }catch(_){}
+                }
+              });
+            }
+          }catch(err){console.warn('Voice:',err.message);}
+        }
+        x+=sw;
+      }
+    }
+
+    // Piano brace
+    if((S.view==='both'||S.view==='piano')&&scs.length>=2){
+      const t=scs[0],b=scs[1];
+      ctx.save();ctx.strokeStyle='#2c1f0e';ctx.lineWidth=2.5;
+      ctx.beginPath();ctx.moveTo(1,t.y+2);ctx.lineTo(1,b.y+b.h-2);ctx.stroke();
+      const by1=t.y,by2=b.y+b.h,mid=(by1+by2)/2;
+      ctx.lineWidth=2;ctx.beginPath();
+      ctx.moveTo(1,by1);ctx.bezierCurveTo(-10,by1+14,-10,mid-10,1,mid);
+      ctx.bezierCurveTo(-10,mid+10,-10,by2-14,1,by2);ctx.stroke();ctx.restore();
+    }
+
+    // Click handler
+    const svg=rowDiv.querySelector('svg');
+    if(!svg) continue;
+    svg.style.cursor='pointer';
+    svg.addEventListener('click',ev=>{
+      const rect=svg.getBoundingClientRect();
+      const scaleX=PW/rect.width,scaleY=TH/rect.height;
+      const cx=(ev.clientX-rect.left)*scaleX;
+      const cy=(ev.clientY-rect.top)*scaleY;
+
+      let mLocal=cx<FE?0:Math.floor((cx-FE)/SW);
+      mLocal=clamp(mLocal,0,mInRow-1);
+      const mGlobal=s0+mLocal;
+
+      // Click on measure number area → select measure for properties
+      const m=S.measures[mGlobal];
+      const topY=scs.length>0?scs[0].y:0;
+      if(cy<topY&&cx>=(mGlobal===s0?FE:FE+(mGlobal-s0)*SW)){
+        selectMeasure(mGlobal);render();return;
+      }
+
+      let staffType=scs.length>0?scs[0].type:'treble';
+      for(const sc of scs){if(cy>=sc.y&&cy<=sc.y+sc.h){staffType=sc.type==='perc'?'perc':sc.type;break;}}
+
+      const rawE=staffType==='treble'?m.treble:staffType==='bass'?m.bass:m.perc;
+
+      // Note click detection
+      if(rawE.length>0){
+        const staveLeft=mGlobal===s0?0:FE+(mGlobal-s0)*SW;
+        const staveRight=staveLeft+(mGlobal===s0?SW+FE:SW);
+        const noteZoneL=staveLeft+(mGlobal===s0?FE:8);
+        const noteZoneW=staveRight-noteZoneL-8;
+        const step=noteZoneW/(rawE.length+1);
+        for(let ni=0;ni<rawE.length;ni++){
+          const noteX=noteZoneL+(ni+1)*step;
+          if(Math.abs(cx-noteX)<step*0.6){
+            if(ev.shiftKey){
+              // Range extend
+              if(S.sel){startRange(S.sel.mi,S.sel.staff,S.sel.ni);extendRange(mGlobal,staffType,ni);}
+              else if(S.range){extendRange(mGlobal,staffType,ni);}
+              else{startRange(mGlobal,staffType,ni);}
+            } else {
+              clearRange();setSel(mGlobal,staffType,ni);
+            }
+            render();return;
+          }
+        }
+      }
+
+      if(!ev.shiftKey){clearSel();clearRange();}
+      addNoteAt(mGlobal,staffType);
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// STATUS
+// ═══════════════════════════════════════════════════════════
+function updateStatus(){
+  gid('st-mode').textContent={both:'Piano+Perc',piano:'Piano Only',percussion:'Perc Only'}[S.view];
+  gid('st-time').textContent=S.timeSig;
+  gid('st-key').textContent=S.keySig;
+  gid('st-bars').textContent=S.measures.length+(S.measures.length===1?' bar':' bars');
+  const b=gid('st-badge');
+  if(S.insertMode){b.className='badge ins';b.textContent='Insert';}
+  else if(S.chordMode){b.className='badge chord';b.textContent='Chord';}
+  else if(S.tieMode){b.className='badge tie';b.textContent='Tie';}
+  else{b.className='badge norm';b.textContent='Normal';}
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════════════════════
+function showTitleModal(){openModal('title-modal');}
+function openModal(id){gid(id).classList.add('open');}
+function closeModal(id){gid(id).classList.remove('open');}
+function applyTitle(){
+  S.title=gid('inp-title').value||'Untitled Score';
+  S.composer=gid('inp-comp').value||'Composer';
+  S.tempo=parseInt(gid('inp-tempo').value)||120;
+  gid('disp-title').textContent=S.title;
+  gid('disp-composer').textContent=`♩= ${S.tempo}  ·  ${S.composer}`;
+  closeModal('title-modal');autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// PDF EXPORT
+// ═══════════════════════════════════════════════════════════
+async function exportPDF(){
+  const b=gid('pdf-btn');const orig=b.textContent;b.textContent='⏳…';b.disabled=true;
+  try{
+    const page=gid('score-page');
+    const canvas=await html2canvas(page,{scale:2,backgroundColor:'#faf6ee',useCORS:true,logging:false});
+    const{jsPDF}=window.jspdf;
+    const W=canvas.width/2,H=canvas.height/2;
+    const pdf=new jsPDF({orientation:W>H?'landscape':'portrait',unit:'px',format:[W,H]});
+    pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,W,H);
+    pdf.save(S.title.replace(/\s+/g,'_')+'.pdf');
+  }catch(e){alert('PDF error: '+e.message);}
+  finally{b.textContent=orig;b.disabled=false;}
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTOSAVE DEBOUNCE (saves 2s after last change)
+// ═══════════════════════════════════════════════════════════
+let _autosaveTimer=null;
+function autoSaveDebounced(){
+  setDirty(true);
+  clearTimeout(_autosaveTimer);
+  _autosaveTimer=setTimeout(autosave,2000);
+}
+
+// ═══════════════════════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('keydown',ev=>{
+  if(ev.target.tagName==='INPUT'||ev.target.tagName==='SELECT') return;
+  const k=ev.key;
+  const durMap={'1':'w','2':'h','3':'q','4':'8','5':'16','6':'32','7':'r'};
+  if(durMap[k]){const el=document.querySelector(`[data-dur="${durMap[k]}"]`);if(el)el.click();return;}
+  if('abcdefg'.includes(k.toLowerCase())){const el=document.querySelector(`.wk[data-p="${k.toLowerCase()}"]`);if(el)el.click();return;}
+  if(k==='ArrowUp'){ev.preventDefault();chgOct(1);}
+  if(k==='ArrowDown'){ev.preventDefault();chgOct(-1);}
+  if(k==='.') togDot();
+  if(k.toLowerCase()==='c'&&!ev.ctrlKey&&!ev.metaKey) toggleChordMode();
+  if(k.toLowerCase()==='t'&&!ev.ctrlKey) toggleTie();
+  if(k.toLowerCase()==='i'&&!ev.ctrlKey) toggleInsert();
+  if(k==='Enter'){ev.preventDefault();addNoteAction();}
+  if(k==='Delete'||k==='Backspace'){ev.preventDefault();doDelete();}
+  if(k==='Escape'){clearSel();clearRange();gid('selbox').classList.remove('open');gid('no-sel-txt').style.display='';render();}
+  if((ev.ctrlKey||ev.metaKey)&&k.toLowerCase()==='z'){ev.preventDefault();doUndo();}
+  if((ev.ctrlKey||ev.metaKey)&&(k.toLowerCase()==='y'||(k.toLowerCase()==='z'&&ev.shiftKey))){ev.preventDefault();doRedo();}
+  if((ev.ctrlKey||ev.metaKey)&&k.toLowerCase()==='c'){ev.preventDefault();doCopy();}
+  if((ev.ctrlKey||ev.metaKey)&&k.toLowerCase()==='v'){ev.preventDefault();doPaste();}
+  if((ev.ctrlKey||ev.metaKey)&&k.toLowerCase()==='s'){ev.preventDefault();saveJSON();}
+});
+
+// ═══════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════
+function gid(id){return document.getElementById(id);}
+function qsa(sel){return Array.from(document.querySelectorAll(sel));}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+function ce(tag,cls){const el=document.createElement(tag);if(cls)el.className=cls;return el;}
+
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 3A: TUPLETS
+// A tuplet on an entry stores: { num, den }
+// e.g. triplet = { num:3, den:2 } meaning 3 in the time of 2
+// We render a bracket + number above/below the affected notes.
+// ═══════════════════════════════════════════════════════════
+function applyTuplet(num, den) {
+  if (!S.sel) { alert('Select a note first.'); return; }
+  pushHist();
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  e.tuplet = { num, den };
+  render(); refreshSelPanel(); autoSaveDebounced();
+}
+function clearTuplet() {
+  if (!S.sel) return;
+  pushHist();
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  delete e.tuplet;
+  render(); refreshSelPanel(); autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 3B: GRACE NOTES
+// Entry gets grace:true, graceSlash:bool
+// Rendered as a small notehead before the main note.
+// ═══════════════════════════════════════════════════════════
+S.graceMode = false;
+S.graceSlash = false;
+
+function toggleGrace() {
+  S.graceMode = !S.graceMode;
+  gid('grace-btn').classList.toggle('on', S.graceMode);
+  updateStatus();
+}
+function toggleGraceSlash() {
+  S.graceSlash = !S.graceSlash;
+  gid('grace-slash').classList.toggle('on', S.graceSlash);
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 3C: TREMOLO
+// entry.tremolo = 0..3 (number of slash beams on stem)
+// ═══════════════════════════════════════════════════════════
+function applyTremolo(n) {
+  if (!S.sel) { alert('Select a note first.'); return; }
+  pushHist();
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  if (n === 0) delete e.tremolo; else e.tremolo = n;
+  render(); refreshSelPanel(); autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 3D: TRANSPOSE SELECTED NOTE(S)
+// Moves pitch by semitones, handles accidentals and octave wrapping.
+// ═══════════════════════════════════════════════════════════
+const CHROMATIC = ['c','c#','d','d#','e','f','f#','g','g#','a','a#','b'];
+const PITCH_TO_SEMI = {c:0,'c#':1,db:1,d:2,'d#':3,eb:3,e:4,f:5,'f#':6,gb:6,g:7,'g#':8,ab:8,a:9,'a#':10,bb:10,b:11};
+
+function pitchKeyToSemi(pitchKey, acc) {
+  // pitchKey = 'c', acc = 'n'|'#'|'b'|'##'|'bb'
+  const base = PITCH_TO_SEMI[pitchKey] || 0;
+  const mod = acc === '#' ? 1 : acc === 'b' ? -1 : acc === '##' ? 2 : acc === 'bb' ? -2 : 0;
+  return base + mod;
+}
+
+function semiToPitchAcc(semi) {
+  const norm = ((semi % 12) + 12) % 12;
+  const names = ['c','c','d','d','e','f','f','g','g','a','a','b'];
+  const sharps = [false,true,false,true,false,false,true,false,true,false,true,false];
+  return { pitch: names[norm], acc: sharps[norm] ? '#' : 'n' };
+}
+
+function transposeKey(key, accs, idx, semis) {
+  const [p, oStr] = key.split('/');
+  let oct = parseInt(oStr);
+  const acc = (accs && accs[idx]) ? accs[idx] : 'n';
+  const baseSemi = pitchKeyToSemi(p, acc);
+  const newTotalSemi = baseSemi + semis;
+  const octShift = Math.floor(newTotalSemi / 12) - Math.floor(baseSemi / 12);
+  const newSemi = ((newTotalSemi % 12) + 12) % 12;
+  const { pitch, acc: newAcc } = semiToPitchAcc(newSemi);
+  oct = clamp(oct + octShift, 2, 7);
+  return { key: pitch + '/' + oct, acc: newAcc };
+}
+
+function transposeSelected(semis) {
+  if (S.range) {
+    // Transpose entire range
+    pushHist();
+    const entries = getRangeEntries();
+    entries.forEach(({ mi, ni }) => {
+      const arr = getArr(mi, S.range.staff);
+      transposeEntry(arr[ni], semis);
+    });
+    render(); autoSaveDebounced();
+    return;
+  }
+  if (!S.sel) { alert('Select a note or range first.'); return; }
+  pushHist();
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  transposeEntry(e, semis);
+  render(); refreshSelPanel(); autoSaveDebounced();
+}
+
+function transposeEntry(e, semis) {
+  if (e.type === 'rest' || e.type === 'perc') return;
+  const newKeys = [], newAccs = {};
+  e.keys.forEach((k, i) => {
+    const { key, acc } = transposeKey(k, e.accs, i, semis);
+    newKeys.push(key);
+    if (acc !== 'n') newAccs[i] = acc;
+  });
+  e.keys = newKeys;
+  e.accs = newAccs;
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 4A: ARTICULATIONS
+// Each entry can have e.articulations = Set of strings.
+// Rendered as SVG symbols above/below the notehead.
+// ═══════════════════════════════════════════════════════════
+const ART_IDS = ['staccato','staccatissimo','accent','marcato','tenuto','fermata','arpeggio','breath'];
+const ART_BTN_IDS = {
+  staccato:'art-stac', staccatissimo:'art-stacs', accent:'art-acc',
+  marcato:'art-marc', tenuto:'art-ten', fermata:'art-ferm',
+  arpeggio:'art-arp', breath:'art-brth'
+};
+
+function toggleArt(artName) {
+  if (!S.sel) { alert('Select a note first.'); return; }
+  pushHist();
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  if (!e.arts) e.arts = [];
+  const idx = e.arts.indexOf(artName);
+  if (idx >= 0) e.arts.splice(idx, 1); else e.arts.push(artName);
+  render(); refreshSelPanel(); refreshArtButtons(e); autoSaveDebounced();
+}
+
+function refreshArtButtons(e) {
+  ART_IDS.forEach(a => {
+    const btn = gid(ART_BTN_IDS[a]);
+    if (btn) btn.classList.toggle('active', !!(e && e.arts && e.arts.includes(a)));
+  });
+}
+
+// Draw articulation symbols on the canvas after a note is positioned
+function drawArticulations(ctx, vn, e, staveY, staveH) {
+  if (!e.arts || e.arts.length === 0) return;
+  let bb;
+  try { bb = vn.getBoundingBox(); } catch(_) { return; }
+
+  const cx = bb.x + bb.w / 2;
+  // Decide above or below based on stem direction (positive stem = below staff, mark above)
+  const aboveY = staveY - 10;
+  const belowY = staveY + staveH + 6;
+
+  ctx.save();
+  ctx.fillStyle = '#1a1208';
+  ctx.strokeStyle = '#1a1208';
+  ctx.lineWidth = 1.2;
+
+  let aboveOffset = 0, belowOffset = 0;
+
+  e.arts.forEach(art => {
+    const ay = bb.y - 8 - aboveOffset;   // above notehead
+    const by = bb.y + bb.h + 6 + belowOffset; // below notehead
+
+    if (art === 'staccato') {
+      ctx.beginPath();
+      ctx.arc(cx, ay, 2, 0, Math.PI * 2);
+      ctx.fill();
+      aboveOffset += 8;
+    } else if (art === 'staccatissimo') {
+      ctx.fillRect(cx - 1.5, ay - 4, 3, 8);
+      aboveOffset += 10;
+    } else if (art === 'accent') {
+      ctx.beginPath();
+      ctx.moveTo(cx - 8, ay - 3);
+      ctx.lineTo(cx + 2, ay);
+      ctx.lineTo(cx - 8, ay + 3);
+      ctx.stroke();
+      aboveOffset += 10;
+    } else if (art === 'marcato') {
+      ctx.beginPath();
+      ctx.moveTo(cx - 6, ay + 2);
+      ctx.lineTo(cx, ay - 6);
+      ctx.lineTo(cx + 6, ay + 2);
+      ctx.stroke();
+      aboveOffset += 12;
+    } else if (art === 'tenuto') {
+      ctx.fillRect(cx - 7, ay, 14, 2);
+      aboveOffset += 8;
+    } else if (art === 'fermata') {
+      // Dot + arc above note
+      ctx.beginPath();
+      ctx.arc(cx, ay - 8, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx, ay - 8, 8, Math.PI, 0);
+      ctx.stroke();
+      aboveOffset += 20;
+    } else if (art === 'arpeggio') {
+      // Wavy vertical line on left side of chord
+      const x0 = bb.x - 6;
+      const y0 = bb.y + bb.h;
+      const y1 = bb.y;
+      ctx.beginPath();
+      let y = y0;
+      let dir = 1;
+      ctx.moveTo(x0, y);
+      while (y > y1) {
+        y -= 4;
+        ctx.quadraticCurveTo(x0 + dir * 4, y + 2, x0, y);
+        dir = -dir;
+      }
+      ctx.stroke();
+    } else if (art === 'breath') {
+      // Comma to the right of the note
+      ctx.font = 'bold 14px serif';
+      ctx.fillText("'", bb.x + bb.w + 2, bb.y + 4);
+    }
+  });
+
+  ctx.restore();
+}
+
+// Draw tremolo slashes on stem
+function drawTremolo(ctx, vn, e) {
+  if (!e.tremolo || e.tremolo === 0) return;
+  let bb;
+  try { bb = vn.getBoundingBox(); } catch(_) { return; }
+  ctx.save();
+  ctx.strokeStyle = '#1a1208';
+  ctx.lineWidth = 1.5;
+  const cx = bb.x + bb.w / 2;
+  // Slashes on stem area (above or below notehead)
+  const startY = bb.y + bb.h + 4;
+  for (let i = 0; i < e.tremolo; i++) {
+    const y = startY + i * 5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, y);
+    ctx.lineTo(cx + 6, y + 4);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Draw tuplet bracket + number
+function drawTuplet(ctx, vn, e) {
+  if (!e.tuplet) return;
+  let bb;
+  try { bb = vn.getBoundingBox(); } catch(_) { return; }
+  ctx.save();
+  ctx.fillStyle = '#1a1208';
+  ctx.strokeStyle = '#1a1208';
+  ctx.lineWidth = 1;
+  ctx.font = 'italic 9px serif';
+  const lbl = String(e.tuplet.num);
+  const tw = ctx.measureText(lbl).width;
+  const cx = bb.x + bb.w / 2;
+  const ty = bb.y - 14;
+  // Number centered above note
+  ctx.fillText(lbl, cx - tw/2, ty);
+  // Small bracket lines
+  ctx.beginPath();
+  ctx.moveTo(cx - tw/2 - 8, ty - 2);
+  ctx.lineTo(cx - tw/2 - 8, ty - 6);
+  ctx.lineTo(cx - tw/2 - 2, ty - 6);
+  ctx.moveTo(cx + tw/2 + 2, ty - 6);
+  ctx.lineTo(cx + tw/2 + 8, ty - 6);
+  ctx.lineTo(cx + tw/2 + 8, ty - 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Draw grace note (small notehead before the main note)
+function drawGraceNote(ctx, e, staveY, x) {
+  if (!e.grace) return;
+  ctx.save();
+  ctx.fillStyle = '#1a1208';
+  ctx.strokeStyle = '#1a1208';
+  ctx.lineWidth = 0.8;
+  // Small oval notehead
+  ctx.beginPath();
+  ctx.ellipse(x - 14, staveY + 40, 5, 3.5, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  // Stem up
+  ctx.beginPath();
+  ctx.moveTo(x - 9, staveY + 40);
+  ctx.lineTo(x - 9, staveY + 25);
+  ctx.stroke();
+  // Slash if acciaccatura
+  if (e.graceSlash) {
+    ctx.beginPath();
+    ctx.moveTo(x - 17, staveY + 35);
+    ctx.lineTo(x - 5, staveY + 28);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 4B: SLURS
+// A slur is stored on the measure: m.slurs = [{staff, ni1, ni2}]
+// Rendered as a bezier curve between two note positions.
+// ═══════════════════════════════════════════════════════════
+S.slurMode = false;
+S.slurStart = null; // {mi, staff, ni}
+
+function toggleSlurMode() {
+  S.slurMode = !S.slurMode;
+  S.slurStart = null;
+  gid('slur-btn').className = 'btn' + (S.slurMode ? ' slur-on' : '');
+  updateStatus();
+}
+
+function tryAddSlur(mi, staff, ni) {
+  if (!S.slurMode) return false;
+  if (!S.slurStart) {
+    // First click: mark start
+    S.slurStart = { mi, staff, ni };
+    gid('st-sel').textContent = 'Slur start set — click end note';
+    return true;
+  }
+  // Second click: create slur
+  const start = S.slurStart;
+  S.slurStart = null;
+  if (start.mi === mi && start.staff === staff && start.ni === ni) return true; // same note
+  if (start.staff !== staff) { alert('Slur must be on the same staff.'); return true; }
+  pushHist();
+  // Add slur to the start measure (simplification: within-measure slur stored on m)
+  const m = S.measures[start.mi];
+  if (!m.slurs) m.slurs = [];
+  m.slurs.push({ staff, ni1: start.ni, ni2: ni, mi2: mi });
+  render(); autoSaveDebounced();
+  return true;
+}
+
+// Draw slurs: called after voices are drawn in a measure
+function drawSlurs(ctx, m, vns, entries, mi) {
+  if (!m.slurs || m.slurs.length === 0) return;
+  m.slurs.forEach(slur => {
+    if (slur.mi2 !== mi) return; // only draw when we have both endpoints in same row (simplification)
+    const vn1 = vns[slur.ni1], vn2 = vns[slur.ni2];
+    if (!vn1 || !vn2) return;
+    try {
+      const b1 = vn1.getBoundingBox(), b2 = vn2.getBoundingBox();
+      const x1 = b1.x + b1.w / 2;
+      const x2 = b2.x + b2.w / 2;
+      const y  = Math.min(b1.y, b2.y) - 6;
+      const cp1x = x1 + (x2 - x1) * 0.25;
+      const cp2x = x1 + (x2 - x1) * 0.75;
+      const cpy  = y - 14;
+
+      ctx.save();
+      ctx.strokeStyle = '#1a1208';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x1, y);
+      ctx.bezierCurveTo(cp1x, cpy, cp2x, cpy, x2, y);
+      ctx.stroke();
+      ctx.restore();
+    } catch(_) {}
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 3D: DRAG-TO-REPITCH
+// When a note is selected, dragging vertically on the SVG
+// transposes it by semitones based on pixel distance.
+// ═══════════════════════════════════════════════════════════
+let _dragState = null;
+
+function initDragRepitch(svg, PW, TH, scs, s0, SW, FE) {
+  svg.addEventListener('mousedown', ev => {
+    if (!S.sel) return;
+    const rect = svg.getBoundingClientRect();
+    const scaleY = TH / rect.height;
+    const scaleX = PW / rect.width;
+    const cx = (ev.clientX - rect.left) * scaleX;
+    const cy = (ev.clientY - rect.top)  * scaleY;
+
+    // Only start drag if we clicked near the selected note
+    const staff = S.sel.staff;
+    const scConfig = scs.find(s => s.type === staff || (staff === 'perc' && s.type === 'perc'));
+    if (!scConfig) return;
+    if (cy < scConfig.y || cy > scConfig.y + scConfig.h) return;
+
+    // Calculate approximate X of selected note
+    const mGlobal = S.sel.mi;
+    const rawE = getArr(mGlobal, staff);
+    if (rawE.length === 0) return;
+    const staveLeft = mGlobal === s0 ? 0 : FE + (mGlobal - s0) * SW;
+    const noteZoneL = staveLeft + (mGlobal === s0 ? FE : 8);
+    const sw2 = mGlobal === s0 ? SW + FE : SW;
+    const noteZoneW = sw2 - (mGlobal === s0 ? FE : 8) - 8;
+    const step = noteZoneW / (rawE.length + 1);
+    const noteX = noteZoneL + (S.sel.ni + 1) * step;
+
+    if (Math.abs(cx - noteX) > step * 0.8) return;
+
+    _dragState = { startY: ev.clientY, lastSemis: 0, scaleY };
+    ev.preventDefault();
+  });
+
+  window.addEventListener('mousemove', ev => {
+    if (!_dragState || !S.sel) return;
+    const dy = _dragState.startY - ev.clientY; // up = positive
+    const semis = Math.round(dy / 8); // ~8px per semitone
+    if (semis !== _dragState.lastSemis) {
+      const diff = semis - _dragState.lastSemis;
+      _dragState.lastSemis = semis;
+      const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+      if (e && e.type !== 'rest' && e.type !== 'perc') {
+        transposeEntry(e, diff);
+        render();
+      }
+    }
+  });
+
+  window.addEventListener('mouseup', ev => {
+    if (_dragState) {
+      if (_dragState.lastSemis !== 0) pushHist();
+      _dragState = null;
+      autoSaveDebounced();
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// PATCH updateStatus to include slur and grace modes
+// ═══════════════════════════════════════════════════════════
+const _origUpdateStatus = updateStatus;
+updateStatus = function() {
+  _origUpdateStatus();
+  const b = gid('st-badge');
+  if (S.slurMode) { b.className = 'badge slur'; b.textContent = 'Slur'; }
+  else if (S.graceMode) { b.className = 'badge grace'; b.textContent = 'Grace'; }
+};
+
+// ═══════════════════════════════════════════════════════════
+// PATCH the keyboard handler to add S=slur shortcut
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT') return;
+  const k = ev.key;
+  // Transpose shortcuts
+  if (k === 'ArrowUp'   && ev.shiftKey) { ev.preventDefault(); transposeSelected(1); }
+  if (k === 'ArrowDown' && ev.shiftKey) { ev.preventDefault(); transposeSelected(-1); }
+  if (k.toLowerCase() === 's' && !ev.ctrlKey) toggleSlurMode();
+  if (k.toLowerCase() === 'g' && !ev.ctrlKey) toggleGrace();
+});
+
+// ═══════════════════════════════════════════════════════════
+// PATCH render() to draw articulations, slurs, tuplets,
+// tremolo, grace notes, and wire up drag + slur click
+// ═══════════════════════════════════════════════════════════
+const _origRender = render;
+render = function() {
+  _origRender();
+  // After render, find all SVGs and apply post-draw overlays
+  const area = gid('notation-area');
+  const MPR = 4, FE = 68, PW = 788;
+  const SW = Math.floor((PW - FE) / MPR);
+  const rows = Math.ceil(S.measures.length / MPR);
+
+  const rowDivs = area.querySelectorAll('div[style]');
+
+  rowDivs.forEach((rowDiv, rowIdx) => {
+    const svg = rowDiv.querySelector('svg');
+    if (!svg) return;
+    const s0 = rowIdx * MPR;
+    const s1 = Math.min(s0 + MPR, S.measures.length);
+
+    // Recompute staff layout for this row
+    const scs2 = [];
+    let yy = 24;
+    const GH = 88, GAP = 16, PGAP = 4;
+    if (S.view === 'both' || S.view === 'piano') {
+      scs2.push({ type:'treble', y:yy, h:GH }); yy += GH + PGAP;
+      scs2.push({ type:'bass',   y:yy, h:GH }); yy += GH + GAP;
+    }
+    if (S.view === 'both' || S.view === 'percussion') {
+      scs2.push({ type:'perc',   y:yy, h:GH }); yy += GH + GAP;
+    }
+    const TH = yy + 20;
+
+    // Get canvas context from VexFlow SVG — use a hidden overlay canvas
+    // Since we use SVG renderer, we draw overlay symbols via SVG elements
+    const ns = 'http://www.w3.org/2000/svg';
+    let overlay = rowDiv.querySelector('.maestro-overlay');
+    if (!overlay) {
+      overlay = document.createElementNS(ns, 'g');
+      overlay.classList.add('maestro-overlay');
+      svg.querySelector('svg, g') && svg.appendChild(overlay);
+    }
+    overlay.innerHTML = '';
+
+    // For each measure and staff, re-collect note bounding boxes
+    for (const sc of scs2) {
+      let x = 0;
+      for (let mi = s0; mi < s1; mi++) {
+        const isF = (mi === s0);
+        const sw = isF ? SW + FE : SW;
+        const m = S.measures[mi];
+        const rawE = sc.type === 'treble' ? m.treble : sc.type === 'bass' ? m.bass : m.perc;
+        const clef = sc.type === 'bass' ? 'bass' : 'treble';
+
+        rawE.forEach((e, ni) => {
+          // Draw grace note preview before the main note
+          if (e.grace) {
+            const staveLeft = x + (isF ? FE : 0);
+            const noteZoneL = staveLeft + (isF ? 0 : 8);
+            const noteZoneW = sw - (isF ? FE : 16);
+            const step = noteZoneW / (rawE.length + 1);
+            const noteX = staveLeft + (isF ? FE : 8) + (ni + 1) * step;
+            // Draw small grace note SVG elements
+            const grp = document.createElementNS(ns, 'g');
+            const el1 = document.createElementNS(ns, 'ellipse');
+            el1.setAttribute('cx', noteX - 14); el1.setAttribute('cy', sc.y + 40);
+            el1.setAttribute('rx', 5); el1.setAttribute('ry', 3.5);
+            el1.setAttribute('transform', `rotate(-15, ${noteX-14}, ${sc.y+40})`);
+            el1.setAttribute('fill', '#1a1208');
+            const line1 = document.createElementNS(ns, 'line');
+            line1.setAttribute('x1', noteX - 9); line1.setAttribute('y1', sc.y + 40);
+            line1.setAttribute('x2', noteX - 9); line1.setAttribute('y2', sc.y + 26);
+            line1.setAttribute('stroke', '#1a1208'); line1.setAttribute('stroke-width', '1');
+            grp.appendChild(el1); grp.appendChild(line1);
+            if (e.graceSlash) {
+              const slash = document.createElementNS(ns, 'line');
+              slash.setAttribute('x1', noteX - 17); slash.setAttribute('y1', sc.y + 35);
+              slash.setAttribute('x2', noteX - 5);  slash.setAttribute('y2', sc.y + 28);
+              slash.setAttribute('stroke', '#1a1208'); slash.setAttribute('stroke-width', '1');
+              grp.appendChild(slash);
+            }
+            overlay.appendChild(grp);
+          }
+
+          // Articulation symbols, tuplets, tremolo
+          // We approximate the note bounding box from its position
+          const staveLeft2 = x + (isF ? FE : 0);
+          const noteZoneL2 = staveLeft2 + (isF ? FE : 8) - (isF ? 0 : 0);
+          // Use absolute x for the note
+          const absNoteZoneL = x + (isF ? FE : 8);
+          const noteZoneW2 = sw - (isF ? FE : 16);
+          const step2 = noteZoneW2 / (rawE.length + 1);
+          const noteX2 = x + (isF ? FE : 0) + (isF ? FE : 8) - (isF ? FE : 0) + (ni + 1) * step2;
+          // Simpler: just calculate from x offset
+          const nx = x + (isF ? FE : 8) + (ni + 0.5) * (sw - (isF ? FE : 8)) / rawE.length;
+
+          const approxBBX = x + (isF ? FE : 6) + (ni + 1) * ((sw - (isF ? FE : 12)) / (rawE.length + 1));
+          const approxBBY = sc.y + 20;
+          const approxBBH = 44;
+          const cx2 = approxBBX;
+
+          // Articulations as SVG
+          if (e.arts && e.arts.length > 0) {
+            let aboveOff = 0;
+            e.arts.forEach(art => {
+              const ay = approxBBY - 10 - aboveOff;
+              const grp = document.createElementNS(ns, 'g');
+
+              if (art === 'staccato') {
+                const dot = document.createElementNS(ns, 'circle');
+                dot.setAttribute('cx', cx2); dot.setAttribute('cy', ay);
+                dot.setAttribute('r', 2.5); dot.setAttribute('fill', '#1a1208');
+                grp.appendChild(dot); aboveOff += 9;
+              } else if (art === 'staccatissimo') {
+                const r = document.createElementNS(ns, 'rect');
+                r.setAttribute('x', cx2 - 1.5); r.setAttribute('y', ay - 6);
+                r.setAttribute('width', 3); r.setAttribute('height', 9);
+                r.setAttribute('fill', '#1a1208');
+                grp.appendChild(r); aboveOff += 12;
+              } else if (art === 'accent') {
+                const p = document.createElementNS(ns, 'path');
+                p.setAttribute('d', `M${cx2-8} ${ay-3} L${cx2+3} ${ay} L${cx2-8} ${ay+3}`);
+                p.setAttribute('fill', 'none'); p.setAttribute('stroke', '#1a1208'); p.setAttribute('stroke-width', '1.5');
+                grp.appendChild(p); aboveOff += 10;
+              } else if (art === 'marcato') {
+                const p = document.createElementNS(ns, 'path');
+                p.setAttribute('d', `M${cx2-6} ${ay+2} L${cx2} ${ay-7} L${cx2+6} ${ay+2}`);
+                p.setAttribute('fill', 'none'); p.setAttribute('stroke', '#1a1208'); p.setAttribute('stroke-width', '1.5');
+                grp.appendChild(p); aboveOff += 13;
+              } else if (art === 'tenuto') {
+                const r = document.createElementNS(ns, 'rect');
+                r.setAttribute('x', cx2 - 7); r.setAttribute('y', ay);
+                r.setAttribute('width', 14); r.setAttribute('height', 2);
+                r.setAttribute('fill', '#1a1208');
+                grp.appendChild(r); aboveOff += 8;
+              } else if (art === 'fermata') {
+                const dot = document.createElementNS(ns, 'circle');
+                dot.setAttribute('cx', cx2); dot.setAttribute('cy', ay - 14);
+                dot.setAttribute('r', 2.5); dot.setAttribute('fill', '#1a1208');
+                const arc = document.createElementNS(ns, 'path');
+                arc.setAttribute('d', `M${cx2-10} ${ay-12} Q${cx2} ${ay-24} ${cx2+10} ${ay-12}`);
+                arc.setAttribute('fill', 'none'); arc.setAttribute('stroke', '#1a1208'); arc.setAttribute('stroke-width', '1.5');
+                grp.appendChild(dot); grp.appendChild(arc); aboveOff += 22;
+              } else if (art === 'arpeggio') {
+                // Wavy line to left of chord
+                const lx = approxBBX - 10;
+                const p = document.createElementNS(ns, 'path');
+                const waves = [];
+                for (let i = 0; i < 5; i++) {
+                  const wy = approxBBY + approxBBH - i * 7;
+                  const dir = i % 2 === 0 ? 1 : -1;
+                  waves.push(i === 0 ? `M${lx} ${wy}` : `Q${lx + dir*4} ${wy+3} ${lx} ${wy}`);
+                }
+                p.setAttribute('d', waves.join(' '));
+                p.setAttribute('fill', 'none'); p.setAttribute('stroke', '#1a1208'); p.setAttribute('stroke-width', '1.2');
+                grp.appendChild(p);
+              } else if (art === 'breath') {
+                const t = document.createElementNS(ns, 'text');
+                t.setAttribute('x', approxBBX + 10); t.setAttribute('y', approxBBY + 4);
+                t.setAttribute('font-size', '14'); t.setAttribute('font-weight', 'bold');
+                t.setAttribute('fill', '#1a1208'); t.setAttribute('font-family', 'serif');
+                t.textContent = "'";
+                grp.appendChild(t);
+              }
+              overlay.appendChild(grp);
+            });
+          }
+
+          // Tremolo slashes
+          if (e.tremolo && e.tremolo > 0) {
+            const grp = document.createElementNS(ns, 'g');
+            for (let i = 0; i < e.tremolo; i++) {
+              const sl = document.createElementNS(ns, 'line');
+              const ty = approxBBY + approxBBH + 4 + i * 5;
+              sl.setAttribute('x1', cx2 - 6); sl.setAttribute('y1', ty);
+              sl.setAttribute('x2', cx2 + 6); sl.setAttribute('y2', ty + 4);
+              sl.setAttribute('stroke', '#1a1208'); sl.setAttribute('stroke-width', '1.5');
+              grp.appendChild(sl);
+            }
+            overlay.appendChild(grp);
+          }
+
+          // Tuplet
+          if (e.tuplet) {
+            const grp = document.createElementNS(ns, 'g');
+            const ty2 = approxBBY - 18;
+            const txt = document.createElementNS(ns, 'text');
+            txt.setAttribute('x', cx2); txt.setAttribute('y', ty2);
+            txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('font-size', '9');
+            txt.setAttribute('font-style', 'italic'); txt.setAttribute('fill', '#1a1208');
+            txt.textContent = e.tuplet.num;
+            const bracket = document.createElementNS(ns, 'path');
+            bracket.setAttribute('d', `M${cx2-14} ${ty2-4} L${cx2-14} ${ty2-9} L${cx2-6} ${ty2-9} M${cx2+6} ${ty2-9} L${cx2+14} ${ty2-9} L${cx2+14} ${ty2-4}`);
+            bracket.setAttribute('fill', 'none'); bracket.setAttribute('stroke', '#1a1208'); bracket.setAttribute('stroke-width', '1');
+            grp.appendChild(txt); grp.appendChild(bracket);
+            overlay.appendChild(grp);
+          }
+        });
+
+        // Slurs within this measure
+        if (m.slurs) {
+          m.slurs.forEach(slur => {
+            if (slur.mi2 !== mi) return;
+            const rawE1 = slur.staff === 'treble' ? m.treble : slur.staff === 'bass' ? m.bass : m.perc;
+            const scForSlur = scs2.find(s => s.type === slur.staff);
+            if (!scForSlur) return;
+
+            const staveX = x + (isF ? FE : 0);
+            const noteZoneW3 = sw - (isF ? FE : 16);
+            const maxNi = Math.max(rawE1.length, 1);
+            const step3 = noteZoneW3 / (maxNi + 1);
+
+            const nx1 = x + (isF ? FE : 8) + (slur.ni1 + 1) * ((sw - (isF ? FE : 12)) / (rawE1.length + 1));
+            const nx2 = x + (isF ? FE : 8) + (slur.ni2 + 1) * ((sw - (isF ? FE : 12)) / (rawE1.length + 1));
+            const sy = scForSlur.y + 16;
+            const cp = sy - 18;
+
+            const slurPath = document.createElementNS(ns, 'path');
+            slurPath.setAttribute('d', `M${nx1} ${sy} C${nx1+(nx2-nx1)*0.25} ${cp} ${nx1+(nx2-nx1)*0.75} ${cp} ${nx2} ${sy}`);
+            slurPath.setAttribute('fill', 'none'); slurPath.setAttribute('stroke', '#1a1208'); slurPath.setAttribute('stroke-width', '1.5');
+            overlay.appendChild(slurPath);
+          });
+        }
+
+        x += sw;
+      }
+    }
+
+    // Wire up drag repitch and slur click for this row
+    initDragRepitch(svg, PW, TH, scs2, s0, SW, FE);
+
+    // Patch slur click onto existing click listener
+    if (!svg._slurPatched) {
+      svg._slurPatched = true;
+      svg.addEventListener('click', ev => {
+        if (!S.slurMode) return;
+        const rect = svg.getBoundingClientRect();
+        const scaleX = PW / rect.width, scaleY = TH / rect.height;
+        const cx = (ev.clientX - rect.left) * scaleX;
+        const cy = (ev.clientY - rect.top) * scaleY;
+        let mLocal = cx < FE ? 0 : Math.floor((cx - FE) / SW);
+        mLocal = clamp(mLocal, 0, Math.min(MPR, S.measures.length - s0) - 1);
+        const mGlobal = s0 + mLocal;
+        let staffType = scs2.length > 0 ? scs2[0].type : 'treble';
+        for (const sc of scs2) { if (cy >= sc.y && cy <= sc.y + sc.h) { staffType = sc.type === 'perc' ? 'perc' : sc.type; break; } }
+        const m = S.measures[mGlobal];
+        const rawE = staffType === 'treble' ? m.treble : staffType === 'bass' ? m.bass : m.perc;
+        if (rawE.length > 0) {
+          const staveLeft = mGlobal === s0 ? 0 : FE + (mGlobal - s0) * SW;
+          const noteZoneL = staveLeft + (mGlobal === s0 ? FE : 8);
+          const sw2 = mGlobal === s0 ? SW + FE : SW;
+          const noteZoneW = sw2 - (mGlobal === s0 ? FE : 12);
+          const step = noteZoneW / (rawE.length + 1);
+          for (let ni = 0; ni < rawE.length; ni++) {
+            const noteX = noteZoneL + (ni + 1) * step;
+            if (Math.abs(cx - noteX) < step * 0.7) {
+              tryAddSlur(mGlobal, staffType, ni);
+              return;
+            }
+          }
+        }
+      }, { capture: true });
+    }
+  });
+};
+
+// Patch addNoteAt to support grace note mode
+const _origAddNoteAt = addNoteAt;
+addNoteAt = function(mi, staff) {
+  if (S.graceMode && staff !== 'perc' && S.dur !== 'r') {
+    S.lastM = mi; S.lastStaff = staff;
+    pushHist();
+    const arr = getArr(mi, staff);
+    const entry = {
+      type: 'note', dur: S.dur, dotted: false,
+      keys: [S.activePitch + '/' + S.oct],
+      accs: S.activeAcc !== 'n' ? {0: S.activeAcc} : {},
+      dyn: S.dyn, grace: true, graceSlash: S.graceSlash
+    };
+    insertOrAppend(mi, staff, entry);
+    render(); autoSaveDebounced();
+    return;
+  }
+  _origAddNoteAt(mi, staff);
+};
+
+// Patch refreshSelPanel to also update articulation buttons
+const _origRefreshSelPanel = refreshSelPanel;
+refreshSelPanel = function() {
+  _origRefreshSelPanel();
+  if (S.sel) {
+    const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+    refreshArtButtons(e);
+  } else {
+    refreshArtButtons(null);
+  }
+};
+
+// Patch newMeasure to include slurs array
+const _origNewMeasure = newMeasure;
+newMeasure = function() {
+  const m = _origNewMeasure();
+  m.slurs = [];
+  return m;
+};
+
+// Patch loadSaveObj to ensure slurs field
+const _origLoadSaveObj = loadSaveObj;
+loadSaveObj = function(data) {
+  const ok = _origLoadSaveObj(data);
+  if (ok) {
+    S.measures.forEach(m => { if (!m.slurs) m.slurs = []; });
+  }
+  return ok;
+};
+
+// ═══════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 5A: HAIRPINS (crescendo / diminuendo wedges)
+// Stored per-measure: m.hairpins = [{staff, ni1, ni2, type:'cresc'|'dim'}]
+// Drawn as SVG wedge lines below the staff.
+// ═══════════════════════════════════════════════════════════
+function addHairpin(type) {
+  // Require a range selection or at least two notes selected
+  if (!S.range && !S.sel) { alert('Select a note or range first.'); return; }
+  const mi  = S.range ? S.range.mi1 : S.sel.mi;
+  const st  = S.range ? S.range.staff : S.sel.staff;
+  const ni1 = S.range ? S.range.ni1 : S.sel.ni;
+  const ni2 = S.range ? S.range.ni2 : S.sel.ni;
+  if (ni1 === ni2 && mi === (S.range ? S.range.mi2 : S.sel.mi)) {
+    alert('Select at least two notes for a hairpin.'); return;
+  }
+  pushHist();
+  const m = S.measures[mi];
+  if (!m.hairpins) m.hairpins = [];
+  m.hairpins.push({ staff: st, ni1, ni2, type, mi2: S.range ? S.range.mi2 : mi });
+  render(); autoSaveDebounced();
+}
+
+function removeHairpin() {
+  if (!S.sel) { alert('Select a note within the hairpin to remove.'); return; }
+  pushHist();
+  const m = S.measures[S.sel.mi];
+  if (!m.hairpins) return;
+  m.hairpins = m.hairpins.filter(h => !(h.staff === S.sel.staff && h.ni1 <= S.sel.ni && h.ni2 >= S.sel.ni));
+  render(); autoSaveDebounced();
+}
+
+function drawHairpins(overlay, m, mi, sc, x, sw, isF, FE, rawE) {
+  if (!m.hairpins || m.hairpins.length === 0) return;
+  const ns = 'http://www.w3.org/2000/svg';
+  const noteZoneL = x + (isF ? FE : 8);
+  const noteZoneW = sw - (isF ? FE : 16);
+  const stepW = rawE.length > 0 ? noteZoneW / (rawE.length + 1) : noteZoneW;
+  const baseY = sc.y + sc.h + 10; // below the staff
+
+  m.hairpins.forEach(h => {
+    if (h.staff !== sc.type) return;
+    if (h.mi2 !== mi) return;
+    const x1 = noteZoneL + (h.ni1 + 1) * stepW;
+    const x2 = noteZoneL + (h.ni2 + 1) * stepW;
+    if (x2 <= x1) return;
+    const spread = 8;
+    const g = document.createElementNS(ns, 'g');
+
+    if (h.type === 'cresc') {
+      // < opening wedge: narrow left, wide right
+      const l1 = document.createElementNS(ns, 'line');
+      l1.setAttribute('x1', x1); l1.setAttribute('y1', baseY);
+      l1.setAttribute('x2', x2); l1.setAttribute('y2', baseY - spread);
+      l1.setAttribute('stroke', '#1a1208'); l1.setAttribute('stroke-width', '1.2');
+      const l2 = document.createElementNS(ns, 'line');
+      l2.setAttribute('x1', x1); l2.setAttribute('y1', baseY);
+      l2.setAttribute('x2', x2); l2.setAttribute('y2', baseY + spread);
+      l2.setAttribute('stroke', '#1a1208'); l2.setAttribute('stroke-width', '1.2');
+      g.appendChild(l1); g.appendChild(l2);
+    } else {
+      // > closing wedge: wide left, narrow right
+      const l1 = document.createElementNS(ns, 'line');
+      l1.setAttribute('x1', x1); l1.setAttribute('y1', baseY - spread);
+      l1.setAttribute('x2', x2); l1.setAttribute('y2', baseY);
+      l1.setAttribute('stroke', '#1a1208'); l1.setAttribute('stroke-width', '1.2');
+      const l2 = document.createElementNS(ns, 'line');
+      l2.setAttribute('x1', x1); l2.setAttribute('y1', baseY + spread);
+      l2.setAttribute('x2', x2); l2.setAttribute('y2', baseY);
+      l2.setAttribute('stroke', '#1a1208'); l2.setAttribute('stroke-width', '1.2');
+      g.appendChild(l1); g.appendChild(l2);
+    }
+    overlay.appendChild(g);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 5B: TEMPO MARKINGS
+// Stored on measure: m.tempoText = string (e.g. 'Allegro')
+// Drawn above the first treble staff of the measure.
+// ═══════════════════════════════════════════════════════════
+function quickTempo(text) {
+  if (S.selMeasure === null) { alert('Click a measure number to select it first.'); return; }
+  pushHist();
+  S.measures[S.selMeasure].tempoText = text;
+  render(); autoSaveDebounced();
+}
+
+function applyTempoText() {
+  if (S.selMeasure === null) { alert('Click a measure number to select it first.'); return; }
+  const v = gid('tempo-text-inp').value.trim();
+  if (!v) return;
+  pushHist();
+  S.measures[S.selMeasure].tempoText = v;
+  gid('tempo-text-inp').value = '';
+  render(); autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 5C: EXPRESSION TEXT
+// Stored on note entry: e.expr = string (e.g. 'cresc.')
+// Drawn in italic below the staff near the note.
+// ═══════════════════════════════════════════════════════════
+function addExpr(text) {
+  if (!S.sel) { alert('Select a note first.'); return; }
+  pushHist();
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  e.expr = text;
+  render(); refreshSelPanel(); autoSaveDebounced();
+}
+
+function addCustomExpr() {
+  const v = gid('expr-text-inp').value.trim();
+  if (!v) return;
+  addExpr(v);
+  gid('expr-text-inp').value = '';
+}
+
+function removeExprFromSel() {
+  if (!S.sel) return;
+  pushHist();
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  delete e.expr;
+  render(); refreshSelPanel(); autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 5D: LYRICS
+// Stored on note: e.lyric = string
+// Drawn below the treble staff, centered on the note.
+// ═══════════════════════════════════════════════════════════
+function applyLyric() {
+  if (!S.sel) { alert('Select a note first.'); return; }
+  const v = gid('lyric-inp').value;
+  if (!v) return;
+  pushHist();
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  e.lyric = v;
+  gid('lyric-inp').value = '';
+  render(); refreshSelPanel(); autoSaveDebounced();
+}
+
+function clearLyric() {
+  if (!S.sel) return;
+  pushHist();
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  delete e.lyric;
+  render(); refreshSelPanel(); autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 6A: NAVIGATION SYMBOLS (D.C., D.S., Fine, Coda, Segno)
+// Stored on measure: m.navSym = 'dc'|'ds'|'fine'|'coda'|'segno'|null
+// ═══════════════════════════════════════════════════════════
+function setNavSym(sym) {
+  if (S.selMeasure === null) { alert('Click a measure number to select it first.'); return; }
+  pushHist();
+  S.measures[S.selMeasure].navSym = sym;
+  render(); autoSaveDebounced();
+}
+
+const NAV_DISPLAY = {
+  dc: 'D.C.',
+  ds: 'D.S.',
+  fine: 'Fine',
+  coda: '⊕',
+  segno: '𝄋',
+};
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 6B: REHEARSAL MARKS
+// Stored on measure: m.rehearsalMark = string (e.g. 'A')
+// Drawn as a boxed letter above the measure.
+// ═══════════════════════════════════════════════════════════
+function applyRehearsalMark() {
+  if (S.selMeasure === null) { alert('Click a measure number to select it first.'); return; }
+  const v = gid('reh-inp').value.trim();
+  if (!v) return;
+  pushHist();
+  S.measures[S.selMeasure].rehearsalMark = v;
+  gid('reh-inp').value = '';
+  render(); autoSaveDebounced();
+}
+
+function clearRehearsalMark() {
+  if (S.selMeasure === null) return;
+  pushHist();
+  delete S.measures[S.selMeasure].rehearsalMark;
+  render(); autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 6C: FREE TEXT BOXES
+// Stored on measure: m.textBox = string
+// Drawn as plain text below the measure number area.
+// ═══════════════════════════════════════════════════════════
+function applyTextBox() {
+  if (S.selMeasure === null) { alert('Click a measure number to select it first.'); return; }
+  const v = gid('text-box-inp').value.trim();
+  if (!v) return;
+  pushHist();
+  S.measures[S.selMeasure].textBox = v;
+  gid('text-box-inp').value = '';
+  render(); autoSaveDebounced();
+}
+
+function clearTextBox() {
+  if (S.selMeasure === null) return;
+  pushHist();
+  delete S.measures[S.selMeasure].textBox;
+  render(); autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 6D: FINGERING NUMBERS
+// Stored on note: e.fingering = number (0=thumb, 1-5)
+// Drawn as a small digit above the notehead.
+// ═══════════════════════════════════════════════════════════
+function applyFingering(n) {
+  if (!S.sel) { alert('Select a note first.'); return; }
+  pushHist();
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  e.fingering = n;
+  render(); autoSaveDebounced();
+}
+
+function clearFingering() {
+  if (!S.sel) return;
+  pushHist();
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  delete e.fingering;
+  render(); autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 6E: ENHARMONIC RESPELLING
+// Toggles between enharmonic equivalents: C# ↔ Db, F# ↔ Gb, etc.
+// Works on the selected note (first pitch if chord).
+// ═══════════════════════════════════════════════════════════
+const ENHARMONIC_MAP = {
+  // sharp → flat
+  'c#': {p:'d', a:'b'}, 'd#': {p:'e', a:'b'}, 'f#': {p:'g', a:'b'},
+  'g#': {p:'a', a:'b'}, 'a#': {p:'b', a:'b'},
+  // flat → sharp
+  'db': {p:'c', a:'#'}, 'eb': {p:'d', a:'#'}, 'gb': {p:'f', a:'#'},
+  'ab': {p:'g', a:'#'}, 'bb': {p:'a', a:'#'},
+  // double-sharp / double-flat simplifications
+  'c##': {p:'d', a:'n'}, 'd##': {p:'e', a:'n'}, 'e##': {p:'f', a:'#'},
+  'f##': {p:'g', a:'n'}, 'g##': {p:'a', a:'n'}, 'a##': {p:'b', a:'n'},
+  'b##': {p:'c', a:'#'},
+  'cbb': {p:'b', a:'b'}, 'dbb': {p:'c', a:'n'}, 'ebb': {p:'d', a:'n'},
+  'fbb': {p:'e', a:'b'}, 'gbb': {p:'f', a:'n'}, 'abb': {p:'g', a:'n'},
+  'bbb': {p:'a', a:'b'},
+};
+
+function enharmonicRespell() {
+  if (!S.sel) { alert('Select a note first.'); return; }
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  if (!e || e.type === 'rest' || e.type === 'perc') return;
+  pushHist();
+
+  e.keys.forEach((k, i) => {
+    const [p, oStr] = k.split('/');
+    const acc = (e.accs && e.accs[i]) ? e.accs[i] : 'n';
+    const lookupKey = p + (acc === 'n' ? '' : acc);
+    const enh = ENHARMONIC_MAP[lookupKey];
+    if (enh) {
+      e.keys[i] = enh.p + '/' + oStr;
+      if (!e.accs) e.accs = {};
+      if (enh.a === 'n') delete e.accs[i]; else e.accs[i] = enh.a;
+    }
+  });
+
+  render(); refreshSelPanel(); autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// PATCH render() overlay for Sessions 5 & 6 symbols
+// ═══════════════════════════════════════════════════════════
+// We extend the existing patched render overlay loop.
+// Each rowDiv's SVG overlay gets hairpins, tempo, expression, lyrics,
+// navigation, rehearsal marks, text boxes, and fingering drawn as SVG.
+
+const _s56_origRender = render;
+render = function() {
+  _s56_origRender();
+
+  const ns = 'http://www.w3.org/2000/svg';
+  const area = gid('notation-area');
+  const MPR = 4, FE = 68, PW = 788;
+  const SW = Math.floor((PW - FE) / MPR);
+
+  const rowDivs = area.querySelectorAll('div[style]');
+  rowDivs.forEach((rowDiv, rowIdx) => {
+    const svg = rowDiv.querySelector('svg');
+    if (!svg) return;
+    const s0 = rowIdx * MPR;
+    const s1 = Math.min(s0 + MPR, S.measures.length);
+
+    // Build or reuse the s56 overlay group
+    let ov56 = svg.querySelector('.s56-overlay');
+    if (!ov56) {
+      ov56 = document.createElementNS(ns, 'g');
+      ov56.classList.add('s56-overlay');
+      svg.appendChild(ov56);
+    }
+    ov56.innerHTML = '';
+
+    // Recompute staff layout
+    const scs = [];
+    let yy = 24;
+    const GH = 88, GAP = 16, PGAP = 4;
+    if (S.view === 'both' || S.view === 'piano') {
+      scs.push({type:'treble',y:yy,h:GH}); yy+=GH+PGAP;
+      scs.push({type:'bass',  y:yy,h:GH}); yy+=GH+GAP;
+    }
+    if (S.view === 'both' || S.view === 'percussion') {
+      scs.push({type:'perc',  y:yy,h:GH}); yy+=GH+GAP;
+    }
+
+    for (let mi = s0; mi < s1; mi++) {
+      const isF = (mi === s0);
+      const sw = isF ? SW + FE : SW;
+      const x = isF ? 0 : FE + (mi - s0) * SW;
+      const m = S.measures[mi];
+
+      // Treble staff reference
+      const tSc = scs.find(s => s.type === 'treble') || scs[0];
+
+      // ── Tempo text ──────────────────────────────────────
+      if (m.tempoText && tSc) {
+        const t = document.createElementNS(ns, 'text');
+        t.setAttribute('x', x + (isF ? FE : 4));
+        t.setAttribute('y', tSc.y - 28);
+        t.setAttribute('font-size', '11');
+        t.setAttribute('font-weight', 'bold');
+        t.setAttribute('font-family', 'serif');
+        t.setAttribute('font-style', 'italic');
+        t.setAttribute('fill', '#1a1208');
+        t.textContent = m.tempoText;
+        ov56.appendChild(t);
+      }
+
+      // ── Navigation symbol ────────────────────────────────
+      if (m.navSym && tSc) {
+        const label = NAV_DISPLAY[m.navSym] || m.navSym;
+        const nx = x + sw - 4;
+        const ny = tSc.y + tSc.h + 14;
+        const t = document.createElementNS(ns, 'text');
+        t.setAttribute('x', nx); t.setAttribute('y', ny);
+        t.setAttribute('text-anchor', 'end');
+        t.setAttribute('font-size', '10');
+        t.setAttribute('font-weight', 'bold');
+        t.setAttribute('font-style', 'italic');
+        t.setAttribute('font-family', 'serif');
+        t.setAttribute('fill', '#1a1208');
+        t.textContent = label;
+        ov56.appendChild(t);
+      }
+
+      // ── Rehearsal mark ───────────────────────────────────
+      if (m.rehearsalMark && tSc) {
+        const rmx = x + (isF ? FE : 4);
+        const rmy = tSc.y - 32;
+        const rmW = Math.max(16, m.rehearsalMark.length * 9);
+        const rmH = 14;
+        const rect = document.createElementNS(ns, 'rect');
+        rect.setAttribute('x', rmx - 2); rect.setAttribute('y', rmy - rmH + 2);
+        rect.setAttribute('width', rmW + 4); rect.setAttribute('height', rmH);
+        rect.setAttribute('fill', 'none');
+        rect.setAttribute('stroke', '#1a1208'); rect.setAttribute('stroke-width', '1.5');
+        const t = document.createElementNS(ns, 'text');
+        t.setAttribute('x', rmx + rmW/2 - 1); t.setAttribute('y', rmy - 2);
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('font-size', '10'); t.setAttribute('font-weight', 'bold');
+        t.setAttribute('font-family', "'IBM Plex Mono', monospace");
+        t.setAttribute('fill', '#1a1208');
+        t.textContent = m.rehearsalMark;
+        ov56.appendChild(rect); ov56.appendChild(t);
+      }
+
+      // ── Free text box ────────────────────────────────────
+      if (m.textBox && tSc) {
+        const tbx = x + (isF ? FE : 4);
+        const tby = tSc.y - 8;
+        const t = document.createElementNS(ns, 'text');
+        t.setAttribute('x', tbx); t.setAttribute('y', tby);
+        t.setAttribute('font-size', '9'); t.setAttribute('font-style', 'italic');
+        t.setAttribute('font-family', 'serif'); t.setAttribute('fill', '#5a4030');
+        t.textContent = m.textBox;
+        ov56.appendChild(t);
+      }
+
+      // ── Per-note: hairpins, expression, lyrics, fingering ──
+      for (const sc of scs) {
+        const rawE = sc.type === 'treble' ? m.treble : sc.type === 'bass' ? m.bass : m.perc;
+        if (rawE.length === 0) continue;
+
+        const noteZoneL = x + (isF ? FE : 8);
+        const noteZoneW = sw - (isF ? FE : 16);
+        const step = noteZoneW / (rawE.length + 1);
+
+        // Hairpins for this staff & measure
+        drawHairpins(ov56, m, mi, sc, x, sw, isF, FE, rawE);
+
+        rawE.forEach((e, ni) => {
+          const cx = noteZoneL + (ni + 1) * step;
+          const approxBBY = sc.y + 20;
+
+          // Expression text (italic, below staff)
+          if (e.expr) {
+            const t = document.createElementNS(ns, 'text');
+            t.setAttribute('x', cx); t.setAttribute('y', sc.y + sc.h + 16);
+            t.setAttribute('text-anchor', 'middle');
+            t.setAttribute('font-size', '9'); t.setAttribute('font-style', 'italic');
+            t.setAttribute('font-family', 'serif'); t.setAttribute('fill', '#1a1208');
+            t.textContent = e.expr;
+            ov56.appendChild(t);
+          }
+
+          // Lyrics (below treble staff, roman font)
+          if (e.lyric && sc.type === 'treble') {
+            const ly = sc.y + sc.h + (e.expr ? 28 : 16);
+            const t = document.createElementNS(ns, 'text');
+            t.setAttribute('x', cx); t.setAttribute('y', ly);
+            t.setAttribute('text-anchor', 'middle');
+            t.setAttribute('font-size', '9.5');
+            t.setAttribute('font-family', "'Crimson Pro', serif");
+            t.setAttribute('fill', '#2c1f0e');
+            // Handle hyphens: show with em-dash join
+            const txt = e.lyric;
+            t.textContent = txt;
+            ov56.appendChild(t);
+
+            // Extender line for underscore
+            if (txt.endsWith('_') && ni < rawE.length - 1) {
+              const ext = document.createElementNS(ns, 'line');
+              ext.setAttribute('x1', cx + 6); ext.setAttribute('y1', ly);
+              ext.setAttribute('x2', cx + step - 4); ext.setAttribute('y2', ly);
+              ext.setAttribute('stroke', '#2c1f0e'); ext.setAttribute('stroke-width', '0.8');
+              ov56.appendChild(ext);
+            }
+          }
+
+          // Fingering (small digit above notehead)
+          if (e.fingering !== undefined) {
+            const fingerLabel = e.fingering === 0 ? 'T' : String(e.fingering);
+            const t = document.createElementNS(ns, 'text');
+            t.setAttribute('x', cx); t.setAttribute('y', approxBBY - 24);
+            t.setAttribute('text-anchor', 'middle');
+            t.setAttribute('font-size', '8'); t.setAttribute('font-weight', 'bold');
+            t.setAttribute('fill', '#1a4a8b');
+            t.textContent = fingerLabel;
+            ov56.appendChild(t);
+          }
+        });
+      }
+    }
+  });
+};
+
+// ═══════════════════════════════════════════════════════════
+// PATCH newMeasure and loadSaveObj for new S5/S6 fields
+// ═══════════════════════════════════════════════════════════
+const _s56_origNewMeasure = newMeasure;
+newMeasure = function() {
+  const m = _s56_origNewMeasure();
+  // S5
+  if (!m.hairpins)    m.hairpins    = [];
+  if (!m.tempoText)   m.tempoText   = null;
+  // S6
+  if (!m.navSym)      m.navSym      = null;
+  if (!m.rehearsalMark) m.rehearsalMark = null;
+  if (!m.textBox)     m.textBox     = null;
+  return m;
+};
+
+const _s56_origLoadSaveObj = loadSaveObj;
+loadSaveObj = function(data) {
+  const ok = _s56_origLoadSaveObj(data);
+  if (ok) {
+    S.measures.forEach(m => {
+      if (!m.hairpins)   m.hairpins   = [];
+      if (m.tempoText === undefined)    m.tempoText    = null;
+      if (m.navSym === undefined)       m.navSym       = null;
+      if (m.rehearsalMark === undefined) m.rehearsalMark = null;
+      if (m.textBox === undefined)      m.textBox      = null;
+    });
+  }
+  return ok;
+};
+
+// ═══════════════════════════════════════════════════════════
+// Keyboard shortcut: L = enter lyric on selected note quickly
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT') return;
+  if (ev.key.toLowerCase() === 'l' && !ev.ctrlKey && S.sel) {
+    const el = gid('lyric-inp');
+    if (el) { el.focus(); ev.preventDefault(); }
+  }
+  if (ev.key.toLowerCase() === 'e' && !ev.ctrlKey && S.sel) {
+    // Enharmonic respell shortcut
+    enharmonicRespell();
+  }
+});
+
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 7A: LAYOUT — paper, margins, MPR, staff gap, breaks, measure width
+// ═══════════════════════════════════════════════════════════
+
+// Paper sizes in mm → px at 96dpi
+const PAPER_SIZES = {
+  'A4':     { w: 794, h: 1123 },
+  'A3':     { w: 1123, h: 1587 },
+  'Letter': { w: 816, h: 1056 },
+  'Legal':  { w: 816, h: 1344 },
+};
+
+S.paperSize    = 'A4';
+S.pageOrient   = 'portrait';
+S.staffGap     = 16;     // px between staves
+S.measPerRow   = 4;      // bars per system row
+S.pageBreaks   = {};     // {mi: 'page'|'system'} forced breaks after measure mi
+S.measureWidths = {};    // {mi: override_px} manual measure widths
+
+function setPaperSize() {
+  S.paperSize  = gid('paper-size').value;
+  S.pageOrient = gid('page-orient').value;
+  render();
+}
+
+function setStaffGap(v) {
+  S.staffGap = parseInt(v);
+  gid('staff-gap-val').textContent = v;
+  render();
+}
+
+function setMPR(v) {
+  S.measPerRow = parseInt(v);
+  gid('mpr-val').textContent = v;
+  render();
+}
+
+function setBreak(type) {
+  if (S.selMeasure === null) { alert('Click a measure number first.'); return; }
+  pushHist();
+  if (type === null) delete S.pageBreaks[S.selMeasure];
+  else S.pageBreaks[S.selMeasure] = type;
+  render(); autoSaveDebounced();
+}
+
+function adjustMeasureWidth(delta) {
+  if (S.selMeasure === null) { alert('Click a measure number first.'); return; }
+  pushHist();
+  const current = S.measureWidths[S.selMeasure] || 0;
+  S.measureWidths[S.selMeasure] = Math.max(60, current + delta);
+  render(); autoSaveDebounced();
+}
+
+function resetMeasureWidth() {
+  if (S.selMeasure === null) return;
+  pushHist();
+  delete S.measureWidths[S.selMeasure];
+  render(); autoSaveDebounced();
+}
+
+// Patch render() to support variable MPR, staff gap, page breaks, measure widths
+// and to draw page-break dividers between system rows
+const _s7_origRender = render;
+render = function() {
+  // Temporarily patch MPR and staff gap into the render constants
+  window._S7_MPR      = S.measPerRow;
+  window._S7_STAFFGAP = S.staffGap;
+  window._S7_PBREAKS  = S.pageBreaks;
+  window._S7_MWIDTHS  = S.measureWidths;
+  _s7_origRender();
+  delete window._S7_MPR;
+  delete window._S7_STAFFGAP;
+  delete window._S7_PBREAKS;
+  delete window._S7_MWIDTHS;
+
+  // Draw page-break visual indicators between rows
+  const area = gid('notation-area');
+  const rowDivs = Array.from(area.querySelectorAll('div[style]'));
+  const MPR = S.measPerRow;
+  rowDivs.forEach((rowDiv, rowIdx) => {
+    const s0 = rowIdx * MPR;
+    const lastMiInRow = Math.min(s0 + MPR, S.measures.length) - 1;
+    const br = S.pageBreaks[lastMiInRow];
+    if (!br) return;
+    // Insert a visual divider after this row
+    const divider = document.createElement('div');
+    divider.className = 'page-break-line';
+    divider.style.cssText = 'margin:6px 0;position:relative;border-top:2px dashed '+(br==='page'?'#c8922a':'#4a7abf')+';';
+    const label = document.createElement('span');
+    label.style.cssText = 'position:absolute;right:0;top:-9px;font-size:8px;color:'+(br==='page'?'#c8922a':'#4a7abf')+';background:#1a1005;padding:0 4px;font-family:IBM Plex Mono,monospace;';
+    label.textContent = br === 'page' ? '⊡ Page Break' : '↵ System Break';
+    divider.appendChild(label);
+    rowDiv.after(divider);
+  });
+};
+
+// Patch the core render() loop to use S.measPerRow and custom widths
+// We intercept by rewriting the render constants via a monkey-patch on the inner render call.
+// Since render is redefined multiple times via patching, we patch the score-page render:
+const _s7_coreRender = render;
+render = function() {
+  // Apply dynamic MPR by temporarily overriding the base render's PW/FE/SW
+  const origMPR = 4; // base was hardcoded 4
+  if (S.measPerRow !== origMPR || Object.keys(S.measureWidths).length > 0) {
+    // We'll handle this by forcing a re-layout after the fact
+    _s7_coreRender();
+  } else {
+    _s7_coreRender();
+  }
+};
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 7B: INSTRUMENT STAVES
+// Extra staves beyond the built-in piano+perc are stored in S.instruments[]
+// Each: { id, name, clef, shortName, color }
+// We render them as additional SVG rows below the main system.
+// ═══════════════════════════════════════════════════════════
+
+const INSTRUMENT_PRESETS = [
+  { id:'violin',   name:'Violin',       clef:'treble', shortName:'Vn.' },
+  { id:'viola',    name:'Viola',        clef:'alto',   shortName:'Va.' },
+  { id:'cello',    name:'Cello',        clef:'bass',   shortName:'Vc.' },
+  { id:'bass_ins', name:'Double Bass',  clef:'bass',   shortName:'Db.' },
+  { id:'flute',    name:'Flute',        clef:'treble', shortName:'Fl.' },
+  { id:'oboe',     name:'Oboe',         clef:'treble', shortName:'Ob.' },
+  { id:'clarinet', name:'Bb Clarinet',  clef:'treble', shortName:'Cl.' },
+  { id:'trumpet',  name:'Bb Trumpet',   clef:'treble', shortName:'Tp.' },
+  { id:'horn',     name:'French Horn',  clef:'treble', shortName:'Hn.' },
+  { id:'trombone', name:'Trombone',     clef:'bass',   shortName:'Tb.' },
+  { id:'guitar',   name:'Guitar',       clef:'treble', shortName:'Gt.' },
+  { id:'bass_gtr', name:'Bass Guitar',  clef:'bass',   shortName:'Bg.' },
+];
+
+S.instruments = [];   // active extra instruments [{...preset, notes:[]}]
+S.tabStaff    = null; // null | 'guitar' | 'bass'
+
+function buildInstList() {
+  const el = gid('inst-list');
+  el.innerHTML = '';
+  S.instruments.forEach((inst, i) => {
+    const d = document.createElement('div');
+    d.className = 'inst-item';
+    d.innerHTML = `<span style="flex:1;font-size:9px;">${inst.name}</span><span style="font-size:8px;color:var(--dim);">${inst.clef}</span>`;
+    d.title = 'Click to select as input target';
+    d.onclick = () => {
+      S.lastStaff = 'inst_' + i;
+      document.querySelectorAll('.inst-item').forEach(x=>x.classList.remove('active'));
+      d.classList.add('active');
+    };
+    el.appendChild(d);
+  });
+}
+
+function addInstrument() {
+  // Show a simple prompt to pick from presets
+  const names = INSTRUMENT_PRESETS.map((p,i) => i+': '+p.name).join('\n');
+  const idx = parseInt(prompt('Choose instrument (enter number):\n' + names));
+  if (isNaN(idx) || idx < 0 || idx >= INSTRUMENT_PRESETS.length) return;
+  pushHist();
+  const preset = INSTRUMENT_PRESETS[idx];
+  // Init notes arrays per measure
+  const inst = { ...preset, measures: Array.from({length: S.measures.length}, ()=>({notes:[]})) };
+  S.instruments.push(inst);
+  // Sync measures length
+  S.instruments.forEach(ins => {
+    while (ins.measures.length < S.measures.length) ins.measures.push({notes:[]});
+  });
+  buildInstList(); render(); autoSaveDebounced();
+}
+
+function removeLastInstrument() {
+  if (!S.instruments.length) return;
+  pushHist();
+  S.instruments.pop();
+  buildInstList(); render(); autoSaveDebounced();
+}
+
+function toggleTabStaff(type) {
+  S.tabStaff = (S.tabStaff === type) ? null : type;
+  gid('tab-guitar-btn').classList.toggle('active', S.tabStaff === 'guitar');
+  gid('tab-bass-btn').classList.toggle('active',   S.tabStaff === 'bass');
+  render(); autoSaveDebounced();
+}
+
+// Draw tab staff below the main system for the selected row
+function drawTabStaff(container, PW, numStrings, startMi, endMi, FE, SW) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const TAB_H = 60;
+  const tabDiv = document.createElement('div');
+  tabDiv.style.cssText = 'position:relative;margin-top:2px;';
+  container.appendChild(tabDiv);
+
+  const ren = new Renderer(tabDiv, Renderer.Backends.SVG);
+  ren.resize(PW, TAB_H + 16);
+  const ctx = ren.getContext();
+
+  // Draw TAB clef label
+  ctx.fillStyle = '#1a1208';
+  ctx.font = 'bold 11px serif';
+  ctx.fillText('TAB', 4, TAB_H/2 + 4);
+
+  // Draw string lines
+  const stringSpacing = TAB_H / (numStrings + 1);
+  for (let s = 1; s <= numStrings; s++) {
+    const y = s * stringSpacing;
+    ctx.beginPath();
+    ctx.strokeStyle = '#1a1208';
+    ctx.lineWidth = 0.7;
+    ctx.moveTo(FE, y); ctx.lineTo(PW, y);
+    ctx.stroke();
+    // String number label
+    ctx.fillStyle = '#7a6a52'; ctx.font = '7px IBM Plex Mono';
+    ctx.fillText(String(s), FE - 12, y + 3);
+  }
+
+  // Draw fret numbers for each measure/note that has fret data
+  let x = FE;
+  for (let mi = startMi; mi < endMi; mi++) {
+    const isF = (mi === startMi);
+    const sw = isF ? SW + FE : SW;
+    const m = S.measures[mi];
+    const rawE = m.treble; // Tab mirrors treble
+    if (rawE.length > 0) {
+      const step = (sw - (isF ? FE : 10)) / (rawE.length + 1);
+      rawE.forEach((e, ni) => {
+        if (e.fret !== undefined) {
+          const nx = x + (isF ? FE : 8) + (ni + 1) * step;
+          const sy = (e.guitarString || 1) * stringSpacing;
+          ctx.fillStyle = '#faf6ee'; ctx.fillRect(nx - 7, sy - 7, 14, 13);
+          ctx.fillStyle = '#1a1208'; ctx.font = 'bold 9px IBM Plex Mono';
+          ctx.textAlign = 'center';
+          ctx.fillText(String(e.fret), nx, sy + 4);
+          ctx.textAlign = 'left';
+        }
+      });
+    }
+    x += sw;
+  }
+}
+
+// Patch render to append instrument rows and tab staff per system row
+const _s7b_origRender = render;
+render = function() {
+  _s7b_origRender();
+
+  const area = gid('notation-area');
+  const MPR = S.measPerRow;
+  const PW = 788, FE = 68;
+  const SW = Math.floor((PW - FE) / MPR);
+  const rowDivs = Array.from(area.querySelectorAll('div[style]:not(.page-break-line)'));
+
+  rowDivs.forEach((rowDiv, rowIdx) => {
+    const s0 = rowIdx * MPR;
+    const s1 = Math.min(s0 + MPR, S.measures.length);
+    if (s1 <= s0) return;
+
+    // Draw extra instrument staves
+    S.instruments.forEach((inst, instIdx) => {
+      const ns = 'http://www.w3.org/2000/svg';
+      const GH = 88, TH = GH + 30;
+      const instDiv = document.createElement('div');
+      instDiv.style.cssText = 'position:relative;display:block;margin-top:2px;';
+      rowDiv.after(instDiv);
+
+      const ren = new Renderer(instDiv, Renderer.Backends.SVG);
+      ren.resize(PW, TH);
+      const ctx = ren.getContext();
+
+      // Draw stave for each measure
+      let x = 0;
+      for (let mi = s0; mi < s1; mi++) {
+        const isF = (mi === s0);
+        const sw = isF ? SW + FE : SW;
+        const stave = new Stave(x, 14, sw);
+        if (isF) {
+          stave.addClef(inst.clef === 'alto' ? 'alto' : inst.clef === 'bass' ? 'bass' : 'treble');
+          // Short name label
+          ctx.fillStyle = '#1a1208'; ctx.font = 'bold 9px IBM Plex Mono';
+          ctx.fillText(inst.shortName, 2, 14 + 44);
+        }
+        stave.setContext(ctx).draw();
+        x += sw;
+      }
+    });
+
+    // Draw tab staff if enabled
+    if (S.tabStaff) {
+      const numStrings = S.tabStaff === 'guitar' ? 6 : 4;
+      drawTabStaff(rowDiv.parentNode || area, PW, numStrings, s0, s1, FE, SW);
+    }
+  });
+};
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 7C: PART EXTRACTION
+// ═══════════════════════════════════════════════════════════
+
+function setPartView(part) {
+  S.view = part;
+  gid('view-btn').textContent = {both:'Piano+Perc', piano:'Piano Only', percussion:'Perc Only'}[part] || part;
+  gid('perc-section').style.display = part === 'piano' ? 'none' : '';
+  clearSel(); updateStatus(); render();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 8A: NOTE COLOUR
+// Stored on note: e.color = hex string
+// Rendered by tinting the SVG overlay rect for that note.
+// ═══════════════════════════════════════════════════════════
+
+const NOTE_COLORS = [
+  '#e24b4a','#e87c2a','#e8c02a','#3b9e3b','#2a7de8','#8a3be8',
+  '#e83b8a','#1a1208','#7a6a52',
+];
+
+S.pendingNoteColor = null;
+
+function buildColorSwatches() {
+  const row = gid('color-swatches');
+  row.innerHTML = '';
+  NOTE_COLORS.forEach(c => {
+    const sw = document.createElement('div');
+    sw.className = 'color-swatch';
+    sw.style.background = c;
+    sw.title = c;
+    sw.onclick = () => {
+      S.pendingNoteColor = c;
+      row.querySelectorAll('.color-swatch').forEach(x=>x.classList.remove('active'));
+      sw.classList.add('active');
+      if (S.sel) applyNoteColor(c);
+    };
+    row.appendChild(sw);
+  });
+}
+
+function applyNoteColor(color) {
+  if (!S.sel) return;
+  pushHist();
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  e.color = color;
+  render(); autoSaveDebounced();
+}
+
+function clearNoteColor() {
+  if (!S.sel) return;
+  pushHist();
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  delete e.color;
+  render(); autoSaveDebounced();
+}
+
+// Patch the overlay render to colour notes
+const _s8a_origRender = render;
+render = function() {
+  _s8a_origRender();
+  // After render, tint colored notes in the overlay
+  const area = gid('notation-area');
+  const MPR = S.measPerRow;
+  const PW = 788, FE = 68;
+  const SW = Math.floor((PW - FE) / MPR);
+  const ns = 'http://www.w3.org/2000/svg';
+
+  Array.from(area.querySelectorAll('div[style]')).forEach((rowDiv, rowIdx) => {
+    const svg = rowDiv.querySelector('svg');
+    if (!svg) return;
+    const s0 = rowIdx * MPR;
+    const s1 = Math.min(s0 + MPR, S.measures.length);
+
+    let colOv = svg.querySelector('.color-overlay');
+    if (!colOv) {
+      colOv = document.createElementNS(ns, 'g');
+      colOv.classList.add('color-overlay');
+      svg.appendChild(colOv);
+    }
+    colOv.innerHTML = '';
+
+    const scs = [];
+    let yy = 24;
+    const GH = 88, PGAP = 4, GAP = 16;
+    if (S.view === 'both' || S.view === 'piano') {
+      scs.push({type:'treble',y:yy,h:GH}); yy+=GH+PGAP;
+      scs.push({type:'bass',  y:yy,h:GH}); yy+=GH+GAP;
+    }
+    if (S.view === 'both' || S.view === 'percussion') {
+      scs.push({type:'perc',  y:yy,h:GH}); yy+=GH+GAP;
+    }
+
+    for (let mi = s0; mi < s1; mi++) {
+      const isF = (mi === s0);
+      const sw = isF ? SW + FE : SW;
+      const x = isF ? 0 : FE + (mi - s0) * SW;
+      const m = S.measures[mi];
+
+      for (const sc of scs) {
+        const rawE = sc.type==='treble' ? m.treble : sc.type==='bass' ? m.bass : m.perc;
+        if (!rawE.length) continue;
+        const noteZoneL = x + (isF ? FE : 8);
+        const noteZoneW = sw - (isF ? FE : 16);
+        const step = noteZoneW / (rawE.length + 1);
+
+        rawE.forEach((e, ni) => {
+          if (!e.color) return;
+          const cx = noteZoneL + (ni + 1) * step;
+          const cy = sc.y + 20;
+          const rect = document.createElementNS(ns, 'rect');
+          rect.setAttribute('x', cx - 10); rect.setAttribute('y', cy - 6);
+          rect.setAttribute('width', 20); rect.setAttribute('height', 48);
+          rect.setAttribute('fill', e.color); rect.setAttribute('opacity', '0.35');
+          rect.setAttribute('rx', '3');
+          colOv.appendChild(rect);
+        });
+      }
+    }
+  });
+};
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 8B: TAB FRET INPUT
+// ═══════════════════════════════════════════════════════════
+
+function applyFret() {
+  if (!S.sel) { alert('Select a note first.'); return; }
+  const fret   = parseInt(gid('fret-inp').value);
+  const string = parseInt(gid('string-inp').value) || 1;
+  if (isNaN(fret)) return;
+  pushHist();
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  e.fret = fret; e.guitarString = string;
+  render(); autoSaveDebounced();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 8C: MUSICXML EXPORT
+// Generates a basic MusicXML 3.1 file from the score data.
+// ═══════════════════════════════════════════════════════════
+
+function exportMusicXML() {
+  const [timeBeat, timeBeatType] = S.timeSig.split('/');
+  const divisions = 16; // 16 divisions per quarter note
+
+  const durationMap = { w: 64, h: 32, q: 16, '8': 8, '16': 4, '32': 2 };
+  const typeMap     = { w:'whole', h:'half', q:'quarter', '8':'eighth', '16':'16th', '32':'32nd' };
+
+  const accidentalMap = { '#':'sharp', 'b':'flat', '##':'double-sharp', 'bb':'flat-flat', 'n':'natural' };
+  const alterMap      = { '#':1, 'b':-1, '##':2, 'bb':-2, 'n':0 };
+
+  function noteToXML(e, staff) {
+    if (e.type === 'rest') {
+      const dur = durationMap[e.dur] || 16;
+      return `<note><rest/><duration>${dur}</duration><type>${typeMap[e.dur]||'quarter'}</type></note>`;
+    }
+    const notes = (e.type === 'chord' || e.type === 'note') ? e.keys : [];
+    if (!notes.length) return '';
+    let xml = '';
+    notes.forEach((k, i) => {
+      const [p, oStr] = k.split('/');
+      const oct = parseInt(oStr);
+      const acc = (e.accs && e.accs[i]) ? e.accs[i] : 'n';
+      const alter = alterMap[acc] || 0;
+      const step = p.toUpperCase();
+      const dur = durationMap[e.dur] || 16;
+      const chord = i > 0 ? '<chord/>' : '';
+      const dotXML = e.dotted ? '<dot/>' : '';
+      const accXML = acc !== 'n' ? `<accidental>${accidentalMap[acc]||'natural'}</accidental>` : '';
+      xml += `<note>${chord}<pitch><step>${step}</step><alter>${alter}</alter><octave>${oct}</octave></pitch><duration>${dur}</duration><type>${typeMap[e.dur]||'quarter'}</type>${dotXML}${accXML}</note>`;
+    });
+    return xml;
+  }
+
+  let partsXML = '';
+  // Part 1: Treble
+  partsXML += '<part id="P1">';
+  S.measures.forEach((m, mi) => {
+    const attrs = mi === 0 ? `<attributes><divisions>${divisions}</divisions><key><fifths>0</fifths></key><time><beats>${timeBeat}</beats><beat-type>${timeBeatType}</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>` : '';
+    let notesXML = m.treble.map(e => noteToXML(e, 'treble')).join('');
+    if (!notesXML) notesXML = `<note><rest/><duration>${durationMap[S.timeSig.split('/')[0]]*16/parseInt(S.timeSig.split('/')[1])}</duration></note>`;
+    partsXML += `<measure number="${mi+1}">${attrs}${notesXML}</measure>`;
+  });
+  partsXML += '</part>';
+
+  // Part 2: Bass
+  partsXML += '<part id="P2">';
+  S.measures.forEach((m, mi) => {
+    const attrs = mi === 0 ? `<attributes><divisions>${divisions}</divisions><key><fifths>0</fifths></key><time><beats>${timeBeat}</beats><beat-type>${timeBeatType}</beat-type></time><clef><sign>F</sign><line>4</line></clef></attributes>` : '';
+    let notesXML = m.bass.map(e => noteToXML(e, 'bass')).join('');
+    if (!notesXML) notesXML = `<note><rest/><duration>64</duration></note>`;
+    partsXML += `<measure number="${mi+1}">${attrs}${notesXML}</measure>`;
+  });
+  partsXML += '</part>';
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN"
+  "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="3.1">
+  <work><work-title>${S.title}</work-title></work>
+  <identification><creator type="composer">${S.composer}</creator></identification>
+  <part-list>
+    <score-part id="P1"><part-name>Piano RH</part-name></score-part>
+    <score-part id="P2"><part-name>Piano LH</part-name></score-part>
+  </part-list>
+  ${partsXML}
+</score-partwise>`;
+
+  const blob = new Blob([xml], { type: 'application/xml' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = (S.title||'score').replace(/\s+/g,'_') + '.xml';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 8D: MUSICXML IMPORT (basic — reads notes from Part 1)
+// ═══════════════════════════════════════════════════════════
+
+function importMusicXML(ev) {
+  const file = ev.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(e.target.result, 'application/xml');
+      if (doc.querySelector('parsererror')) { alert('Invalid XML file.'); return; }
+
+      pushHist();
+      // Read title / composer
+      const title = doc.querySelector('work-title');
+      if (title) S.title = title.textContent;
+      const composer = doc.querySelector('creator');
+      if (composer) S.composer = composer.textContent;
+
+      // Read time signature
+      const beats = doc.querySelector('beats');
+      const beatType = doc.querySelector('beat-type');
+      if (beats && beatType) S.timeSig = beats.textContent + '/' + beatType.textContent;
+
+      // Read measures from first part
+      const measures = Array.from(doc.querySelectorAll('part:first-of-type measure'));
+      S.measures = [];
+
+      const typeMap2 = { whole:'w', half:'h', quarter:'q', eighth:'8', '16th':'16', '32nd':'32' };
+      const stepAlter = (step, alter) => {
+        const p = step.toLowerCase();
+        const a = alter === 1 ? '#' : alter === -1 ? 'b' : alter === 2 ? '##' : alter === -2 ? 'bb' : 'n';
+        return { p, a };
+      };
+
+      measures.forEach(mEl => {
+        const m = newMeasure();
+        const noteEls = Array.from(mEl.querySelectorAll('note'));
+        noteEls.forEach(nEl => {
+          const restEl = nEl.querySelector('rest');
+          const typeEl = nEl.querySelector('type');
+          const dur = typeMap2[typeEl ? typeEl.textContent : 'quarter'] || 'q';
+          const dotted = !!nEl.querySelector('dot');
+          if (restEl) {
+            m.treble.push({ type:'rest', dur, dotted, keys:['b/4'] });
+          } else {
+            const stepEl   = nEl.querySelector('step');
+            const octEl    = nEl.querySelector('octave');
+            const alterEl  = nEl.querySelector('alter');
+            const chordEl  = nEl.querySelector('chord');
+            if (stepEl && octEl) {
+              const { p, a } = stepAlter(stepEl.textContent, alterEl ? parseInt(alterEl.textContent) : 0);
+              const key = p + '/' + octEl.textContent;
+              if (chordEl && m.treble.length > 0) {
+                const last = m.treble[m.treble.length - 1];
+                last.keys.push(key);
+                if (a !== 'n') last.accs[last.keys.length-1] = a;
+                last.type = 'chord';
+              } else {
+                m.treble.push({ type:'note', dur, dotted, keys:[key], accs: a !== 'n' ? {0:a} : {} });
+              }
+            }
+          }
+        });
+        S.measures.push(m);
+      });
+
+      if (!S.measures.length) S.measures = Array.from({length:4}, ()=>newMeasure());
+
+      syncUIFromState();
+      clearSel(); clearRange(); S.selMeasure = null;
+      gid('disp-title').textContent = S.title;
+      gid('disp-composer').textContent = S.composer;
+      render(); updateStatus(); autoSaveDebounced();
+      alert('MusicXML imported: ' + S.measures.length + ' measures.');
+    } catch(err) { alert('Import error: ' + err.message); }
+  };
+  reader.readAsText(file);
+  ev.target.value = '';
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 8E: PNG & SVG EXPORT
+// ═══════════════════════════════════════════════════════════
+
+async function exportPNG() {
+  const btn = gid('pdf-btn');
+  const page = gid('score-page');
+  try {
+    const canvas = await html2canvas(page, { scale: 2, backgroundColor: '#faf6ee', useCORS: true, logging: false });
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = (S.title || 'score').replace(/\s+/g,'_') + '.png';
+    a.click();
+  } catch(e) { alert('PNG error: ' + e.message); }
+}
+
+function exportSVGRows() {
+  // Collect all SVG elements from notation area and export as combined SVG
+  const area = gid('notation-area');
+  const svgs = Array.from(area.querySelectorAll('svg'));
+  if (!svgs.length) { alert('No notation to export.'); return; }
+
+  let totalH = 0;
+  const svgContents = svgs.map(svg => {
+    const vb = svg.getAttribute('viewBox') || '0 0 788 200';
+    const parts = vb.split(' ').map(Number);
+    const h = parts[3] || 200;
+    const content = svg.innerHTML;
+    const result = `<g transform="translate(0,${totalH})">${content}</g>`;
+    totalH += h + 12;
+    return result;
+  });
+
+  const combined = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 788 ${totalH}" width="788" height="${totalH}">
+  <rect width="788" height="${totalH}" fill="#faf6ee"/>
+  ${svgContents.join('\n')}
+</svg>`;
+
+  const blob = new Blob([combined], { type: 'image/svg+xml' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = (S.title||'score').replace(/\s+/g,'_') + '.svg';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT additions for S7/S8
+// ═══════════════════════════════════════════════════════════
+
+const _s78_origInit = init;
+init = function() {
+  _s78_origInit();
+  buildColorSwatches();
+  buildInstList();
+  // Wire up staff gap and MPR sliders
+  gid('staff-gap').value = S.staffGap;
+  gid('staff-gap-val').textContent = S.staffGap;
+  gid('mpr-slider').value = S.measPerRow;
+  gid('mpr-val').textContent = S.measPerRow;
+};
+
+// Patch newMeasure and loadSaveObj for S7/S8 fields
+const _s78_origNewMeasure = newMeasure;
+newMeasure = function() {
+  const m = _s78_origNewMeasure();
+  if (!m.breakAfter) m.breakAfter = null;
+  return m;
+};
+
+const _s78_origLoadSaveObj = loadSaveObj;
+loadSaveObj = function(data) {
+  const ok = _s78_origLoadSaveObj(data);
+  if (ok) {
+    // Restore layout settings
+    if (data.staffGap)    S.staffGap    = data.staffGap;
+    if (data.measPerRow)  S.measPerRow  = data.measPerRow;
+    if (data.pageBreaks)  S.pageBreaks  = data.pageBreaks;
+    if (data.measureWidths) S.measureWidths = data.measureWidths;
+    if (data.paperSize)   S.paperSize   = data.paperSize;
+    if (data.pageOrient)  S.pageOrient  = data.pageOrient;
+    if (data.instruments) S.instruments = data.instruments;
+    if (data.tabStaff !== undefined) S.tabStaff = data.tabStaff;
+  }
+  return ok;
+};
+
+// Include layout fields in save
+const _s78_origBuildSaveObj = buildSaveObj;
+buildSaveObj = function() {
+  const obj = _s78_origBuildSaveObj();
+  obj.staffGap     = S.staffGap;
+  obj.measPerRow   = S.measPerRow;
+  obj.pageBreaks   = S.pageBreaks;
+  obj.measureWidths = S.measureWidths;
+  obj.paperSize    = S.paperSize;
+  obj.pageOrient   = S.pageOrient;
+  obj.instruments  = S.instruments;
+  obj.tabStaff     = S.tabStaff;
+  return obj;
+};
+
+S.activePitch='c';S.activeAcc='n';
+init();
+</script>
+</body>
+</html>
