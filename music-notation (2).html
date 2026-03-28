@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maestro — Music Notation Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --ink:#1a1208;--paper:#faf6ee;--muted:#7a6a52;
+  --accent:#8b2500;--accent-l:#c44a1a;
+  --gold:#c8922a;--gold-l:#e8b84b;
+  --ui:#2a1f12;--bdr:#4a3520;--txt:#f0e9d8;--dim:#9a8570;
+  --chord-bg:rgba(26,74,139,.12);--chord-bdr:#3a6abf;
+  --sel-bg:rgba(200,146,42,.18);--sel-bdr:#e8b84b;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--ui);font-family:'IBM Plex Mono',monospace;color:var(--txt);display:flex;flex-direction:column;}
+
+/* ── HEADER ── */
+header{background:linear-gradient(135deg,#140a02,#2a1f12,#140a02);border-bottom:1px solid var(--bdr);padding:6px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap;box-shadow:0 2px 14px rgba(0,0,0,.55);}
+.logo{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--gold-l);letter-spacing:2px;text-transform:uppercase;flex-shrink:0;}
+.logo span{color:var(--accent-l);}
+.hdiv{width:1px;height:24px;background:var(--bdr);flex-shrink:0;}
+.toolbar{display:flex;align-items:center;gap:3px;flex-wrap:wrap;}
+.tg{display:flex;align-items:center;gap:2px;padding:0 5px;border-right:1px solid var(--bdr);}
+.tg:last-child{border:none;}
+.tl{font-size:7.5px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-right:2px;white-space:nowrap;}
+.btn{background:rgba(255,255,255,.05);border:1px solid var(--bdr);color:var(--txt);padding:3px 8px;border-radius:3px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10.5px;transition:all .12s;white-space:nowrap;display:inline-flex;align-items:center;gap:2px;}
+.btn:hover{background:rgba(200,146,42,.14);border-color:var(--gold);color:var(--gold-l);}
+.btn.on{background:var(--accent);border-color:var(--accent-l);color:#fff;}
+.btn.primary{background:var(--gold);border-color:var(--gold-l);color:var(--ink);font-weight:600;}
+.btn.primary:hover{background:var(--gold-l);}
+.btn.chord-on{background:rgba(26,74,139,.5);border-color:#5599ff;color:#aaccff;}
+.btn.tie-on{background:rgba(18,110,40,.5);border-color:#44cc66;color:#aaffbb;}
+select{background:rgba(255,255,255,.05);border:1px solid var(--bdr);color:var(--txt);padding:3px 5px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;cursor:pointer;outline:none;}
+select:hover{border-color:var(--gold);}
+select option{background:#2a1f12;}
+
+/* ── LAYOUT ── */
+.main{display:flex;flex:1;min-height:0;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{width:222px;background:#170d04;border-right:1px solid var(--bdr);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;min-height:0;}
+.sidebar::-webkit-scrollbar{width:5px;}
+.sidebar::-webkit-scrollbar-track{background:#0f0802;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px;}
+.sidebar::-webkit-scrollbar-thumb:hover{background:var(--gold);}
+.ss{border-bottom:1px solid var(--bdr);padding:8px 9px;}
+.st{font-size:7.5px;color:var(--gold);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;font-weight:700;}
+
+/* Duration palette */
+.npal{display:grid;grid-template-columns:1fr 1fr;gap:3px;}
+.nb{background:rgba(255,255,255,.04);border:1px solid var(--bdr);color:var(--txt);padding:4px 2px;border-radius:3px;cursor:pointer;text-align:center;transition:all .1s;font-family:'IBM Plex Mono',monospace;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.nb:hover{background:rgba(200,146,42,.12);border-color:var(--gold);color:var(--gold-l);}
+.nb.active{background:var(--accent);border-color:var(--accent-l);color:#fff;}
+.ns{font-size:16px;line-height:1;}
+.nn{font-size:7.5px;opacity:.85;}
+
+/* Pitch keyboard */
+.piano-kbd{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;}
+.pk{padding:5px 1px;border:1px solid var(--bdr);border-radius:2px;cursor:pointer;font-size:9px;text-align:center;background:rgba(255,255,255,.92);color:#1a1208;transition:all .1s;font-family:'IBM Plex Mono',monospace;font-weight:600;position:relative;}
+.pk:hover{background:#fff;border-color:var(--gold);}
+.pk.active{background:var(--accent);border-color:var(--accent-l);color:#fff;}
+.pk.in-chord{background:#1a4a8b;border-color:#5599ff;color:#fff;}
+/* black keys overlay */
+.pk-row2{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:5px;}
+.pk2{padding:4px 1px;border:1px solid var(--bdr);border-radius:2px;cursor:pointer;font-size:8px;text-align:center;background:#2c2216;color:var(--txt);transition:all .1s;font-family:'IBM Plex Mono',monospace;}
+.pk2:hover{border-color:var(--gold);color:var(--gold-l);}
+.pk2.active{background:var(--accent);border-color:var(--accent-l);color:#fff;}
+.pk2.in-chord{background:#1a4a8b;border-color:#5599ff;color:#fff;}
+.pk2.empty{background:transparent;border-color:transparent;cursor:default;}
+
+.octrow{display:flex;align-items:center;gap:3px;}
+.octval{font-size:13px;color:var(--gold-l);font-family:'Playfair Display',serif;min-width:22px;text-align:center;}
+
+/* Chord panel */
+.chord-panel{background:rgba(26,74,139,.1);border:1px solid rgba(26,74,139,.4);border-radius:4px;padding:7px;margin-top:4px;}
+.chord-panel .st{color:#8ab4f8;}
+.chord-queue{display:flex;flex-wrap:wrap;gap:3px;min-height:22px;padding:3px;background:rgba(0,0,0,.2);border-radius:3px;margin-bottom:5px;}
+.chord-pip{background:#1a4a8b;border:1px solid #5599ff;color:#aaccff;border-radius:10px;padding:1px 7px;font-size:9px;display:flex;align-items:center;gap:3px;cursor:pointer;}
+.chord-pip:hover{background:#8b2500;border-color:#c44a1a;color:#fff;}
+.chord-pip.selected{background:#2a6b1a;border-color:#44cc66;color:#aaffbb;}
+
+/* Accidentals */
+.agrid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;}
+
+/* Perc list */
+.plist{display:flex;flex-direction:column;gap:2px;}
+.pi{display:flex;align-items:center;gap:5px;padding:4px 5px;border:1px solid var(--bdr);border-radius:3px;cursor:pointer;transition:all .1s;}
+.pi:hover{background:rgba(200,146,42,.1);border-color:var(--gold);}
+.pi.active{background:var(--accent);border-color:var(--accent-l);color:#fff;}
+.psym{font-size:12px;width:18px;text-align:center;flex-shrink:0;}
+.pn{font-size:9.5px;}
+.pp{font-size:7.5px;opacity:.55;}
+
+/* Selected note panel */
+.sel-panel{background:rgba(200,146,42,.08);border:1px solid rgba(200,146,42,.3);border-radius:4px;padding:7px;margin-top:4px;display:none;}
+.sel-panel.open{display:block;}
+.sel-panel .st{color:var(--gold-l);}
+.sel-info{font-size:9px;color:var(--txt);margin-bottom:6px;line-height:1.6;}
+
+/* Score area */
+.canvas-area{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+.score-wrap{flex:1;overflow:auto;padding:28px;background:#1a1005;display:flex;flex-direction:column;align-items:center;min-height:0;}
+.score-wrap::-webkit-scrollbar{width:8px;height:8px;}
+.score-wrap::-webkit-scrollbar-track{background:#0f0802;}
+.score-wrap::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:4px;}
+.score-wrap::-webkit-scrollbar-thumb:hover{background:var(--gold);}
+
+/* KEY FIX: score-page height is auto so background always covers content */
+.score-page{background:var(--paper);box-shadow:0 8px 40px rgba(0,0,0,.65);border-radius:2px;padding:42px 42px 60px;width:920px;min-height:200px;height:auto;}
+.score-title{text-align:center;margin-bottom:20px;}
+.score-title-text{font-family:'Playfair Display',serif;font-size:24px;color:var(--ink);letter-spacing:1px;}
+.score-composer{font-family:'Crimson Pro',serif;font-style:italic;font-size:13px;color:var(--muted);margin-top:2px;}
+
+/* Inline note selection highlight overlay */
+.note-sel-overlay{position:absolute;border:2px solid var(--accent-l);border-radius:2px;background:rgba(196,74,26,.12);pointer-events:none;transition:all .1s;}
+
+/* Status bar */
+.statusbar{background:#0f0802;border-top:1px solid var(--bdr);padding:4px 12px;display:flex;align-items:center;gap:12px;font-size:8.5px;color:var(--dim);flex-shrink:0;flex-wrap:wrap;}
+.sdot{width:5px;height:5px;border-radius:50%;background:var(--gold);display:inline-block;margin-right:3px;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.badge{display:inline-block;padding:1px 6px;border-radius:8px;font-size:7.5px;font-weight:700;}
+.badge.norm{background:rgba(200,146,42,.2);color:var(--gold-l);border:1px solid rgba(200,146,42,.3);}
+.badge.chord{background:rgba(26,74,139,.3);color:#aaccff;border:1px solid rgba(26,74,139,.5);}
+.badge.tie{background:rgba(18,110,40,.3);color:#aaffbb;border:1px solid rgba(18,110,40,.5);}
+
+/* Modal */
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:999;}
+.mbg.open{display:flex;}
+.modal{background:#170d04;border:1px solid var(--bdr);border-radius:6px;padding:22px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.85);}
+.modal-h{font-family:'Playfair Display',serif;font-size:17px;color:var(--gold-l);margin-bottom:14px;}
+.field{margin-bottom:9px;}
+.field label{display:block;font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;}
+.field input{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--bdr);color:var(--txt);padding:5px 8px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:11px;outline:none;}
+.field input:focus{border-color:var(--gold);}
+.mact{display:flex;gap:5px;justify-content:flex-end;margin-top:14px;}
+
+/* Edit note modal */
+.edit-modal{width:400px;}
+.edit-keys{display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto;}
+.edit-key-row{display:flex;align-items:center;gap:6px;padding:3px 5px;border:1px solid var(--bdr);border-radius:3px;font-size:10px;}
+.edit-key-row .pitch-lbl{flex:1;color:var(--gold-l);font-weight:600;}
+.rmk{cursor:pointer;color:var(--accent-l);padding:0 4px;}
+
+/* SVG cursor */
+.score-wrap svg{cursor:crosshair;}
+.score-wrap svg.selecting{cursor:pointer;}
+</style>
+</head>
+<body>
+
+<!-- ════ HEADER ════ -->
+<header>
+  <div class="logo">Maestro <span>Studio</span></div>
+  <div class="hdiv"></div>
+  <div class="toolbar">
+    <div class="tg">
+      <span class="tl">File</span>
+      <button class="btn" onclick="showTitleModal()">📄 Title</button>
+      <button class="btn primary" id="pdf-btn" onclick="exportToPDF()">⬇ PDF</button>
+      <button class="btn" onclick="clearScore()">🗑 Clear</button>
+    </div>
+    <div class="tg">
+      <span class="tl">Edit</span>
+      <button class="btn" onclick="undoAction()">↩ Undo</button>
+      <button class="btn" id="del-btn" onclick="deleteSelected()" title="Delete selected note">✕ Del</button>
+    </div>
+    <div class="tg">
+      <span class="tl">Mode</span>
+      <button class="btn" id="chord-btn" onclick="toggleChordMode()" title="C: chord — click pitches to stack, Enter to place">⊕ Chord</button>
+      <button class="btn" id="tie-btn" onclick="toggleTieMode()" title="T: tie next note to previous">⌢ Tie</button>
+    </div>
+    <div class="tg">
+      <span class="tl">Bars</span>
+      <button class="btn" onclick="addMeasure()">＋</button>
+      <button class="btn" onclick="removeMeasure()">−</button>
+    </div>
+    <div class="tg">
+      <span class="tl">Time</span>
+      <select id="time-sig" onchange="setTimeSig()">
+        <option>4/4</option><option>3/4</option><option>2/4</option>
+        <option>6/8</option><option>12/8</option><option>2/2</option><option>5/4</option>
+      </select>
+    </div>
+    <div class="tg">
+      <span class="tl">Key</span>
+      <select id="key-sig" onchange="setKeySig()">
+        <option value="C">C</option><option value="G">G</option><option value="D">D</option>
+        <option value="A">A</option><option value="E">E</option><option value="B">B</option>
+        <option value="F#">F#</option><option value="F">F</option><option value="Bb">Bb</option>
+        <option value="Eb">Eb</option><option value="Ab">Ab</option>
+        <option value="Am">Am</option><option value="Em">Em</option>
+        <option value="Dm">Dm</option><option value="Gm">Gm</option>
+      </select>
+    </div>
+    <div class="tg">
+      <span class="tl">View</span>
+      <button class="btn" id="view-btn" onclick="cycleView()">Piano+Perc</button>
+    </div>
+  </div>
+</header>
+
+<!-- ════ MAIN ════ -->
+<div class="main">
+
+<!-- ── SIDEBAR ── -->
+<div class="sidebar">
+
+  <!-- Duration -->
+  <div class="ss">
+    <div class="st">Duration <span style="color:var(--dim);font-size:6.5px;">[keys 1–7]</span></div>
+    <div class="npal">
+      <button class="nb" data-dur="w" onclick="selDur('w',this)"><div class="ns">𝅝</div><div class="nn">Whole</div></button>
+      <button class="nb" data-dur="h" onclick="selDur('h',this)"><div class="ns">𝅗𝅥</div><div class="nn">Half</div></button>
+      <button class="nb active" data-dur="q" onclick="selDur('q',this)"><div class="ns">♩</div><div class="nn">Quarter</div></button>
+      <button class="nb" data-dur="8" onclick="selDur('8',this)"><div class="ns">♪</div><div class="nn">8th</div></button>
+      <button class="nb" data-dur="16" onclick="selDur('16',this)"><div class="ns">𝅘𝅥𝅯</div><div class="nn">16th</div></button>
+      <button class="nb" data-dur="32" onclick="selDur('32',this)"><div class="ns">𝅘𝅥𝅰</div><div class="nn">32nd</div></button>
+      <button class="nb" data-dur="r" onclick="selDur('r',this)"><div class="ns">𝄽</div><div class="nn">Rest</div></button>
+    </div>
+    <div style="display:flex;gap:3px;margin-top:4px;">
+      <button class="btn" id="dot-btn" style="flex:1;justify-content:center;" onclick="togDot()">· Dot</button>
+      <button class="btn" id="ddot-btn" style="flex:1;justify-content:center;" onclick="togDDot()">·· 2×</button>
+    </div>
+  </div>
+
+  <!-- Pitch keyboard — white keys -->
+  <div class="ss">
+    <div class="st">Pitch <span style="color:var(--dim);font-size:6.5px;">[A–G keys] click to add to chord</span></div>
+    <!-- White keys row -->
+    <div class="piano-kbd" id="white-keys">
+      <button class="pk" data-pitch="c" onclick="pitchClick('c',this)">C</button>
+      <button class="pk" data-pitch="d" onclick="pitchClick('d',this)">D</button>
+      <button class="pk" data-pitch="e" onclick="pitchClick('e',this)">E</button>
+      <button class="pk" data-pitch="f" onclick="pitchClick('f',this)">F</button>
+      <button class="pk" data-pitch="g" onclick="pitchClick('g',this)">G</button>
+      <button class="pk" data-pitch="a" onclick="pitchClick('a',this)">A</button>
+      <button class="pk" data-pitch="b" onclick="pitchClick('b',this)">B</button>
+    </div>
+    <!-- Black keys row — C# Eb — F# Ab Bb — -->
+    <div class="pk-row2" id="black-keys">
+      <button class="pk2" data-pitch="c" data-acc="#" onclick="pitchClick('c',this,'#')">C♯</button>
+      <button class="pk2" data-pitch="d" data-acc="#" onclick="pitchClick('d',this,'#')">D♯</button>
+      <button class="pk2 empty"></button>
+      <button class="pk2" data-pitch="f" data-acc="#" onclick="pitchClick('f',this,'#')">F♯</button>
+      <button class="pk2" data-pitch="g" data-acc="#" onclick="pitchClick('g',this,'#')">G♯</button>
+      <button class="pk2" data-pitch="a" data-acc="#" onclick="pitchClick('a',this,'#')">A♯</button>
+      <button class="pk2 empty"></button>
+    </div>
+    <div class="octrow">
+      <button class="btn" style="flex:1;justify-content:center;" onclick="chgOct(-1)">▼ Oct</button>
+      <div class="octval" id="oct-disp">4</div>
+      <button class="btn" style="flex:1;justify-content:center;" onclick="chgOct(1)">Oct ▲</button>
+    </div>
+    <!-- Flat row -->
+    <div style="display:flex;gap:3px;margin-top:4px;">
+      <button class="btn" style="flex:1;justify-content:center;font-size:10px;" onclick="setAccForNext('b')">♭ Flat next</button>
+      <button class="btn" style="flex:1;justify-content:center;font-size:10px;" onclick="setAccForNext('n')">♮ Natural</button>
+      <button class="btn" style="flex:1;justify-content:center;font-size:10px;" onclick="setAccForNext('bb')">𝄫 D.Flat</button>
+    </div>
+
+    <!-- CHORD QUEUE (always visible when notes are staged) -->
+    <div class="chord-panel" id="chord-panel" style="display:none;">
+      <div class="st">Chord Pitches — click pip to remove</div>
+      <div class="chord-queue" id="chord-queue"></div>
+      <button class="btn primary" style="width:100%;justify-content:center;" onclick="placeChord()">✓ Place Chord (Enter)</button>
+      <button class="btn" style="width:100%;justify-content:center;margin-top:3px;" onclick="clearChordQueue()">✕ Clear</button>
+    </div>
+  </div>
+
+  <!-- SELECTED NOTE EDITOR -->
+  <div class="ss">
+    <div class="sel-panel" id="sel-panel">
+      <div class="st">Edit Selected Note</div>
+      <div class="sel-info" id="sel-info">—</div>
+      <div style="font-size:8px;color:var(--dim);margin-bottom:5px;">Adjust duration/pitch then apply, or delete.</div>
+      <div style="display:flex;gap:3px;flex-wrap:wrap;">
+        <button class="btn" style="flex:1;justify-content:center;" onclick="applyEditDuration()">↺ Duration</button>
+        <button class="btn" style="flex:1;justify-content:center;" onclick="openEditNote()">✏ Edit Pitches</button>
+      </div>
+      <button class="btn" style="width:100%;justify-content:center;margin-top:3px;background:rgba(139,37,0,.3);border-color:var(--accent);" onclick="deleteSelected()">🗑 Delete Note</button>
+    </div>
+    <div id="no-sel" style="font-size:8.5px;color:var(--dim);padding-top:2px;">Click a note in the score to select &amp; edit it.</div>
+  </div>
+
+  <!-- PERCUSSION -->
+  <div class="ss" id="perc-section">
+    <div class="st">Percussion</div>
+    <div class="plist" id="perc-list"></div>
+  </div>
+
+  <!-- Dynamics -->
+  <div class="ss">
+    <div class="st">Dynamics</div>
+    <div class="npal">
+      <button class="nb" data-dyn="pp" onclick="selDyn('pp',this)"><div class="nn" style="font-size:11px;font-style:italic;">pp</div></button>
+      <button class="nb" data-dyn="p" onclick="selDyn('p',this)"><div class="nn" style="font-size:11px;font-style:italic;">p</div></button>
+      <button class="nb" data-dyn="mp" onclick="selDyn('mp',this)"><div class="nn" style="font-size:11px;font-style:italic;">mp</div></button>
+      <button class="nb" data-dyn="mf" onclick="selDyn('mf',this)"><div class="nn" style="font-size:11px;font-style:italic;">mf</div></button>
+      <button class="nb" data-dyn="f" onclick="selDyn('f',this)"><div class="nn" style="font-size:11px;font-style:italic;">f</div></button>
+      <button class="nb" data-dyn="ff" onclick="selDyn('ff',this)"><div class="nn" style="font-size:11px;font-style:italic;">ff</div></button>
+    </div>
+  </div>
+
+  <!-- ADD NOTE -->
+  <div class="ss">
+    <button class="btn primary" style="width:100%;justify-content:center;padding:7px;" onclick="addNoteFromSidebar()">♩ Add Note (Enter)</button>
+    <div style="font-size:8px;color:var(--dim);margin-top:4px;line-height:1.5;">In Chord mode: click pitches to queue them, Enter places the chord. In Normal mode: click staff measure or press Enter.</div>
+  </div>
+
+</div><!-- /sidebar -->
+
+<!-- ── SCORE AREA ── -->
+<div class="canvas-area">
+  <div class="score-wrap" id="score-wrap">
+    <div class="score-page" id="score-page">
+      <div class="score-title">
+        <div class="score-title-text" id="disp-title">Untitled Score</div>
+        <div class="score-composer" id="disp-composer">Composer</div>
+      </div>
+      <div id="notation-area"></div>
+    </div>
+  </div>
+  <div class="statusbar">
+    <span><span class="sdot"></span><span id="st-mode">Piano + Percussion</span></span>
+    <span id="st-time">4/4</span>
+    <span id="st-key">C</span>
+    <span id="st-bars">4 bars</span>
+    <span>Mode: <span id="st-badge" class="badge norm">Normal</span></span>
+    <span id="st-sel" style="color:var(--gold-l);">—</span>
+    <span style="margin-left:auto;font-size:7.5px;">1-7=dur • A-G=pitch • ↑↓=oct • C=chord • T=tie • .=dot • Enter=add • Del=delete</span>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- ════ TITLE MODAL ════ -->
+<div class="mbg" id="title-modal">
+  <div class="modal">
+    <div class="modal-h">Score Details</div>
+    <div class="field"><label>Title</label><input id="inp-title" value="Untitled Score"></div>
+    <div class="field"><label>Composer</label><input id="inp-comp" value="Composer"></div>
+    <div class="field"><label>Tempo BPM</label><input type="number" id="inp-tempo" value="120" min="20" max="320"></div>
+    <div class="mact">
+      <button class="btn" onclick="closeModal('title-modal')">Cancel</button>
+      <button class="btn primary" onclick="applyTitle()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ EDIT NOTE MODAL ════ -->
+<div class="mbg" id="edit-modal">
+  <div class="modal edit-modal">
+    <div class="modal-h">Edit Note Pitches</div>
+    <div style="font-size:8.5px;color:var(--dim);margin-bottom:8px;">Add/remove pitches for this note. Duration is changed from the sidebar before applying.</div>
+    <div id="edit-keys-list" class="edit-keys"></div>
+    <!-- Add a pitch -->
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--bdr);">
+      <div style="font-size:8px;color:var(--dim);margin-bottom:5px;text-transform:uppercase;letter-spacing:1px;">Add pitch to chord</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;" id="edit-pitch-btns"></div>
+      <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px;">
+        <span style="font-size:9px;color:var(--dim);">Oct:</span>
+        <button class="btn" onclick="chgEditOct(-1)">▼</button>
+        <span id="edit-oct-disp" style="font-size:12px;color:var(--gold-l);padding:0 6px;">4</span>
+        <button class="btn" onclick="chgEditOct(1)">▲</button>
+        <span style="font-size:9px;color:var(--dim);margin-left:6px;">Acc:</span>
+        <select id="edit-acc-sel" style="font-size:10px;">
+          <option value="n">♮</option><option value="#">♯</option><option value="b">♭</option>
+          <option value="##">𝄪</option><option value="bb">𝄫</option>
+        </select>
+      </div>
+      <button class="btn" style="width:100%;justify-content:center;" onclick="addEditPitch()">＋ Add Pitch</button>
+    </div>
+    <div class="mact">
+      <button class="btn" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="btn primary" onclick="applyEditNote()">✓ Apply Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// VexFlow destructure
+// ══════════════════════════════════════════════
+const { Renderer, Stave, StaveNote, Voice, Formatter,
+        Accidental, Dot, Beam, Tie, NoteHead } = Vex.Flow;
+
+// ══════════════════════════════════════════════
+// PERCUSSION DATABASE
+// VexFlow 4 note-head glyphs that actually work:
+//  noteheadXBlack       = ×  (hi-hat closed, rim, tamb, clap)
+//  noteheadCircleX      = ○  (hi-hat open, bass drum circle-X)
+//  noteheadDiamondBlack = ◆  (ride bell)
+//  noteheadTriangleUpBlack = △ (cowbell)
+//  null / default       = ●  (snare, toms — filled oval)
+// ══════════════════════════════════════════════
+const PERC = [
+  {id:'hh_c', name:'Hi-Hat ×',      pos:'a/5', glyphCode:'noteheadXBlack',          stem:1,  lbl:'HH Closed'},
+  {id:'hh_o', name:'Hi-Hat ○',      pos:'a/5', glyphCode:'noteheadCircleX',          stem:1,  lbl:'HH Open'},
+  {id:'hh_f', name:'Hi-Hat Foot',   pos:'e/3', glyphCode:'noteheadXBlack',          stem:-1, lbl:'HH Foot'},
+  {id:'ride', name:'Ride ×',        pos:'f/5', glyphCode:'noteheadXBlack',          stem:1,  lbl:'Ride'},
+  {id:'ride_b',name:'Ride Bell △',  pos:'f/5', glyphCode:'noteheadDiamondBlack',    stem:1,  lbl:'Ride Bell'},
+  {id:'crash',name:'Crash ×',       pos:'b/5', glyphCode:'noteheadXBlack',          stem:1,  lbl:'Crash'},
+  {id:'crash2',name:'Crash 2 ×',    pos:'g/5', glyphCode:'noteheadXBlack',          stem:1,  lbl:'Crash 2'},
+  {id:'sn',   name:'Snare ●',       pos:'c/5', glyphCode:null,                      stem:1,  lbl:'Snare'},
+  {id:'rim',  name:'Rim ×',         pos:'c/5', glyphCode:'noteheadXBlack',          stem:1,  lbl:'Rim Shot'},
+  {id:'tom1', name:'Hi Tom ●',      pos:'e/5', glyphCode:null,                      stem:1,  lbl:'Tom 1'},
+  {id:'tom2', name:'Mid Tom ●',     pos:'d/5', glyphCode:null,                      stem:1,  lbl:'Tom 2'},
+  {id:'flr',  name:'Floor Tom ●',   pos:'a/4', glyphCode:null,                      stem:-1, lbl:'Floor Tom'},
+  {id:'bd',   name:'Bass Drum ○',   pos:'f/4', glyphCode:'noteheadCircleX',         stem:-1, lbl:'Bass Drum'},
+  {id:'cowb', name:'Cowbell △',     pos:'g/5', glyphCode:'noteheadTriangleUpBlack', stem:1,  lbl:'Cowbell'},
+  {id:'tamb', name:'Tamb ×',        pos:'b/4', glyphCode:'noteheadXBlack',          stem:1,  lbl:'Tambourine'},
+  {id:'clap', name:'Clap ×',        pos:'c/5', glyphCode:'noteheadXBlack',          stem:1,  lbl:'Hand Clap'},
+];
+
+// ══════════════════════════════════════════════
+// DURATION BEAT VALUES
+// ══════════════════════════════════════════════
+const DB={w:4,h:2,q:1,'8':0.5,'16':0.25,'32':0.125};
+const KEY_MAP={C:'C',G:'G',D:'D',A:'A',E:'E',B:'B','F#':'F#',F:'F',Bb:'Bb',Eb:'Eb',Ab:'Ab',Am:'Am',Em:'Em',Dm:'Dm',Gm:'Gm'};
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+let S={
+  title:'Untitled Score',composer:'Composer',tempo:120,
+  timeSig:'4/4',keySig:'C',view:'both',
+  dur:'q',oct:4,
+  nextAcc:'n',        // accidental to apply to next pitch click
+  percId:'hh_c',
+  dyn:null,dotted:false,ddotted:false,
+  chordMode:false,tieMode:false,
+  chordQueue:[],      // [{pitch,oct,acc}] — pitches staged for chord
+  measures:[],        // [{treble:[],bass:[],perc:[]}]
+  lastMeasure:0,lastStaff:'treble',
+  sel:null,           // {mi,staff,ni} selected note
+  history:[],
+  editOct:4,          // octave for the edit-note modal
+};
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+function init(){
+  buildPercList();
+  S.measures=Array.from({length:4},()=>({treble:[],bass:[],perc:[]}));
+  render(); updateStatus();
+}
+
+function buildPercList(){
+  const el=id('perc-list'); el.innerHTML='';
+  PERC.forEach(p=>{
+    const d=document.createElement('div');
+    d.className='pi'+(p.id===S.percId?' active':'');
+    d.dataset.pid=p.id;
+    d.innerHTML=`<div class="pinfo"><div class="pn">${p.name}</div><div class="pp">${p.pos}</div></div>`;
+    d.onclick=()=>{ S.percId=p.id; $$('.pi').forEach(x=>x.classList.remove('active')); d.classList.add('active'); };
+    el.appendChild(d);
+  });
+}
+
+// ══════════════════════════════════════════════
+// UI CONTROLS
+// ══════════════════════════════════════════════
+function selDur(v,el){ S.dur=v; $$('[data-dur]').forEach(b=>b.classList.remove('active')); el.classList.add('active'); }
+function selDyn(v,el){
+  if(S.dyn===v){S.dyn=null;$$('[data-dyn]').forEach(b=>b.classList.remove('active'));}
+  else{S.dyn=v;$$('[data-dyn]').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+}
+function chgOct(d){ S.oct=clamp(S.oct+d,2,7); id('oct-disp').textContent=S.oct; }
+function togDot(){ S.ddotted=false;S.dotted=!S.dotted;id('dot-btn').classList.toggle('active',S.dotted);id('ddot-btn').classList.remove('active'); }
+function togDDot(){ S.dotted=false;S.ddotted=!S.ddotted;id('ddot-btn').classList.toggle('active',S.ddotted);id('dot-btn').classList.remove('active'); }
+
+function setAccForNext(a){ S.nextAcc=a; }
+
+// ── PITCH CLICK — the unified handler for both normal and chord modes ──
+function pitchClick(pitch, el, accOverride){
+  const acc = accOverride || S.nextAcc;
+  S.nextAcc='n'; // reset after use
+
+  if(S.chordMode || S.chordQueue.length>0){
+    // In chord mode: always queue. Duplicate same pitch+oct removes it (toggle).
+    const existing=S.chordQueue.findIndex(n=>n.pitch===pitch&&n.oct===S.oct&&n.acc===acc);
+    if(existing>=0){ S.chordQueue.splice(existing,1); }
+    else { S.chordQueue.push({pitch,oct:S.oct,acc}); }
+    updateChordPanel();
+  } else {
+    // Normal mode: set active pitch and treat as note ready to place
+    S.activePitch=pitch; S.activeAcc=acc;
+    $$('.pk,.pk2').forEach(b=>b.classList.remove('active'));
+    el.classList.add('active');
+  }
+}
+
+function toggleChordMode(){
+  S.chordMode=!S.chordMode;
+  if(!S.chordMode&&S.chordQueue.length){ S.chordQueue=[]; updateChordPanel(); }
+  if(S.chordMode){S.tieMode=false;id('tie-btn').className='btn';}
+  id('chord-btn').className='btn'+(S.chordMode?' chord-on':'');
+  updateStatus();
+}
+function toggleTieMode(){
+  S.tieMode=!S.tieMode;
+  if(S.tieMode){S.chordMode=false;id('chord-btn').className='btn';S.chordQueue=[];updateChordPanel();}
+  id('tie-btn').className='btn'+(S.tieMode?' tie-on':'');
+  updateStatus();
+}
+function cycleView(){
+  const vs=['both','piano','percussion'];
+  S.view=vs[(vs.indexOf(S.view)+1)%vs.length];
+  id('view-btn').textContent={both:'Piano+Perc',piano:'Piano Only',percussion:'Perc Only'}[S.view];
+  id('perc-section').style.display=S.view==='piano'?'none':'';
+  clearSel(); updateStatus(); render();
+}
+function setTimeSig(){ S.timeSig=id('time-sig').value; updateStatus(); render(); }
+function setKeySig(){ S.keySig=id('key-sig').value; updateStatus(); render(); }
+
+function addMeasure(){ hist(); S.measures.push({treble:[],bass:[],perc:[]}); updateStatus(); render(); }
+function removeMeasure(){ if(S.measures.length<=1)return; hist(); S.measures.pop(); S.lastMeasure=Math.min(S.lastMeasure,S.measures.length-1); clearSel(); updateStatus(); render(); }
+function clearScore(){ if(!confirm('Clear all notation?'))return; hist(); S.measures=Array.from({length:4},()=>({treble:[],bass:[],perc:[]})); S.lastMeasure=0; clearSel(); updateStatus(); render(); }
+function undoAction(){ if(!S.history.length)return; S.measures=JSON.parse(S.history.pop()); clearSel(); updateStatus(); render(); }
+function hist(){ S.history.push(JSON.stringify(S.measures)); if(S.history.length>60)S.history.shift(); }
+
+// ══════════════════════════════════════════════
+// CHORD QUEUE PANEL
+// ══════════════════════════════════════════════
+function updateChordPanel(){
+  const panel=id('chord-panel');
+  const queue=id('chord-queue');
+  queue.innerHTML='';
+  S.chordQueue.forEach((n,i)=>{
+    const acc=n.acc!=='n'?n.acc:'';
+    const pip=document.createElement('div');
+    pip.className='chord-pip';
+    pip.textContent=n.pitch.toUpperCase()+acc+n.oct;
+    pip.title='Click to remove';
+    pip.onclick=()=>{ S.chordQueue.splice(i,1); updateChordPanel(); };
+    queue.appendChild(pip);
+  });
+  panel.style.display=S.chordQueue.length>0||S.chordMode?'':'none';
+}
+function clearChordQueue(){ S.chordQueue=[]; updateChordPanel(); }
+
+function placeChord(){
+  if(!S.chordQueue.length){ alert('Add pitches first.'); return; }
+  hist();
+  const entry=makeChordEntry(S.chordQueue,S.dur,S.dotted,S.ddotted,S.dyn);
+  getArr(S.lastMeasure,S.lastStaff).push(entry);
+  S.chordQueue=[]; updateChordPanel(); render();
+}
+
+// ══════════════════════════════════════════════
+// SELECTION
+// ══════════════════════════════════════════════
+function setSel(mi,staff,ni){
+  S.sel={mi,staff,ni};
+  const arr=getArr(mi,staff);
+  const e=arr[ni];
+  // Build description
+  let desc='';
+  if(e.type==='rest') desc=`Rest — ${e.dur}`;
+  else if(e.type==='perc') { const p=PERC.find(x=>x.id===e.percId); desc=`Perc: ${p?p.name:'?'} — ${e.dur}`; }
+  else {
+    const pitchNames=e.keys.map(k=>{ const[p,o]=k.split('/'); const ac=(e.accs&&e.accs[e.keys.indexOf(k)])||''; return p.toUpperCase()+ac+o; }).join(', ');
+    desc=`${e.type==='chord'?'Chord':'Note'}: ${pitchNames} — ${e.dur}`;
+  }
+  id('sel-info').textContent=desc;
+  id('sel-panel').classList.add('open');
+  id('no-sel').style.display='none';
+  id('st-sel').textContent=desc;
+}
+function clearSel(){
+  S.sel=null;
+  id('sel-panel').classList.remove('open');
+  id('no-sel').style.display='';
+  id('st-sel').textContent='—';
+}
+function deleteSelected(){
+  if(!S.sel)return;
+  hist();
+  const arr=getArr(S.sel.mi,S.sel.staff);
+  arr.splice(S.sel.ni,1);
+  clearSel(); render();
+}
+// Change the duration of the selected note using current sidebar duration
+function applyEditDuration(){
+  if(!S.sel)return;
+  hist();
+  const arr=getArr(S.sel.mi,S.sel.staff);
+  const e=arr[S.sel.ni];
+  e.dur=S.dur; e.dotted=S.dotted; e.ddotted=S.ddotted;
+  render(); setSel(S.sel.mi,S.sel.staff,S.sel.ni);
+}
+
+// ══════════════════════════════════════════════
+// EDIT NOTE PITCHES MODAL
+// ══════════════════════════════════════════════
+let editWorkingKeys=[];
+let editWorkingAccs={};
+S.editOct=4;
+
+function openEditNote(){
+  if(!S.sel)return;
+  const arr=getArr(S.sel.mi,S.sel.staff);
+  const e=arr[S.sel.ni];
+  if(e.type==='rest'||e.type==='perc'){ alert('Cannot edit pitches of rests/percussion here. Use the percussion list or rest duration.'); return; }
+  editWorkingKeys=[...e.keys];
+  editWorkingAccs={...e.accs};
+  S.editOct=4;
+  id('edit-oct-disp').textContent=S.editOct;
+  refreshEditModal();
+  id('edit-modal').classList.add('open');
+}
+function refreshEditModal(){
+  const list=id('edit-keys-list'); list.innerHTML='';
+  editWorkingKeys.forEach((k,i)=>{
+    const[p,o]=k.split('/');
+    const acc=editWorkingAccs[i]||'n';
+    const accLbl=acc==='n'?'':acc;
+    const row=document.createElement('div'); row.className='edit-key-row';
+    row.innerHTML=`<span class="pitch-lbl">${p.toUpperCase()}${accLbl}/${o}</span>
+      <span class="rmk" onclick="removeEditKey(${i})">✕</span>`;
+    list.appendChild(row);
+  });
+  // pitch buttons
+  const btnArea=id('edit-pitch-btns'); btnArea.innerHTML='';
+  ['c','d','e','f','g','a','b'].forEach(p=>{
+    const b=document.createElement('button'); b.className='pk'; b.style.cssText='padding:4px 5px;font-size:9px;';
+    b.textContent=p.toUpperCase(); b.onclick=()=>stagePitchInEdit(p);
+    btnArea.appendChild(b);
+  });
+}
+function removeEditKey(i){ editWorkingKeys.splice(i,1); delete editWorkingAccs[i]; const newAccs={}; editWorkingKeys.forEach((_,j)=>{ if(editWorkingAccs[j+1]) newAccs[j]=editWorkingAccs[j+1]; }); editWorkingAccs=newAccs; refreshEditModal(); }
+function stagePitchInEdit(p){
+  const acc=id('edit-acc-sel').value;
+  editWorkingKeys.push(p+'/'+S.editOct);
+  if(acc!=='n') editWorkingAccs[editWorkingKeys.length-1]=acc;
+  refreshEditModal();
+}
+function chgEditOct(d){ S.editOct=clamp(S.editOct+d,2,7); id('edit-oct-disp').textContent=S.editOct; }
+function applyEditNote(){
+  if(!S.sel)return;
+  if(!editWorkingKeys.length){ alert('Need at least one pitch.'); return; }
+  hist();
+  const arr=getArr(S.sel.mi,S.sel.staff);
+  const e=arr[S.sel.ni];
+  e.keys=[...editWorkingKeys];
+  e.accs={...editWorkingAccs};
+  e.type=e.keys.length>1?'chord':'note';
+  closeModal('edit-modal');
+  render(); setSel(S.sel.mi,S.sel.staff,S.sel.ni);
+}
+
+// ══════════════════════════════════════════════
+// NOTE FACTORIES
+// ══════════════════════════════════════════════
+function makeNoteEntry(pitch,oct,acc,dur,dotted,ddotted,dyn){
+  return{type:'note',dur,dotted,ddotted,keys:[pitch+'/'+oct],accs:acc!=='n'?{0:acc}:{},dyn};
+}
+function makeChordEntry(pitches,dur,dotted,ddotted,dyn){
+  const keys=pitches.map(p=>p.pitch+'/'+p.oct);
+  const accs={}; pitches.forEach((p,i)=>{if(p.acc!=='n')accs[i]=p.acc;});
+  return{type:'chord',dur,dotted,ddotted,keys,accs,dyn};
+}
+function makePercEntry(percId,dur,dotted,ddotted,dyn){
+  const inst=PERC.find(p=>p.id===percId)||PERC[0];
+  return{type:'perc',dur,dotted,ddotted,keys:[inst.pos],percId,dyn};
+}
+function makeRestEntry(dur,dotted,ddotted,dyn){
+  return{type:'rest',dur:dur==='r'?'q':dur,dotted,ddotted,keys:['b/4'],dyn};
+}
+
+// ══════════════════════════════════════════════
+// ADD NOTE
+// ══════════════════════════════════════════════
+function addNoteFromSidebar(){ addNoteAt(S.lastMeasure,S.lastStaff); }
+
+function addNoteAt(mi,staff){
+  S.lastMeasure=mi; S.lastStaff=staff;
+
+  // If there's a chord queue, place it
+  if(S.chordQueue.length>0&&staff!=='perc'){
+    placeChordAt(mi,staff); return;
+  }
+
+  hist();
+  const arr=getArr(mi,staff);
+  let entry;
+  if(S.dur==='r'){
+    entry=makeRestEntry(S.dur,S.dotted,S.ddotted,S.dyn);
+  } else if(staff==='perc'){
+    entry=makePercEntry(S.percId,S.dur,S.dotted,S.ddotted,S.dyn);
+  } else {
+    // Normal mode: use the current pitch state (last active pitch key clicked, or default)
+    const pitch=S.activePitch||'c';
+    const acc=S.activeAcc||S.nextAcc||'n';
+    // handle tie
+    if(S.tieMode&&arr.length>0&&!arr[arr.length-1].tiedTo){
+      arr[arr.length-1].tiedTo=true;
+      entry=makeNoteEntry(pitch,S.oct,acc,S.dur,S.dotted,S.ddotted,S.dyn);
+      entry.tiedFrom=true;
+    } else {
+      entry=makeNoteEntry(pitch,S.oct,acc,S.dur,S.dotted,S.ddotted,S.dyn);
+    }
+    S.nextAcc='n';
+  }
+  arr.push(entry);
+  render();
+}
+
+function placeChordAt(mi,staff){
+  if(!S.chordQueue.length)return;
+  hist();
+  const entry=makeChordEntry(S.chordQueue,S.dur,S.dotted,S.ddotted,S.dyn);
+  getArr(mi,staff).push(entry);
+  S.chordQueue=[]; updateChordPanel(); render();
+}
+
+function getArr(mi,st){
+  const m=S.measures[mi];
+  return st==='treble'?m.treble:st==='bass'?m.bass:m.perc;
+}
+
+// ══════════════════════════════════════════════
+// BUILD VEXFLOW NOTE
+// ══════════════════════════════════════════════
+function buildVexNote(e, clef){
+  try{
+    let vn;
+    if(e.type==='rest'){
+      vn=new StaveNote({keys:['b/4'],duration:e.dur+'r',align_center:true});
+
+    } else if(e.type==='perc'){
+      const inst=PERC.find(p=>p.id===e.percId)||PERC[0];
+      // Build the StaveNote with the right position
+      vn=new StaveNote({keys:[inst.pos],duration:e.dur,stem_direction:inst.stem});
+      // Override the notehead glyph if needed
+      if(inst.glyphCode){
+        try{
+          // VexFlow 4.x: access note_heads array and override glyph_props
+          if(vn.note_heads && vn.note_heads[0]){
+            const nh=vn.note_heads[0];
+            // Replace the entire glyph_props with the desired code
+            nh.glyph_props={
+              ...nh.glyph_props,
+              code_head:inst.glyphCode,
+              code:inst.glyphCode,
+            };
+          }
+        }catch(er2){
+          // fallback: set style to draw an X visually
+          vn.setStyle({fillStyle:'#1a1208',strokeStyle:'#1a1208'});
+        }
+      }
+
+    } else {
+      // note or chord — always use normal filled noteheads
+      vn=new StaveNote({keys:e.keys,duration:e.dur,clef});
+      if(e.accs) Object.entries(e.accs).forEach(([idx,a])=>{
+        try{vn.addModifier(new Accidental(a),+idx);}catch(er){}
+      });
+    }
+
+    if(e.dotted)  try{Dot.buildAndAttach([vn]);}catch(er){}
+    if(e.ddotted) try{Dot.buildAndAttach([vn]);Dot.buildAndAttach([vn]);}catch(er){}
+    return vn;
+  }catch(er){
+    console.warn('VexNote:',er.message,e);
+    return null;
+  }
+}
+
+// ══════════════════════════════════════════════
+// BEAMING
+// ══════════════════════════════════════════════
+function buildBeams(vns,entries){
+  const beamable=new Set(['8','16','32']);
+  const beams=[];let grp=[],beat=0;
+  for(let i=0;i<vns.length;i++){
+    const e=entries[i],vn=vns[i];if(!vn){grp=[];continue;}
+    const eb=entryBeats(e);
+    if(e.type==='rest'){if(grp.length>=2)beams.push(tryBeam(grp));grp=[];}
+    else if(beamable.has(e.dur)){
+      grp.push(vn); beat+=eb;
+      if(Math.round(beat*1000)%1000===0||i===vns.length-1){if(grp.length>=2)beams.push(tryBeam(grp));grp=[];}
+    } else {if(grp.length>=2)beams.push(tryBeam(grp));grp=[];beat+=eb;}
+  }
+  if(grp.length>=2)beams.push(tryBeam(grp));
+  return beams.filter(Boolean);
+}
+function tryBeam(ns){try{return new Beam(ns);}catch(e){return null;}}
+
+// ══════════════════════════════════════════════
+// TIES — only for non-percussion, only same instrument
+// ══════════════════════════════════════════════
+function buildTies(vns,entries,isPerc){
+  if(isPerc)return[]; // NO ties on perc
+  const ties=[];
+  for(let i=0;i<entries.length-1;i++){
+    if(entries[i].tiedTo&&vns[i]&&vns[i+1]){
+      try{ties.push(new Tie({first_note:vns[i],last_note:vns[i+1],first_indices:[0],last_indices:[0]}));}catch(e){}
+    }
+  }
+  return ties;
+}
+
+// ══════════════════════════════════════════════
+// REST FILL
+// ══════════════════════════════════════════════
+function fillRests(entries){
+  const bpm=beatsPerMeasure();
+  let used=entries.reduce((s,e)=>s+entryBeats(e),0);
+  const fe=[],fvn=[];const durs=['w','h','q','8','16','32'];let wd=0;
+  while(used<bpm-0.001&&wd++<32){
+    const rem=bpm-used;let ch='32';
+    for(const d of durs)if(DB[d]<=rem+0.001){ch=d;break;}
+    fe.push({type:'rest',dur:ch,dotted:false,ddotted:false});
+    fvn.push(new StaveNote({keys:['b/4'],duration:ch+'r',align_center:true}));
+    used+=DB[ch];
+  }
+  return{fe,fvn};
+}
+
+function entryBeats(e){
+  const d=e.dur==='r'?'q':e.dur;
+  let b=DB[d]||1;if(e.dotted)b*=1.5;if(e.ddotted)b*=1.75;return b;
+}
+function beatsPerMeasure(){
+  const[n,d]=S.timeSig.split('/').map(Number);return d===8?n/2:n;
+}
+
+// ══════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════
+function render(){
+  const area=id('notation-area'); area.innerHTML='';
+  const PW=834, MPR=4;
+  const rows=Math.ceil(S.measures.length/MPR);
+
+  for(let row=0;row<rows;row++){
+    const s0=row*MPR,s1=Math.min(s0+MPR,S.measures.length),mInRow=s1-s0;
+    const FE=68, SW=Math.floor((PW-FE)/MPR);
+
+    // Staff Y layout
+    const scs=[];let yy=24;
+    const GH=88,GAP=16,PGAP=6;
+    if(S.view==='both'||S.view==='piano'){
+      scs.push({type:'treble',y:yy,h:GH});yy+=GH+PGAP;
+      scs.push({type:'bass',y:yy,h:GH});yy+=GH+GAP;
+    }
+    if(S.view==='both'||S.view==='percussion'){
+      scs.push({type:'perc',y:yy,h:GH});yy+=GH+GAP;
+    }
+    const TH=yy+10;
+
+    const rowDiv=document.createElement('div');
+    rowDiv.style.cssText='position:relative;margin-bottom:10px;';
+    area.appendChild(rowDiv);
+
+    const ren=new Renderer(rowDiv,Renderer.Backends.SVG);
+    ren.resize(PW,TH);
+    const ctx=ren.getContext();
+
+    for(const sc of scs){
+      let x=0;
+      for(let mi=s0;mi<s1;mi++){
+        const isF=mi===s0;
+        const sw=isF?SW+FE:SW;
+        const stave=new Stave(x,sc.y,sw);
+
+        if(isF){
+          const cn=sc.type==='bass'?'bass':sc.type==='perc'?'percussion':'treble';
+          stave.addClef(cn);
+          if(sc.type==='treble'||sc.type==='perc') stave.addTimeSignature(S.timeSig);
+          if(sc.type!=='perc'){
+            const k=KEY_MAP[S.keySig]||'C';
+            if(k!=='C'&&k!=='Am'&&k!=='Em'&&k!=='Dm'&&k!=='Gm') try{stave.addKeySignature(k);}catch(e){}
+          }
+        }
+        stave.setContext(ctx).draw();
+
+        // Measure number
+        if(sc===scs[0]){
+          ctx.fillStyle='#9a8570';ctx.font='8.5px IBM Plex Mono';
+          ctx.fillText(String(mi+1),x+(isF?FE:4),sc.y-5);
+        }
+
+        const m=S.measures[mi];
+        const rawE=sc.type==='treble'?m.treble:sc.type==='bass'?m.bass:m.perc;
+        const isPerc=sc.type==='perc';
+        const clef=sc.type==='bass'?'bass':'treble';
+
+        const vns=[],entries=[];
+        rawE.forEach((e,ni)=>{
+          const vn=buildVexNote(e,clef);
+          if(vn){
+            vns.push(vn);entries.push(e);
+            // Tag vn with note index for click detection
+            vn._niIndex=ni;
+          }
+        });
+
+        const{fe,fvn}=fillRests(entries);
+        const allVns=[...vns,...fvn];
+        const allE=[...entries,...fe];
+
+        if(allVns.length>0){
+          try{
+            const[nb,bv]=S.timeSig.split('/').map(Number);
+            const voice=new Voice({num_beats:nb,beat_value:bv});
+            voice.setMode(Vex.Flow.Voice.Mode.SOFT);
+            voice.addTickables(allVns);
+            new Formatter().joinVoices([voice]).format([voice],sw-(isF?FE+6:12));
+            voice.draw(ctx,stave);
+
+            // Beams
+            buildBeams(vns,entries).forEach(b=>{try{b.setContext(ctx).draw();}catch(e){}});
+            // Ties (not for perc)
+            buildTies(vns,entries,isPerc).forEach(t=>{try{t.setContext(ctx).draw();}catch(e){}});
+
+            // Highlight selected note
+            if(S.sel&&S.sel.mi===mi&&S.sel.staff===sc.type){
+              const selIdx=S.sel.ni;
+              if(vns[selIdx]){
+                try{
+                  const bb=vns[selIdx].getBoundingBox();
+                  ctx.save();
+                  ctx.strokeStyle='#c44a1a';ctx.lineWidth=1.5;
+                  ctx.fillStyle='rgba(196,74,26,.1)';
+                  ctx.fillRect(bb.x-3,bb.y-3,bb.w+6,bb.h+6);
+                  ctx.strokeRect(bb.x-3,bb.y-3,bb.w+6,bb.h+6);
+                  ctx.restore();
+                }catch(e){}
+              }
+            }
+          }catch(e){console.warn('Voice:',e.message);}
+        }
+        x+=sw;
+      }
+    }
+
+    // Piano brace
+    if((S.view==='both'||S.view==='piano')&&scs.length>=2){
+      const t=scs[0],b=scs[1];
+      ctx.save();ctx.strokeStyle='#2c1f0e';ctx.lineWidth=2.5;
+      ctx.beginPath();ctx.moveTo(1,t.y+2);ctx.lineTo(1,b.y+b.h-2);ctx.stroke();
+      ctx.lineWidth=2;
+      const by1=t.y,by2=b.y+b.h,mid=(by1+by2)/2;
+      ctx.beginPath();ctx.moveTo(1,by1);ctx.bezierCurveTo(-10,by1+12,-10,mid-10,1,mid);ctx.bezierCurveTo(-10,mid+10,-10,by2-12,1,by2);ctx.stroke();
+      ctx.restore();
+    }
+
+    // Click handler — add note or select existing
+    const svg=rowDiv.querySelector('svg');
+    if(svg){
+      svg.style.cursor='pointer';
+      svg.addEventListener('click',ev=>{
+        const rect=svg.getBoundingClientRect();
+        const scaleX=PW/rect.width,scaleY=TH/rect.height;
+        const cx=(ev.clientX-rect.left)*scaleX;
+        const cy=(ev.clientY-rect.top)*scaleY;
+
+        // Which measure?
+        let mLocal=cx<FE?0:Math.floor((cx-FE)/SW);
+        mLocal=clamp(mLocal,0,mInRow-1);
+        const mGlobal=s0+mLocal;
+
+        // Which staff?
+        let staffType='treble';
+        for(const sc of scs){ if(cy>=sc.y&&cy<=sc.y+sc.h){staffType=sc.type==='perc'?'perc':sc.type;break;} }
+
+        // Check if click is near an existing note (try to select it)
+        const m=S.measures[mGlobal];
+        const rawE=staffType==='treble'?m.treble:staffType==='bass'?m.bass:m.perc;
+        // We can't get bounding boxes here since we've drawn already.
+        // Use a simpler heuristic: if alt/shift held, just add. Otherwise try to detect note region.
+        // For simplicity: if there are notes and no modifier keys, check approximate x position
+        if(!ev.shiftKey&&!ev.altKey&&rawE.length>0){
+          // Estimate note positions linearly
+          const staveX=mGlobal===s0?FE:FE+(mGlobal-s0)*SW;
+          const noteZoneW=sw-FE;
+          const noteStep=noteZoneW/(rawE.length+1);
+          for(let ni=0;ni<rawE.length;ni++){
+            const noteX=staveX+(ni+1)*noteStep;
+            if(Math.abs(cx-noteX)<noteStep*0.6){
+              // Select this note
+              setSel(mGlobal,staffType,ni);
+              render(); return;
+            }
+          }
+        }
+        // Otherwise add note
+        clearSel();
+        addNoteAt(mGlobal,staffType);
+      });
+    }
+  }
+}
+
+// ══════════════════════════════════════════════
+// STATUS
+// ══════════════════════════════════════════════
+function updateStatus(){
+  id('st-mode').textContent={both:'Piano + Percussion',piano:'Piano Only',percussion:'Percussion Only'}[S.view];
+  id('st-time').textContent=S.timeSig;
+  id('st-key').textContent=S.keySig;
+  id('st-bars').textContent=S.measures.length+' bar'+(S.measures.length!==1?'s':'');
+  const b=id('st-badge');
+  if(S.chordMode){b.className='badge chord';b.textContent='Chord';}
+  else if(S.tieMode){b.className='badge tie';b.textContent='Tie';}
+  else{b.className='badge norm';b.textContent='Normal';}
+}
+
+// ══════════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════════
+function showTitleModal(){ id('title-modal').classList.add('open'); }
+function closeModal(mid){ id(mid).classList.remove('open'); }
+function applyTitle(){
+  S.title=id('inp-title').value||'Untitled Score';
+  S.composer=id('inp-comp').value||'Composer';
+  S.tempo=parseInt(id('inp-tempo').value)||120;
+  id('disp-title').textContent=S.title;
+  id('disp-composer').textContent=`♩= ${S.tempo}  ·  ${S.composer}`;
+  closeModal('title-modal');
+}
+
+// ══════════════════════════════════════════════
+// PDF EXPORT
+// ══════════════════════════════════════════════
+async function exportToPDF(){
+  const b=id('pdf-btn'); const orig=b.textContent;
+  b.textContent='⏳…'; b.disabled=true;
+  try{
+    const page=id('score-page');
+    const canvas=await html2canvas(page,{scale:2,backgroundColor:'#faf6ee',useCORS:true,logging:false});
+    const{jsPDF}=window.jspdf;
+    const W=canvas.width/2,H=canvas.height/2;
+    const pdf=new jsPDF({orientation:W>H?'landscape':'portrait',unit:'px',format:[W,H]});
+    pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,W,H);
+    pdf.save(S.title.replace(/\s+/g,'_')+'.pdf');
+  }catch(e){alert('PDF error: '+e.message);}
+  finally{b.textContent=orig;b.disabled=false;}
+}
+
+// ══════════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ══════════════════════════════════════════════
+document.addEventListener('keydown',ev=>{
+  if(ev.target.tagName==='INPUT'||ev.target.tagName==='SELECT')return;
+  const k=ev.key;
+  if(k==='1')$$('[data-dur="w"]')[0].click();
+  if(k==='2')$$('[data-dur="h"]')[0].click();
+  if(k==='3')$$('[data-dur="q"]')[0].click();
+  if(k==='4')$$('[data-dur="8"]')[0].click();
+  if(k==='5')$$('[data-dur="16"]')[0].click();
+  if(k==='6')$$('[data-dur="32"]')[0].click();
+  if(k==='7')$$('[data-dur="r"]')[0].click();
+  if('abcdefg'.includes(k.toLowerCase())){
+    const el=$$(`[data-pitch="${k.toLowerCase()}"]`)[0];if(el)el.click();
+  }
+  if(k==='ArrowUp')  chgOct(1);
+  if(k==='ArrowDown')chgOct(-1);
+  if((ev.ctrlKey||ev.metaKey)&&k.toLowerCase()==='z'){ev.preventDefault();undoAction();}
+  if(k==='.')togDot();
+  if(k.toLowerCase()==='c'&&!ev.ctrlKey&&!ev.metaKey)toggleChordMode();
+  if(k.toLowerCase()==='t')toggleTieMode();
+  if(k==='Enter'){ev.preventDefault(); if(S.chordQueue.length>0)placeChord(); else addNoteFromSidebar();}
+  if(k==='Delete'||k==='Backspace'){if(S.sel){ev.preventDefault();deleteSelected();}}
+  if(k==='Escape'){clearSel();render();}
+});
+
+// ══════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════
+function id(x){return document.getElementById(x);}
+function $$(x){return Array.from(document.querySelectorAll(x));}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+
+// ══════════════════════════════════════════════
+// START
+// ══════════════════════════════════════════════
+S.activePitch='c'; S.activeAcc='n';
+init();
+</script>
+</body>
+</html>
