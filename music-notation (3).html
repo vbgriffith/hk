@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maestro — Music Notation Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --ink:#1a1208;--paper:#faf6ee;--paper2:#f3ecda;--muted:#7a6a52;
+  --accent:#8b2500;--acl:#c44a1a;
+  --gold:#c8922a;--gol:#e8b84b;
+  --ui:#231608;--bdr:#4a3520;--txt:#f0e9d8;--dim:#9a8570;
+  --blue:#1e4fa8;--bluL:#4a7fff;--green:#1a6b2a;--greenL:#44cc66;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--ui);font-family:'IBM Plex Mono',monospace;color:var(--txt);display:flex;flex-direction:column;}
+
+/* HEADER */
+header{background:linear-gradient(135deg,#12080100,#231608,#120801);border-bottom:1px solid var(--bdr);padding:5px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;box-shadow:0 2px 16px rgba(0,0,0,.6);}
+.logo{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--gol);letter-spacing:2px;text-transform:uppercase;flex-shrink:0;}
+.logo span{color:var(--acl);}
+.hdiv{width:1px;height:22px;background:var(--bdr);flex-shrink:0;}
+.tb{display:flex;align-items:center;gap:3px;flex-wrap:wrap;}
+.tg{display:flex;align-items:center;gap:2px;padding:0 5px;border-right:1px solid var(--bdr);}
+.tg:last-child{border:none;}
+.tl{font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-right:2px;white-space:nowrap;}
+
+.btn{background:rgba(255,255,255,.05);border:1px solid var(--bdr);color:var(--txt);padding:3px 7px;border-radius:3px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;transition:all .1s;white-space:nowrap;display:inline-flex;align-items:center;gap:2px;}
+.btn:hover{background:rgba(200,146,42,.15);border-color:var(--gold);color:var(--gol);}
+.btn.on{background:var(--accent);border-color:var(--acl);color:#fff;}
+.btn.pri{background:var(--gold);border-color:var(--gol);color:var(--ink);font-weight:700;}
+.btn.pri:hover{background:var(--gol);}
+.btn.chord-on{background:rgba(30,79,168,.45);border-color:var(--bluL);color:#aaccff;}
+.btn.tie-on{background:rgba(26,107,42,.45);border-color:var(--greenL);color:#aaffcc;}
+.btn.danger{background:rgba(139,37,0,.25);border-color:var(--accent);}
+.btn.danger:hover{background:var(--accent);color:#fff;}
+select,input[type=number]{background:rgba(255,255,255,.05);border:1px solid var(--bdr);color:var(--txt);padding:3px 5px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer;outline:none;}
+select:hover,input[type=number]:hover{border-color:var(--gold);}
+select option{background:#231608;}
+
+/* LAYOUT */
+.main{display:flex;flex:1;min-height:0;overflow:hidden;}
+
+/* SIDEBAR */
+.sidebar{width:230px;background:#180e04;border-right:1px solid var(--bdr);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;min-height:0;}
+.sidebar::-webkit-scrollbar{width:4px;}
+.sidebar::-webkit-scrollbar-track{background:#0e0802;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px;}
+.sidebar::-webkit-scrollbar-thumb:hover{background:var(--gold);}
+.ss{border-bottom:1px solid var(--bdr);padding:7px 8px;}
+.st{font-size:7px;color:var(--gold);text-transform:uppercase;letter-spacing:2px;margin-bottom:5px;font-weight:700;}
+
+/* Duration */
+.dur-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;}
+.nb{background:rgba(255,255,255,.04);border:1px solid var(--bdr);color:var(--txt);padding:4px 2px;border-radius:2px;cursor:pointer;text-align:center;transition:all .1s;font-family:'IBM Plex Mono',monospace;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:9px;}
+.nb:hover{background:rgba(200,146,42,.12);border-color:var(--gold);}
+.nb.active{background:var(--accent);border-color:var(--acl);color:#fff;}
+.ns{font-size:15px;line-height:1.1;}
+
+/* Piano keyboard */
+.kbd-wrap{position:relative;height:42px;margin-bottom:4px;}
+.white-keys-row{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;height:100%;}
+.wk{background:rgba(255,255,255,.9);border:1px solid #888;border-radius:0 0 3px 3px;cursor:pointer;font-size:7px;color:#1a1208;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px;font-weight:600;transition:all .08s;user-select:none;}
+.wk:hover{background:#fff;border-color:var(--gold);}
+.wk.queued{background:#1e4fa8;border-color:var(--bluL);color:#fff;}
+.bk-overlay{position:absolute;top:0;left:0;right:0;height:55%;display:grid;grid-template-columns:repeat(7,1fr);gap:2px;pointer-events:none;}
+.bk{background:#2a1a0a;border:1px solid #555;border-radius:0 0 3px 3px;cursor:pointer;font-size:6px;color:var(--dim);display:flex;align-items:center;justify-content:center;transition:all .08s;pointer-events:all;user-select:none;}
+.bk:hover{background:#3a2a10;border-color:var(--gold);}
+.bk.queued{background:#1e4fa8;border-color:var(--bluL);color:#fff;}
+.bk.gap{background:transparent;border:none;pointer-events:none;}
+
+/* Chord queue pills */
+.cq-pills{display:flex;flex-wrap:wrap;gap:2px;min-height:18px;background:rgba(0,0,0,.2);border-radius:3px;padding:3px;margin-bottom:4px;}
+.cpill{background:rgba(30,79,168,.5);border:1px solid var(--bluL);color:#aaccff;border-radius:8px;padding:1px 6px;font-size:8px;cursor:pointer;}
+.cpill:hover{background:var(--accent);border-color:var(--acl);color:#fff;}
+
+/* Chord name picker */
+.chord-root-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;margin-bottom:3px;}
+.cr-btn{background:rgba(255,255,255,.06);border:1px solid var(--bdr);color:var(--txt);border-radius:2px;padding:3px 1px;font-size:8px;text-align:center;cursor:pointer;transition:all .08s;}
+.cr-btn:hover{border-color:var(--gold);color:var(--gol);}
+.cr-btn.active{background:var(--blue);border-color:var(--bluL);color:#fff;}
+.chord-type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-bottom:3px;}
+.ct-btn{background:rgba(255,255,255,.04);border:1px solid var(--bdr);color:var(--dim);border-radius:2px;padding:3px 2px;font-size:8px;text-align:center;cursor:pointer;transition:all .08s;line-height:1.2;}
+.ct-btn:hover{border-color:var(--gold);color:var(--gol);}
+.ct-btn.active{background:rgba(30,79,168,.4);border-color:var(--bluL);color:#aaccff;}
+.inv-row{display:flex;gap:2px;}
+.inv-btn{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--bdr);color:var(--dim);border-radius:2px;padding:2px;font-size:7.5px;text-align:center;cursor:pointer;transition:all .08s;}
+.inv-btn:hover{border-color:var(--gold);}
+.inv-btn.active{background:rgba(26,107,42,.4);border-color:var(--greenL);color:#aaffcc;}
+
+/* Perc list */
+.plist{display:flex;flex-direction:column;gap:2px;}
+.pi{display:flex;align-items:center;gap:4px;padding:3px 5px;border:1px solid var(--bdr);border-radius:2px;cursor:pointer;transition:all .1s;font-size:9px;}
+.pi:hover{background:rgba(200,146,42,.1);border-color:var(--gold);}
+.pi.active{background:var(--accent);border-color:var(--acl);color:#fff;}
+
+/* Selected panel */
+.sel-box{background:rgba(200,146,42,.08);border:1px solid rgba(200,146,42,.3);border-radius:3px;padding:6px;margin-top:3px;}
+.sel-label{font-size:8px;color:var(--gol);line-height:1.5;word-break:break-word;}
+
+/* Score area */
+.canvas-area{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+.score-wrap{flex:1;overflow:auto;padding:24px 24px 40px;background:#170f04;min-height:0;}
+.score-wrap::-webkit-scrollbar{width:8px;height:8px;}
+.score-wrap::-webkit-scrollbar-track{background:#0e0802;}
+.score-wrap::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:4px;}
+.score-wrap::-webkit-scrollbar-thumb:hover{background:var(--gold);}
+
+/* THE FIX: score-page as inline-block so it shrinks to content */
+.score-page{
+  background:var(--paper);
+  box-shadow:0 8px 48px rgba(0,0,0,.7);
+  border-radius:2px;
+  padding:40px 40px 60px;
+  display:inline-block;   /* shrink-wraps to content height */
+  min-width:880px;
+  min-height:300px;
+}
+.score-title{text-align:center;margin-bottom:18px;}
+.score-title-text{font-family:'Playfair Display',serif;font-size:22px;color:var(--ink);}
+.score-composer-line{font-family:'Crimson Pro',serif;font-style:italic;font-size:12px;color:var(--muted);margin-top:2px;}
+
+/* Status */
+.statusbar{background:#0e0802;border-top:1px solid var(--bdr);padding:3px 10px;display:flex;align-items:center;gap:10px;font-size:8px;color:var(--dim);flex-shrink:0;flex-wrap:wrap;}
+.sdot{width:5px;height:5px;border-radius:50%;background:var(--gold);display:inline-block;margin-right:3px;}
+.badge{display:inline-block;padding:1px 5px;border-radius:6px;font-size:7px;font-weight:700;}
+.badge.norm{background:rgba(200,146,42,.2);color:var(--gol);border:1px solid rgba(200,146,42,.3);}
+.badge.chord{background:rgba(30,79,168,.3);color:#aaccff;border:1px solid rgba(30,79,168,.5);}
+.badge.tie{background:rgba(26,107,42,.3);color:#aaffcc;border:1px solid rgba(26,107,42,.5);}
+
+/* Modals */
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;z-index:9999;}
+.mbg.open{display:flex;}
+.modal{background:#180e04;border:1px solid var(--bdr);border-radius:6px;padding:20px;box-shadow:0 24px 64px rgba(0,0,0,.9);max-width:95vw;}
+.modal-h{font-family:'Playfair Display',serif;font-size:16px;color:var(--gol);margin-bottom:12px;}
+.field{margin-bottom:8px;}
+.field label{display:block;font-size:7.5px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;}
+.field input,.field select{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--bdr);color:var(--txt);padding:5px 7px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:11px;outline:none;}
+.field input:focus,.field select:focus{border-color:var(--gold);}
+.mact{display:flex;gap:4px;justify-content:flex-end;margin-top:12px;}
+
+/* Edit modal pitch list */
+.ekeys{display:flex;flex-direction:column;gap:3px;max-height:130px;overflow-y:auto;margin-bottom:8px;}
+.ekey-row{display:flex;align-items:center;gap:5px;padding:3px 6px;border:1px solid var(--bdr);border-radius:2px;font-size:9px;}
+.ekey-lbl{flex:1;color:var(--gol);font-weight:600;}
+.ermk{cursor:pointer;color:var(--acl);padding:0 3px;}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="logo">Maestro <span>Studio</span></div>
+  <div class="hdiv"></div>
+  <div class="tb">
+    <div class="tg">
+      <span class="tl">File</span>
+      <button class="btn" onclick="showTitleModal()">📄 Title</button>
+      <button class="btn pri" id="pdf-btn" onclick="exportPDF()">⬇ PDF</button>
+      <button class="btn" onclick="clearScore()">🗑</button>
+    </div>
+    <div class="tg">
+      <span class="tl">Edit</span>
+      <button class="btn" onclick="undo()" title="Ctrl+Z">↩</button>
+      <button class="btn danger" onclick="deleteSelected()" title="Delete">✕</button>
+    </div>
+    <div class="tg">
+      <span class="tl">Mode</span>
+      <button class="btn" id="tie-btn" onclick="toggleTie()" title="T">⌢ Tie</button>
+    </div>
+    <div class="tg">
+      <span class="tl">Bars</span>
+      <button class="btn" onclick="addBar()">＋</button>
+      <button class="btn" onclick="removeBar()">−</button>
+    </div>
+    <div class="tg">
+      <span class="tl">Time</span>
+      <select id="sel-time" onchange="setTimeSig()">
+        <option>4/4</option><option>3/4</option><option>2/4</option>
+        <option>6/8</option><option>12/8</option><option>2/2</option><option>5/4</option>
+      </select>
+    </div>
+    <div class="tg">
+      <span class="tl">Key</span>
+      <select id="sel-key" onchange="setKeySig()">
+        <option value="C">C</option><option value="G">G</option><option value="D">D</option>
+        <option value="A">A</option><option value="E">E</option><option value="B">B</option>
+        <option value="F#">F#</option><option value="F">F</option><option value="Bb">Bb</option>
+        <option value="Eb">Eb</option><option value="Ab">Ab</option>
+        <option value="Am">Am</option><option value="Em">Em</option>
+        <option value="Dm">Dm</option><option value="Gm">Gm</option>
+      </select>
+    </div>
+    <div class="tg">
+      <span class="tl">View</span>
+      <button class="btn" id="view-btn" onclick="cycleView()">Piano+Perc</button>
+    </div>
+    <div class="tg">
+      <span class="tl">Tempo</span>
+      <input type="number" id="inp-tempo" value="120" min="20" max="320" style="width:52px;" onchange="setTempo()">
+      <span style="font-size:9px;color:var(--dim);">♩=</span>
+    </div>
+  </div>
+</header>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+
+<!-- ─── SIDEBAR ─── -->
+<div class="sidebar">
+
+  <!-- DURATION -->
+  <div class="ss">
+    <div class="st">Duration <span style="color:var(--dim);font-size:6px;">[1-7 keys]</span></div>
+    <div class="dur-grid">
+      <button class="nb" data-dur="w" onclick="setDur('w',this)"><div class="ns">𝅝</div>Whole</button>
+      <button class="nb" data-dur="h" onclick="setDur('h',this)"><div class="ns">𝅗𝅥</div>Half</button>
+      <button class="nb active" data-dur="q" onclick="setDur('q',this)"><div class="ns">♩</div>Qtr</button>
+      <button class="nb" data-dur="8" onclick="setDur('8',this)"><div class="ns">♪</div>8th</button>
+      <button class="nb" data-dur="16" onclick="setDur('16',this)"><div class="ns">𝅘𝅥𝅯</div>16th</button>
+      <button class="nb" data-dur="32" onclick="setDur('32',this)"><div class="ns">𝅘𝅥𝅰</div>32nd</button>
+      <button class="nb" data-dur="r" onclick="setDur('r',this)"><div class="ns">𝄽</div>Rest</button>
+      <button class="nb" id="dot-btn" onclick="togDot()"><div class="ns" style="font-size:18px;line-height:1;">·</div>Dot</button>
+    </div>
+  </div>
+
+  <!-- PITCH + KEYBOARD -->
+  <div class="ss">
+    <div class="st">Pitch <span style="color:var(--dim);font-size:6px;">[A–G] Oct <span id="oct-disp">4</span></span>
+      <span style="float:right;display:flex;gap:2px;">
+        <button class="btn" style="padding:1px 4px;font-size:9px;" onclick="chgOct(-1)">▼</button>
+        <button class="btn" style="padding:1px 4px;font-size:9px;" onclick="chgOct(1)">▲</button>
+      </span>
+    </div>
+    <!-- Visual piano keyboard -->
+    <div class="kbd-wrap" id="kbd-wrap">
+      <div class="white-keys-row" id="wkeys">
+        <div class="wk" data-p="c" onclick="kbdClick('c','n',this)">C</div>
+        <div class="wk" data-p="d" onclick="kbdClick('d','n',this)">D</div>
+        <div class="wk" data-p="e" onclick="kbdClick('e','n',this)">E</div>
+        <div class="wk" data-p="f" onclick="kbdClick('f','n',this)">F</div>
+        <div class="wk" data-p="g" onclick="kbdClick('g','n',this)">G</div>
+        <div class="wk" data-p="a" onclick="kbdClick('a','n',this)">A</div>
+        <div class="wk" data-p="b" onclick="kbdClick('b','n',this)">B</div>
+      </div>
+      <div class="bk-overlay" id="bkeys">
+        <div class="bk" data-p="c" data-a="#" onclick="kbdClick('c','#',this)">C♯</div>
+        <div class="bk" data-p="d" data-a="#" onclick="kbdClick('d','#',this)">D♯</div>
+        <div class="bk gap"></div>
+        <div class="bk" data-p="f" data-a="#" onclick="kbdClick('f','#',this)">F♯</div>
+        <div class="bk" data-p="g" data-a="#" onclick="kbdClick('g','#',this)">G♯</div>
+        <div class="bk" data-p="a" data-a="#" onclick="kbdClick('a','#',this)">A♯</div>
+        <div class="bk gap"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:2px;margin-bottom:3px;">
+      <button class="btn" style="flex:1;justify-content:center;font-size:8px;" onclick="setNextAcc('b')">♭ Flat</button>
+      <button class="btn" style="flex:1;justify-content:center;font-size:8px;" id="nacc-btn">♮ Nat.</button>
+      <button class="btn" style="flex:1;justify-content:center;font-size:8px;" onclick="setNextAcc('bb')">𝄫 D♭</button>
+    </div>
+    <!-- Chord queue pills -->
+    <div class="cq-pills" id="cq-pills"></div>
+    <div id="cq-actions" style="display:none;">
+      <button class="btn pri" style="width:100%;justify-content:center;margin-bottom:2px;" onclick="placeManualChord()">✓ Place Chord (Enter)</button>
+      <button class="btn" style="width:100%;justify-content:center;font-size:9px;" onclick="clearQueue()">✕ Clear Queue</button>
+    </div>
+  </div>
+
+  <!-- CHORD NAME BUILDER -->
+  <div class="ss">
+    <div class="st">Chord by Name</div>
+    <!-- Root note -->
+    <div style="font-size:7px;color:var(--dim);margin-bottom:3px;text-transform:uppercase;letter-spacing:1px;">Root</div>
+    <div class="chord-root-grid" id="chord-roots"></div>
+    <!-- Chord type -->
+    <div style="font-size:7px;color:var(--dim);margin:3px 0;text-transform:uppercase;letter-spacing:1px;">Type</div>
+    <div class="chord-type-grid" id="chord-types"></div>
+    <!-- Inversion -->
+    <div style="font-size:7px;color:var(--dim);margin:3px 0;text-transform:uppercase;letter-spacing:1px;">Inversion</div>
+    <div class="inv-row" id="chord-invs"></div>
+    <!-- Octave -->
+    <div style="display:flex;align-items:center;gap:4px;margin:4px 0;">
+      <span style="font-size:8px;color:var(--dim);">Base Oct:</span>
+      <button class="btn" style="padding:1px 5px;" onclick="chgChordOct(-1)">▼</button>
+      <span id="chord-oct-disp" style="font-size:12px;color:var(--gol);">4</span>
+      <button class="btn" style="padding:1px 5px;" onclick="chgChordOct(1)">▲</button>
+    </div>
+    <!-- Preview -->
+    <div id="chord-preview" style="font-size:8px;color:#aaccff;background:rgba(30,79,168,.1);border:1px solid rgba(30,79,168,.3);border-radius:3px;padding:4px;min-height:18px;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;"></div>
+    <button class="btn pri" style="width:100%;justify-content:center;" onclick="placeNamedChord()">⊕ Insert Named Chord</button>
+  </div>
+
+  <!-- SELECTED NOTE EDITOR -->
+  <div class="ss" id="sel-section">
+    <div class="st">Selected Note</div>
+    <div class="sel-box">
+      <div class="sel-label" id="sel-label">—</div>
+      <div style="display:flex;gap:2px;margin-top:5px;">
+        <button class="btn" style="flex:1;justify-content:center;font-size:8px;" onclick="applyDurToSel()">↺ Dur</button>
+        <button class="btn" style="flex:1;justify-content:center;font-size:8px;" onclick="openEditModal()">✏ Pitches</button>
+        <button class="btn danger" style="flex:1;justify-content:center;font-size:8px;" onclick="deleteSelected()">🗑</button>
+      </div>
+    </div>
+    <div id="no-sel-msg" style="font-size:8px;color:var(--dim);margin-top:3px;">Click any note to select it.</div>
+  </div>
+
+  <!-- PERCUSSION -->
+  <div class="ss" id="perc-section">
+    <div class="st">Percussion Instrument</div>
+    <div class="plist" id="perc-list"></div>
+  </div>
+
+  <!-- DYNAMICS -->
+  <div class="ss">
+    <div class="st">Dynamics</div>
+    <div class="dur-grid">
+      <button class="nb" data-dyn="pp" onclick="setDyn('pp',this)"><div style="font-style:italic;font-size:11px;">pp</div></button>
+      <button class="nb" data-dyn="p" onclick="setDyn('p',this)"><div style="font-style:italic;font-size:11px;">p</div></button>
+      <button class="nb" data-dyn="mp" onclick="setDyn('mp',this)"><div style="font-style:italic;font-size:11px;">mp</div></button>
+      <button class="nb" data-dyn="mf" onclick="setDyn('mf',this)"><div style="font-style:italic;font-size:11px;">mf</div></button>
+      <button class="nb" data-dyn="f" onclick="setDyn('f',this)"><div style="font-style:italic;font-size:11px;">f</div></button>
+      <button class="nb" data-dyn="ff" onclick="setDyn('ff',this)"><div style="font-style:italic;font-size:11px;">ff</div></button>
+    </div>
+  </div>
+
+  <!-- ADD NOTE -->
+  <div class="ss">
+    <button class="btn pri" style="width:100%;justify-content:center;padding:8px;font-size:11px;" onclick="addNoteAction()">♩ Add Note  [Enter]</button>
+    <div style="font-size:7.5px;color:var(--dim);margin-top:4px;line-height:1.6;">
+      Normal: click staff or Enter.<br>
+      Chord: click keys → pills appear → Enter/Place.<br>
+      Named Chord: pick root+type → Insert.
+    </div>
+  </div>
+
+</div><!-- /sidebar -->
+
+<!-- ─── SCORE AREA ─── -->
+<div class="canvas-area">
+  <div class="score-wrap" id="score-wrap">
+    <!-- score-page is inline-block so it grows with content -->
+    <div class="score-page" id="score-page">
+      <div class="score-title">
+        <div class="score-title-text" id="disp-title">Untitled Score</div>
+        <div class="score-composer-line" id="disp-composer">Composer</div>
+      </div>
+      <div id="notation-area"></div>
+    </div>
+  </div>
+  <div class="statusbar">
+    <span><span class="sdot"></span><span id="st-mode">Piano+Perc</span></span>
+    <span id="st-time">4/4</span>
+    <span id="st-key">C</span>
+    <span id="st-bars">4 bars</span>
+    <span>Mode: <span id="st-badge" class="badge norm">Normal</span></span>
+    <span id="st-sel" style="color:var(--gol);">—</span>
+    <span style="margin-left:auto;font-size:7px;">1-7=dur • A-G=pitch • ↑↓=oct • T=tie • .=dot • Enter=add • Del=delete • Esc=deselect</span>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- TITLE MODAL -->
+<div class="mbg" id="title-modal">
+  <div class="modal" style="width:340px;">
+    <div class="modal-h">Score Details</div>
+    <div class="field"><label>Title</label><input id="inp-title" value="Untitled Score"></div>
+    <div class="field"><label>Composer</label><input id="inp-comp" value="Composer"></div>
+    <div class="mact">
+      <button class="btn" onclick="closeModal('title-modal')">Cancel</button>
+      <button class="btn pri" onclick="applyTitle()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PITCHES MODAL -->
+<div class="mbg" id="edit-modal">
+  <div class="modal" style="width:380px;">
+    <div class="modal-h">Edit Note Pitches</div>
+    <div class="ekeys" id="edit-keys-list"></div>
+    <div style="border-top:1px solid var(--bdr);padding-top:8px;margin-bottom:8px;">
+      <div style="font-size:7.5px;color:var(--dim);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Add pitch</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;" id="edit-pitch-row">
+        <button class="btn" style="font-size:9px;padding:2px 6px;" onclick="addEditP('c')">C</button>
+        <button class="btn" style="font-size:9px;padding:2px 6px;" onclick="addEditP('d')">D</button>
+        <button class="btn" style="font-size:9px;padding:2px 6px;" onclick="addEditP('e')">E</button>
+        <button class="btn" style="font-size:9px;padding:2px 6px;" onclick="addEditP('f')">F</button>
+        <button class="btn" style="font-size:9px;padding:2px 6px;" onclick="addEditP('g')">G</button>
+        <button class="btn" style="font-size:9px;padding:2px 6px;" onclick="addEditP('a')">A</button>
+        <button class="btn" style="font-size:9px;padding:2px 6px;" onclick="addEditP('b')">B</button>
+      </div>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <span style="font-size:8px;color:var(--dim);">Oct:</span>
+        <button class="btn" onclick="editOctDelta(-1)">▼</button>
+        <span id="edit-oct" style="color:var(--gol);font-size:12px;padding:0 4px;">4</span>
+        <button class="btn" onclick="editOctDelta(1)">▲</button>
+        <span style="font-size:8px;color:var(--dim);margin-left:4px;">Acc:</span>
+        <select id="edit-acc" style="font-size:9px;">
+          <option value="n">♮</option><option value="#">♯</option><option value="b">♭</option>
+          <option value="##">♯♯</option><option value="bb">♭♭</option>
+        </select>
+      </div>
+    </div>
+    <div class="mact">
+      <button class="btn" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="btn pri" onclick="applyEditNote()">✓ Apply</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// VexFlow
+// ═══════════════════════════════════════════════════════════════
+const { Renderer, Stave, StaveNote, Voice, Formatter,
+        Accidental, Dot, Beam, Tie } = Vex.Flow;
+
+// ═══════════════════════════════════════════════════════════════
+// PERCUSSION DATABASE
+// glyphCode: VexFlow SMuFL glyph name for the notehead
+// null = default filled oval (for snare/toms)
+// ═══════════════════════════════════════════════════════════════
+const PERC_DB = [
+  {id:'hh_c',  name:'Hi-Hat ×',       pos:'a/5', glyph:'noteheadXBlack',          stem:1 },
+  {id:'hh_o',  name:'Hi-Hat ○',       pos:'a/5', glyph:'noteheadCircleX',          stem:1 },
+  {id:'hh_f',  name:'Hi-Hat Foot',    pos:'e/3', glyph:'noteheadXBlack',          stem:-1},
+  {id:'ride',  name:'Ride ×',         pos:'f/5', glyph:'noteheadXBlack',          stem:1 },
+  {id:'ride_b',name:'Ride Bell ◆',    pos:'f/5', glyph:'noteheadDiamondBlack',    stem:1 },
+  {id:'crash', name:'Crash ×',        pos:'b/5', glyph:'noteheadXBlack',          stem:1 },
+  {id:'crash2',name:'Crash 2 ×',      pos:'g/5', glyph:'noteheadXBlack',          stem:1 },
+  {id:'sn',    name:'Snare ●',        pos:'c/5', glyph:null,                      stem:1 },
+  {id:'rim',   name:'Rim Shot ×',     pos:'c/5', glyph:'noteheadXBlack',          stem:1 },
+  {id:'tom1',  name:'Hi Tom ●',       pos:'e/5', glyph:null,                      stem:1 },
+  {id:'tom2',  name:'Mid Tom ●',      pos:'d/5', glyph:null,                      stem:1 },
+  {id:'flr',   name:'Floor Tom ●',    pos:'a/4', glyph:null,                      stem:-1},
+  {id:'bd',    name:'Bass Drum ○',    pos:'f/4', glyph:'noteheadCircleX',         stem:-1},
+  {id:'cowb',  name:'Cowbell △',      pos:'g/5', glyph:'noteheadTriangleUpBlack', stem:1 },
+  {id:'tamb',  name:'Tambourine ×',   pos:'b/4', glyph:'noteheadXBlack',          stem:1 },
+  {id:'clap',  name:'Clap ×',         pos:'c/5', glyph:'noteheadXBlack',          stem:1 },
+];
+
+// ═══════════════════════════════════════════════════════════════
+// CHORD DEFINITION TABLE
+// intervals: semitone offsets from root (not including root 0)
+// ═══════════════════════════════════════════════════════════════
+const CHORD_TYPES = [
+  {id:'maj',    label:'maj',    name:'Major',       intervals:[4,7]},
+  {id:'min',    label:'min',    name:'Minor',       intervals:[3,7]},
+  {id:'dim',    label:'dim',    name:'Diminished',  intervals:[3,6]},
+  {id:'aug',    label:'aug',    name:'Augmented',   intervals:[4,8]},
+  {id:'sus2',   label:'sus2',   name:'Sus2',        intervals:[2,7]},
+  {id:'sus4',   label:'sus4',   name:'Sus4',        intervals:[5,7]},
+  {id:'maj7',   label:'maj7',   name:'Major 7',     intervals:[4,7,11]},
+  {id:'min7',   label:'m7',     name:'Minor 7',     intervals:[3,7,10]},
+  {id:'dom7',   label:'7',      name:'Dominant 7',  intervals:[4,7,10]},
+  {id:'dim7',   label:'dim7',   name:'Dim 7',       intervals:[3,6,9]},
+  {id:'hdim',   label:'m7♭5',  name:'Half-Dim',    intervals:[3,6,10]},
+  {id:'aug7',   label:'aug7',   name:'Augmented 7', intervals:[4,8,10]},
+  {id:'maj9',   label:'maj9',   name:'Major 9',     intervals:[4,7,11,14]},
+  {id:'min9',   label:'m9',     name:'Minor 9',     intervals:[3,7,10,14]},
+  {id:'dom9',   label:'9',      name:'Dominant 9',  intervals:[4,7,10,14]},
+  {id:'add9',   label:'add9',   name:'Add 9',       intervals:[4,7,14]},
+  {id:'6',      label:'6',      name:'Major 6',     intervals:[4,7,9]},
+  {id:'m6',     label:'m6',     name:'Minor 6',     intervals:[3,7,9]},
+];
+
+// Chromatic pitch table for building chords from names
+const CHROM = ['c','c#','d','d#','e','f','f#','g','g#','a','a#','b'];
+const CHROM_ENHARMONIC = {
+  'c#':'c#','db':'c#','d#':'d#','eb':'d#','f#':'f#','gb':'f#',
+  'g#':'g#','ab':'g#','a#':'a#','bb':'a#'
+};
+const ROOT_NAMES = ['C','C#/D♭','D','D#/E♭','E','F','F#/G♭','G','G#/A♭','A','A#/B♭','B'];
+const ROOT_IDS   = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+
+const DB_BEATS = {w:4,h:2,q:1,'8':0.5,'16':0.25,'32':0.125};
+const KEY_VEX   = {C:'C',G:'G',D:'D',A:'A',E:'E',B:'B','F#':'F#',F:'F',Bb:'Bb',Eb:'Eb',Ab:'Ab',Am:'Am',Em:'Em',Dm:'Dm',Gm:'Gm'};
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+const ST = {
+  title:'Untitled Score', composer:'Composer', tempo:120,
+  timeSig:'4/4', keySig:'C', view:'both',
+  dur:'q', oct:4, nextAcc:'n',
+  percId:'hh_c', dyn:null,
+  dotted:false,
+  tieMode:false,
+  // Chord queue — pitches staged for manual chord
+  queue:[],   // [{p,o,a}]  p=pitch letter, o=octave, a=accidental
+  // Named chord state
+  chordRoot:0,      // semitone index 0-11
+  chordType:'maj',  // id from CHORD_TYPES
+  chordInv:0,       // 0=root, 1=1st, 2=2nd, 3=3rd
+  chordOct:4,
+  // Measures
+  measures:[],  // [{treble:[],bass:[],perc:[]}]
+  lastM:0, lastStaff:'treble',
+  // Selection
+  sel:null,    // {mi, staff, ni}
+  history:[],
+  editOct:4,
+  editKeys:[], editAccs:{},
+};
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+function init(){
+  buildPercList();
+  buildChordRoots();
+  buildChordTypes();
+  buildChordInvs();
+  ST.measures = Array.from({length:4}, ()=>({treble:[],bass:[],perc:[]}));
+  updateChordPreview();
+  render();
+  updateStatus();
+}
+
+function buildPercList(){
+  const el = $('perc-list'); el.innerHTML='';
+  PERC_DB.forEach(p=>{
+    const d=document.createElement('div');
+    d.className='pi'+(p.id===ST.percId?' active':'');
+    d.innerHTML=`<div style="flex:1"><div class="pn" style="font-size:9px;">${p.name}</div><div class="pp">${p.pos}</div></div>`;
+    d.onclick=()=>{ ST.percId=p.id; qsa('.pi').forEach(x=>x.classList.remove('active')); d.classList.add('active'); };
+    el.appendChild(d);
+  });
+}
+
+function buildChordRoots(){
+  const el=$('chord-roots'); el.innerHTML='';
+  ROOT_IDS.forEach((r,i)=>{
+    const b=document.createElement('button');
+    b.className='cr-btn'+(i===ST.chordRoot?' active':'');
+    b.textContent=ROOT_IDS[i];
+    b.onclick=()=>{ ST.chordRoot=i; qsa('.cr-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); updateChordPreview(); };
+    el.appendChild(b);
+  });
+}
+
+function buildChordTypes(){
+  const el=$('chord-types'); el.innerHTML='';
+  CHORD_TYPES.forEach(ct=>{
+    const b=document.createElement('button');
+    b.className='ct-btn'+(ct.id===ST.chordType?' active':'');
+    b.title=ct.name;
+    b.innerHTML=`<div style="font-size:8.5px;font-weight:600;">${ct.label}</div><div style="font-size:6.5px;opacity:.7;">${ct.name}</div>`;
+    b.onclick=()=>{ ST.chordType=ct.id; qsa('.ct-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); updateChordPreview(); };
+    el.appendChild(b);
+  });
+}
+
+function buildChordInvs(){
+  const el=$('chord-invs'); el.innerHTML='';
+  ['Root','1st','2nd','3rd'].forEach((lbl,i)=>{
+    const b=document.createElement('button');
+    b.className='inv-btn'+(i===ST.chordInv?' active':'');
+    b.innerHTML=`<div style="font-size:8.5px;">${lbl}</div>`;
+    b.onclick=()=>{ ST.chordInv=i; qsa('.inv-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); updateChordPreview(); };
+    el.appendChild(b);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CHORD NAME ENGINE
+// ═══════════════════════════════════════════════════════════════
+function chordSemitones(rootIdx, typeId, inv, baseOct){
+  const ct = CHORD_TYPES.find(c=>c.id===typeId);
+  if(!ct) return [];
+  // Build semitone offsets for the chord (root + intervals)
+  const semis = [0, ...ct.intervals]; // e.g. [0,4,7] for major
+  // Apply inversion by raising lower notes an octave
+  const invCount = Math.min(inv, semis.length-1);
+  for(let i=0;i<invCount;i++) semis[i] += 12;
+  // Normalize so smallest is 0 (root position after inversion)
+  const minVal = Math.min(...semis);
+  const normalized = semis.map(s=>s-minVal);
+
+  // Convert each semitone offset to a pitch
+  return normalized.map(offset=>{
+    const totalSemi = rootIdx + offset;
+    const octaveOffset = Math.floor(totalSemi/12);
+    const pitchIdx = totalSemi % 12;
+    const pitchName = semiToPitch(pitchIdx);
+    return { p: pitchName.p, a: pitchName.a, o: baseOct + octaveOffset };
+  });
+}
+
+function semiToPitch(si){
+  const names = [
+    {p:'c',a:'n'},{p:'c',a:'#'},{p:'d',a:'n'},{p:'d',a:'#'},{p:'e',a:'n'},
+    {p:'f',a:'n'},{p:'f',a:'#'},{p:'g',a:'n'},{p:'g',a:'#'},{p:'a',a:'n'},
+    {p:'a',a:'#'},{p:'b',a:'n'}
+  ];
+  return names[((si%12)+12)%12];
+}
+
+function updateChordPreview(){
+  const notes = chordSemitones(ST.chordRoot, ST.chordType, ST.chordInv, ST.chordOct);
+  const ct = CHORD_TYPES.find(c=>c.id===ST.chordType);
+  const rootName = ROOT_IDS[ST.chordRoot];
+  const invNames = ['Root','1st inv','2nd inv','3rd inv'];
+  const noteStr = notes.map(n=>{
+    const acc = n.a==='n'?'':n.a==='#'?'♯':n.a==='b'?'♭':n.a==='##'?'♯♯':'♭♭';
+    return n.p.toUpperCase()+acc+n.o;
+  }).join(' ');
+  $('chord-preview').innerHTML = `<b style="color:var(--gol);">${rootName}${ct?ct.label:''}</b> <span style="color:var(--dim);">${invNames[Math.min(ST.chordInv,3)]}</span><br><span style="color:var(--txt);">${noteStr}</span>`;
+}
+
+function chgChordOct(d){ ST.chordOct=clamp(ST.chordOct+d,1,7); $('chord-oct-disp').textContent=ST.chordOct; updateChordPreview(); }
+
+function placeNamedChord(){
+  const notes = chordSemitones(ST.chordRoot, ST.chordType, ST.chordInv, ST.chordOct);
+  if(!notes.length) return;
+  pushHist();
+  const keys = notes.map(n=>n.p+'/'+n.o);
+  const accs = {};
+  notes.forEach((n,i)=>{ if(n.a!=='n') accs[i]=n.a; });
+  const entry = {type:'chord',dur:ST.dur,dotted:ST.dotted,keys,accs,dyn:ST.dyn};
+  getArr(ST.lastM, ST.lastStaff).push(entry);
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MANUAL CHORD QUEUE (keyboard clicks)
+// ═══════════════════════════════════════════════════════════════
+function kbdClick(pitch, acc, el){
+  // Always use nextAcc for flats/naturals override
+  const useAcc = (acc==='#') ? '#' : ST.nextAcc;
+  ST.nextAcc='n';
+  $('nacc-btn').classList.remove('on');
+
+  // Toggle in queue
+  const idx = ST.queue.findIndex(n=>n.p===pitch&&n.o===ST.oct&&n.a===useAcc);
+  if(idx>=0){
+    ST.queue.splice(idx,1);
+  } else {
+    ST.queue.push({p:pitch, o:ST.oct, a:useAcc});
+  }
+  renderQueue();
+
+  // Also update active pitch for single-note placement
+  ST.activePitch = pitch;
+  ST.activeAcc = useAcc;
+}
+
+function setNextAcc(a){
+  ST.nextAcc=a;
+  $('nacc-btn').textContent = a==='b'?'♭ Flat':a==='bb'?'𝄫 D♭':'♮ Nat.';
+  $('nacc-btn').classList.toggle('on', a!=='n');
+}
+
+function renderQueue(){
+  const pills=$('cq-pills'); pills.innerHTML='';
+  ST.queue.forEach((n,i)=>{
+    const acc = n.a==='#'?'♯':n.a==='b'?'♭':n.a==='##'?'♯♯':n.a==='bb'?'♭♭':'';
+    const d=document.createElement('div'); d.className='cpill';
+    d.textContent=n.p.toUpperCase()+acc+n.o;
+    d.title='Click to remove';
+    d.onclick=()=>{ ST.queue.splice(i,1); renderQueue(); };
+    pills.appendChild(d);
+  });
+  const acts=$('cq-actions');
+  acts.style.display=ST.queue.length>0?'':'none';
+  // Highlight active keys
+  qsa('.wk,.bk:not(.gap)').forEach(k=>{
+    const kp=k.dataset.p; const ka=k.dataset.a||'n';
+    const inQ=ST.queue.some(n=>n.p===kp&&n.o===ST.oct&&n.a===(ka));
+    k.classList.toggle('queued',inQ);
+  });
+}
+
+function clearQueue(){ ST.queue=[]; renderQueue(); }
+
+function placeManualChord(){
+  if(!ST.queue.length){ addNoteAction(); return; }
+  pushHist();
+  const entry = buildChordFromQueue(ST.queue, ST.dur, ST.dotted, ST.dyn);
+  getArr(ST.lastM, ST.lastStaff).push(entry);
+  ST.queue=[]; renderQueue(); render();
+}
+
+function buildChordFromQueue(q, dur, dotted, dyn){
+  if(q.length===1){
+    const n=q[0];
+    return {type:'note', dur, dotted, keys:[n.p+'/'+n.o],
+      accs:n.a!=='n'?{0:n.a}:{}, dyn};
+  }
+  const keys=q.map(n=>n.p+'/'+n.o);
+  const accs={}; q.forEach((n,i)=>{ if(n.a!=='n') accs[i]=n.a; });
+  return {type:'chord', dur, dotted, keys, accs, dyn};
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ADD NOTE (single pitch from keyboard or sidebar)
+// ═══════════════════════════════════════════════════════════════
+function addNoteAction(){
+  // If queue has notes, place chord
+  if(ST.queue.length>0){ placeManualChord(); return; }
+  addNoteAt(ST.lastM, ST.lastStaff);
+}
+
+function addNoteAt(mi, staff){
+  ST.lastM=mi; ST.lastStaff=staff;
+
+  // If queue has notes and not percussion, place chord
+  if(ST.queue.length>0 && staff!=='perc'){
+    pushHist();
+    const entry=buildChordFromQueue(ST.queue,ST.dur,ST.dotted,ST.dyn);
+    getArr(mi,staff).push(entry);
+    ST.queue=[]; renderQueue(); render();
+    return;
+  }
+
+  pushHist();
+  const arr=getArr(mi,staff);
+  let entry;
+
+  if(ST.dur==='r'){
+    entry={type:'rest',dur:'q',dotted:ST.dotted,keys:['b/4'],dyn:ST.dyn};
+  } else if(staff==='perc'){
+    const inst=PERC_DB.find(p=>p.id===ST.percId)||PERC_DB[0];
+    entry={type:'perc',dur:ST.dur,dotted:ST.dotted,keys:[inst.pos],percId:ST.percId,dyn:ST.dyn};
+  } else {
+    const pitch=ST.activePitch||'c';
+    const acc=ST.activeAcc||'n';
+    if(ST.tieMode && arr.length>0 && !arr[arr.length-1].tiedTo){
+      arr[arr.length-1].tiedTo=true;
+      entry={type:'note',dur:ST.dur,dotted:ST.dotted,keys:[pitch+'/'+ST.oct],
+        accs:acc!=='n'?{0:acc}:{},dyn:ST.dyn,tiedFrom:true};
+    } else {
+      entry={type:'note',dur:ST.dur,dotted:ST.dotted,keys:[pitch+'/'+ST.oct],
+        accs:acc!=='n'?{0:acc}:{},dyn:ST.dyn};
+    }
+  }
+  arr.push(entry);
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UI CONTROLS
+// ═══════════════════════════════════════════════════════════════
+function setDur(v,el){ ST.dur=v; qsa('[data-dur]').forEach(b=>b.classList.remove('active')); el.classList.add('active'); }
+function setDyn(v,el){
+  if(ST.dyn===v){ST.dyn=null;qsa('[data-dyn]').forEach(b=>b.classList.remove('active'));}
+  else{ST.dyn=v;qsa('[data-dyn]').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+}
+function chgOct(d){ ST.oct=clamp(ST.oct+d,2,7); $('oct-disp').textContent=ST.oct; renderQueue(); }
+function togDot(){ ST.dotted=!ST.dotted; $('dot-btn').classList.toggle('active',ST.dotted); }
+function toggleTie(){
+  ST.tieMode=!ST.tieMode;
+  $('tie-btn').className='btn'+(ST.tieMode?' tie-on':'');
+  updateStatus();
+}
+function cycleView(){
+  const vs=['both','piano','percussion'];
+  ST.view=vs[(vs.indexOf(ST.view)+1)%vs.length];
+  $('view-btn').textContent={both:'Piano+Perc',piano:'Piano Only',percussion:'Perc Only'}[ST.view];
+  $('perc-section').style.display=ST.view==='piano'?'none':'';
+  clearSel(); updateStatus(); render();
+}
+function setTimeSig(){ ST.timeSig=$('sel-time').value; updateStatus(); render(); }
+function setKeySig(){ ST.keySig=$('sel-key').value; updateStatus(); render(); }
+function setTempo(){ ST.tempo=parseInt($('inp-tempo').value)||120; }
+function addBar(){ pushHist(); ST.measures.push({treble:[],bass:[],perc:[]}); updateStatus(); render(); }
+function removeBar(){
+  if(ST.measures.length<=1)return;
+  pushHist(); ST.measures.pop();
+  ST.lastM=Math.min(ST.lastM,ST.measures.length-1);
+  clearSel(); updateStatus(); render();
+}
+function clearScore(){
+  if(!confirm('Clear all notation?'))return;
+  pushHist(); ST.measures=Array.from({length:4},()=>({treble:[],bass:[],perc:[]}));
+  ST.lastM=0; clearSel(); updateStatus(); render();
+}
+function undo(){ if(!ST.history.length)return; ST.measures=JSON.parse(ST.history.pop()); clearSel(); updateStatus(); render(); }
+function pushHist(){ ST.history.push(JSON.stringify(ST.measures)); if(ST.history.length>60)ST.history.shift(); }
+
+function getArr(mi,st){ const m=ST.measures[mi]; return st==='treble'?m.treble:st==='bass'?m.bass:m.perc; }
+
+// ═══════════════════════════════════════════════════════════════
+// SELECTION
+// ═══════════════════════════════════════════════════════════════
+function setSel(mi,staff,ni){
+  ST.sel={mi,staff,ni};
+  const e=getArr(mi,staff)[ni];
+  let desc='';
+  if(e.type==='rest') desc='Rest — '+e.dur;
+  else if(e.type==='perc'){ const p=PERC_DB.find(x=>x.id===e.percId); desc='Perc: '+(p?p.name:'?')+' — '+e.dur; }
+  else{
+    const pnames=e.keys.map((k,i)=>{
+      const[p,o]=k.split('/');
+      const ac=e.accs&&e.accs[i]?e.accs[i]:'';
+      return p.toUpperCase()+ac+o;
+    }).join(', ');
+    desc=(e.type==='chord'?'Chord':'Note')+': '+pnames+' — '+e.dur+(e.dotted?'.':'');
+  }
+  $('sel-label').textContent=desc;
+  $('sel-panel').querySelector('.sel-box').style.display='block';
+  $('no-sel-msg').style.display='none';
+  $('st-sel').textContent=desc;
+}
+function clearSel(){
+  ST.sel=null;
+  if($('sel-panel').querySelector('.sel-box')) $('sel-panel').querySelector('.sel-box').style.display='none';
+  $('no-sel-msg').style.display='';
+  $('st-sel').textContent='—';
+}
+function deleteSelected(){
+  if(!ST.sel)return;
+  pushHist();
+  getArr(ST.sel.mi,ST.sel.staff).splice(ST.sel.ni,1);
+  clearSel(); render();
+}
+function applyDurToSel(){
+  if(!ST.sel)return;
+  pushHist();
+  const e=getArr(ST.sel.mi,ST.sel.staff)[ST.sel.ni];
+  e.dur=ST.dur; e.dotted=ST.dotted;
+  render(); setSel(ST.sel.mi,ST.sel.staff,ST.sel.ni);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EDIT PITCHES MODAL
+// ═══════════════════════════════════════════════════════════════
+function openEditModal(){
+  if(!ST.sel) return;
+  const e=getArr(ST.sel.mi,ST.sel.staff)[ST.sel.ni];
+  if(e.type==='rest'||e.type==='perc'){ alert('Use percussion list or duration controls for this note type.'); return; }
+  ST.editKeys=[...e.keys];
+  ST.editAccs={...e.accs};
+  ST.editOct=4; $('edit-oct').textContent=4;
+  refreshEditModal();
+  openModal('edit-modal');
+}
+function refreshEditModal(){
+  const list=$('edit-keys-list'); list.innerHTML='';
+  ST.editKeys.forEach((k,i)=>{
+    const[p,o]=k.split('/');
+    const ac=ST.editAccs[i]||'n';
+    const acS=ac==='n'?'':ac==='#'?'♯':ac==='b'?'♭':ac==='##'?'♯♯':'♭♭';
+    const row=document.createElement('div'); row.className='ekey-row';
+    row.innerHTML=`<span class="ekey-lbl">${p.toUpperCase()}${acS}/${o}</span><span class="ermk" onclick="removeEditKey(${i})">✕</span>`;
+    list.appendChild(row);
+  });
+}
+function removeEditKey(i){ ST.editKeys.splice(i,1); const na={}; Object.entries(ST.editAccs).forEach(([k,v])=>{ const ki=+k; if(ki<i) na[ki]=v; else if(ki>i) na[ki-1]=v; }); ST.editAccs=na; refreshEditModal(); }
+function addEditP(p){ const acc=$('edit-acc').value; ST.editKeys.push(p+'/'+ST.editOct); if(acc!=='n') ST.editAccs[ST.editKeys.length-1]=acc; refreshEditModal(); }
+function editOctDelta(d){ ST.editOct=clamp(ST.editOct+d,2,7); $('edit-oct').textContent=ST.editOct; }
+function applyEditNote(){
+  if(!ST.sel||!ST.editKeys.length){ alert('Need at least one pitch.'); return; }
+  pushHist();
+  const arr=getArr(ST.sel.mi,ST.sel.staff);
+  const e=arr[ST.sel.ni];
+  e.keys=[...ST.editKeys]; e.accs={...ST.editAccs};
+  e.type=e.keys.length>1?'chord':'note';
+  closeModal('edit-modal');
+  render(); setSel(ST.sel.mi,ST.sel.staff,ST.sel.ni);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BUILD VEXFLOW NOTE
+// ═══════════════════════════════════════════════════════════════
+function buildVN(e, clef){
+  try{
+    let vn;
+    if(e.type==='rest'){
+      vn=new StaveNote({keys:['b/4'],duration:e.dur+'r',align_center:true});
+
+    } else if(e.type==='perc'){
+      const inst=PERC_DB.find(p=>p.id===e.percId)||PERC_DB[0];
+      vn=new StaveNote({keys:[inst.pos],duration:e.dur,stem_direction:inst.stem});
+      // Apply custom notehead glyph
+      if(inst.glyph && vn.note_heads && vn.note_heads[0]){
+        try{
+          vn.note_heads[0].glyph_props=Object.assign({},vn.note_heads[0].glyph_props,{
+            code_head:inst.glyph,
+            code:inst.glyph,
+          });
+        }catch(_){}
+      }
+
+    } else {
+      // note or chord
+      vn=new StaveNote({keys:e.keys,duration:e.dur,clef});
+      if(e.accs) Object.entries(e.accs).forEach(([idx,a])=>{
+        try{vn.addModifier(new Accidental(a),+idx);}catch(_){}
+      });
+    }
+    if(e.dotted) try{Dot.buildAndAttach([vn]);}catch(_){}
+    return vn;
+  }catch(err){
+    console.warn('VN error:',err.message,e); return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BEAMING
+// ═══════════════════════════════════════════════════════════════
+function buildBeams(vns,entries){
+  const ok=new Set(['8','16','32']);
+  const beams=[];let grp=[],pos=0;
+  for(let i=0;i<vns.length;i++){
+    const e=entries[i],vn=vns[i];if(!vn){grp=[];continue;}
+    const eb=eBeats(e);
+    if(e.type==='rest'){if(grp.length>=2)beams.push(tryB(grp));grp=[];}
+    else if(ok.has(e.dur)){
+      grp.push(vn);pos+=eb;
+      if(Math.round(pos*1000)%1000===0||i===vns.length-1){if(grp.length>=2)beams.push(tryB(grp));grp=[];}
+    } else {if(grp.length>=2)beams.push(tryB(grp));grp=[];pos+=eb;}
+  }
+  if(grp.length>=2)beams.push(tryB(grp));
+  return beams.filter(Boolean);
+}
+function tryB(ns){try{return new Beam(ns);}catch(e){return null;}}
+
+// ═══════════════════════════════════════════════════════════════
+// TIES (piano only, never percussion)
+// ═══════════════════════════════════════════════════════════════
+function buildTies(vns,entries,isPerc){
+  if(isPerc)return[];
+  const ties=[];
+  for(let i=0;i<entries.length-1;i++){
+    if(entries[i].tiedTo&&vns[i]&&vns[i+1]){
+      try{ties.push(new Tie({first_note:vns[i],last_note:vns[i+1],first_indices:[0],last_indices:[0]}));}catch(_){}
+    }
+  }
+  return ties;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// REST FILL — fills remaining beats in a measure
+// ═══════════════════════════════════════════════════════════════
+function fillRests(entries){
+  const bpm=beatsPerM();
+  let used=entries.reduce((s,e)=>s+eBeats(e),0);
+  const fe=[],fvn=[];
+  const durs=['w','h','q','8','16','32'];
+  let wd=0;
+  while(used<bpm-0.0001 && wd++<64){
+    const rem=bpm-used; let ch='32';
+    for(const d of durs) if(DB_BEATS[d]<=rem+0.0001){ch=d;break;}
+    fe.push({type:'rest',dur:ch,dotted:false});
+    fvn.push(new StaveNote({keys:['b/4'],duration:ch+'r',align_center:true}));
+    used+=DB_BEATS[ch];
+    if(used>=bpm) break;
+  }
+  return{fe,fvn};
+}
+
+function eBeats(e){ const d=e.dur==='r'?'q':e.dur; let b=DB_BEATS[d]||1; if(e.dotted)b*=1.5; return b; }
+function beatsPerM(){ const[n,d]=ST.timeSig.split('/').map(Number); return d===8?n/2:n; }
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — THE MAIN DRAW LOOP
+// Each row of measures is a separate SVG inside notation-area.
+// The score-page is inline-block so it auto-sizes to content.
+// ═══════════════════════════════════════════════════════════════
+function render(){
+  const area=$('notation-area'); area.innerHTML='';
+
+  const PW=796;  // total score content width
+  const MPR=4;   // measures per row
+  const FE=66;   // extra width for first measure (clef+key+time)
+  const SW=Math.floor((PW-FE)/MPR);
+
+  const rows=Math.ceil(ST.measures.length/MPR);
+
+  for(let row=0;row<rows;row++){
+    const s0=row*MPR, s1=Math.min(s0+MPR,ST.measures.length);
+    const mInRow=s1-s0;
+
+    // Staff vertical layout
+    const scs=[]; let yy=22;
+    const GH=88,GAP=14,PGAP=4;
+    if(ST.view==='both'||ST.view==='piano'){
+      scs.push({type:'treble',y:yy,h:GH}); yy+=GH+PGAP;
+      scs.push({type:'bass',  y:yy,h:GH}); yy+=GH+GAP;
+    }
+    if(ST.view==='both'||ST.view==='percussion'){
+      scs.push({type:'perc',  y:yy,h:GH}); yy+=GH+GAP;
+    }
+    const TH=yy+12;
+
+    const rowDiv=document.createElement('div');
+    rowDiv.style.cssText='position:relative;';
+    area.appendChild(rowDiv);
+
+    const ren=new Renderer(rowDiv,Renderer.Backends.SVG);
+    ren.resize(PW,TH);
+    const ctx=ren.getContext();
+
+    // ── Draw each staff across the row ──
+    for(const sc of scs){
+      let x=0;
+      for(let mi=s0;mi<s1;mi++){
+        const isF=(mi===s0);
+        const sw=isF?SW+FE:SW;
+        const stave=new Stave(x,sc.y,sw);
+
+        if(isF){
+          const cn=sc.type==='bass'?'bass':sc.type==='perc'?'percussion':'treble';
+          stave.addClef(cn);
+          if(sc.type==='treble'||sc.type==='perc') stave.addTimeSignature(ST.timeSig);
+          if(sc.type!=='perc'){
+            const k=KEY_VEX[ST.keySig]||'C';
+            if(k&&k!=='C'&&k!=='Am'&&k!=='Em'&&k!=='Dm'&&k!=='Gm')
+              try{stave.addKeySignature(k);}catch(_){}
+          }
+        }
+        stave.setContext(ctx).draw();
+
+        // Measure number (above first staff)
+        if(sc===scs[0]){
+          ctx.fillStyle='#9a8570'; ctx.font='8px IBM Plex Mono';
+          ctx.fillText(String(mi+1), x+(isF?FE:3), sc.y-5);
+        }
+
+        const m=ST.measures[mi];
+        const rawE=sc.type==='treble'?m.treble:sc.type==='bass'?m.bass:m.perc;
+        const isPerc=sc.type==='perc';
+        const clef=sc.type==='bass'?'bass':'treble';
+
+        // Build VexFlow note objects
+        const vns=[],entries=[];
+        rawE.forEach((e,ni)=>{
+          const vn=buildVN(e,clef);
+          if(vn){ vns.push(vn); entries.push(e); }
+        });
+
+        // Fill remaining beats with rests
+        const{fe,fvn}=fillRests(entries);
+        const allVns=[...vns,...fvn];
+        const allE=[...entries,...fe];
+
+        if(allVns.length>0){
+          try{
+            const[nb,bv]=ST.timeSig.split('/').map(Number);
+            const voice=new Voice({num_beats:nb,beat_value:bv});
+            voice.setMode(Vex.Flow.Voice.Mode.SOFT);
+            voice.addTickables(allVns);
+            new Formatter().joinVoices([voice]).format([voice],sw-(isF?FE+4:10));
+            voice.draw(ctx,stave);
+
+            // Beams (real notes only)
+            buildBeams(vns,entries).forEach(b=>{try{b.setContext(ctx).draw();}catch(_){}});
+            // Ties
+            buildTies(vns,entries,isPerc).forEach(t=>{try{t.setContext(ctx).draw();}catch(_){}});
+
+            // Selection highlight
+            if(ST.sel&&ST.sel.mi===mi&&ST.sel.staff===sc.type&&vns[ST.sel.ni]){
+              try{
+                const bb=vns[ST.sel.ni].getBoundingBox();
+                ctx.save();
+                ctx.fillStyle='rgba(196,74,26,.12)';
+                ctx.strokeStyle='#c44a1a'; ctx.lineWidth=1.5;
+                ctx.fillRect(bb.x-4,bb.y-4,bb.w+8,bb.h+8);
+                ctx.strokeRect(bb.x-4,bb.y-4,bb.w+8,bb.h+8);
+                ctx.restore();
+              }catch(_){}
+            }
+          }catch(err){ console.warn('Voice:',err.message); }
+        }
+        x+=sw;
+      }
+    }
+
+    // Piano brace
+    if((ST.view==='both'||ST.view==='piano')&&scs.length>=2){
+      const t=scs[0],b=scs[1];
+      ctx.save(); ctx.strokeStyle='#2c1f0e'; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.moveTo(1,t.y+2); ctx.lineTo(1,b.y+b.h-2); ctx.stroke();
+      const by1=t.y,by2=b.y+b.h,mid=(by1+by2)/2;
+      ctx.lineWidth=2; ctx.beginPath();
+      ctx.moveTo(1,by1); ctx.bezierCurveTo(-10,by1+14,-10,mid-10,1,mid);
+      ctx.bezierCurveTo(-10,mid+10,-10,by2-14,1,by2); ctx.stroke();
+      ctx.restore();
+    }
+
+    // ── Click handler for adding / selecting notes ──
+    const svg=rowDiv.querySelector('svg');
+    if(svg){
+      svg.style.cursor='pointer';
+      svg.addEventListener('click',ev=>{
+        // Don't fire if user clicked a sidebar element through SVG overlap
+        const rect=svg.getBoundingClientRect();
+        const scX=PW/rect.width, scY=TH/rect.height;
+        const cx=(ev.clientX-rect.left)*scX;
+        const cy=(ev.clientY-rect.top)*scY;
+
+        // Which measure?
+        let mLocal = cx < FE ? 0 : Math.floor((cx-FE)/SW);
+        mLocal = clamp(mLocal,0,mInRow-1);
+        const mGlobal = s0+mLocal;
+
+        // Which staff?
+        let staffType='treble';
+        for(const sc of scs){
+          if(cy>=sc.y && cy<=sc.y+sc.h){
+            staffType=sc.type==='perc'?'perc':sc.type; break;
+          }
+        }
+
+        // Try to select an existing note by approximate X position
+        const m=ST.measures[mGlobal];
+        const rawE=staffType==='treble'?m.treble:staffType==='bass'?m.bass:m.perc;
+        if(rawE.length>0 && !ev.shiftKey){
+          // Estimate note positions: notes are spread across stave width
+          const staveStartX = mGlobal===s0 ? FE : FE+(mGlobal-s0)*SW;
+          const noteZoneW = (mGlobal===s0?SW+FE:SW) - (mGlobal===s0?FE:10);
+          const step = noteZoneW / (rawE.length+1);
+          for(let ni=0;ni<rawE.length;ni++){
+            const noteX = staveStartX + (ni+1)*step + (mGlobal===s0?0:0);
+            if(Math.abs(cx - noteX) < step*0.55){
+              setSel(mGlobal, staffType, ni);
+              render(); return;
+            }
+          }
+        }
+
+        // Otherwise add note
+        clearSel();
+        addNoteAt(mGlobal, staffType);
+      });
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATUS BAR
+// ═══════════════════════════════════════════════════════════════
+function updateStatus(){
+  $('st-mode').textContent={both:'Piano+Perc',piano:'Piano Only',percussion:'Perc Only'}[ST.view];
+  $('st-time').textContent=ST.timeSig;
+  $('st-key').textContent=ST.keySig;
+  $('st-bars').textContent=ST.measures.length+(ST.measures.length===1?' bar':' bars');
+  const b=$('st-badge');
+  if(ST.tieMode){b.className='badge tie';b.textContent='Tie';}
+  else{b.className='badge norm';b.textContent='Normal';}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════════════════════════
+function showTitleModal(){ openModal('title-modal'); }
+function openModal(id){ $(id).classList.add('open'); }
+function closeModal(id){ $(id).classList.remove('open'); }
+function applyTitle(){
+  ST.title=$('inp-title').value||'Untitled Score';
+  ST.composer=$('inp-comp').value||'Composer';
+  $('disp-title').textContent=ST.title;
+  $('disp-composer').textContent=`♩= ${ST.tempo}  ·  ${ST.composer}`;
+  closeModal('title-modal');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PDF EXPORT
+// ═══════════════════════════════════════════════════════════════
+async function exportPDF(){
+  const b=$('pdf-btn'); const orig=b.textContent;
+  b.textContent='⏳…'; b.disabled=true;
+  try{
+    const page=$('score-page');
+    const canvas=await html2canvas(page,{scale:2,backgroundColor:'#faf6ee',useCORS:true,logging:false});
+    const{jsPDF}=window.jspdf;
+    const W=canvas.width/2,H=canvas.height/2;
+    const pdf=new jsPDF({orientation:W>H?'landscape':'portrait',unit:'px',format:[W,H]});
+    pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,W,H);
+    pdf.save(ST.title.replace(/\s+/g,'_')+'.pdf');
+  }catch(e){alert('PDF error: '+e.message);}
+  finally{b.textContent=orig;b.disabled=false;}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('keydown',ev=>{
+  if(ev.target.tagName==='INPUT'||ev.target.tagName==='SELECT') return;
+  const k=ev.key;
+  const map={'1':'w','2':'h','3':'q','4':'8','5':'16','6':'32','7':'r'};
+  if(map[k]){ const el=document.querySelector(`[data-dur="${map[k]}"]`); if(el)el.click(); return; }
+  if('abcdefg'.includes(k.toLowerCase())){
+    const el=document.querySelector(`.wk[data-p="${k.toLowerCase()}"]`);
+    if(el)el.click(); return;
+  }
+  if(k==='ArrowUp'){ev.preventDefault();chgOct(1);}
+  if(k==='ArrowDown'){ev.preventDefault();chgOct(-1);}
+  if(k==='.')togDot();
+  if(k.toLowerCase()==='t'&&!ev.ctrlKey)toggleTie();
+  if(k==='Enter'){ev.preventDefault();addNoteAction();}
+  if(k==='Delete'||k==='Backspace'){if(ST.sel){ev.preventDefault();deleteSelected();}}
+  if(k==='Escape'){clearSel();render();}
+  if((ev.ctrlKey||ev.metaKey)&&k.toLowerCase()==='z'){ev.preventDefault();undo();}
+});
+
+// ═══════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════
+function $(id){return document.getElementById(id);}
+function qsa(sel){return Array.from(document.querySelectorAll(sel));}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+
+// Hide sel-box initially
+document.addEventListener('DOMContentLoaded',()=>{
+  const sb=document.querySelector('.sel-box');
+  if(sb) sb.style.display='none';
+});
+
+// ═══════════════════════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════════════════════
+ST.activePitch='c'; ST.activeAcc='n';
+init();
+</script>
+</body>
+</html>
