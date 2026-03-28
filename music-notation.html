@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maestro — Music Notation Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --ink: #1a1208;
+    --paper: #faf6ee;
+    --paper-dark: #f0e9d8;
+    --paper-darker: #e5dcc8;
+    --staff-line: #2c1f0e;
+    --accent: #8b2500;
+    --accent-light: #c44a1a;
+    --gold: #c8922a;
+    --gold-light: #e8b84b;
+    --muted: #7a6a52;
+    --shadow: rgba(26,18,8,0.15);
+    --note-fill: #1a1208;
+    --ui-bg: #2a1f12;
+    --ui-border: #4a3520;
+    --ui-text: #f0e9d8;
+    --ui-muted: #9a8570;
+    --selected: #c44a1a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--ui-bg);
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--ui-text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, #1a0f06 0%, #2a1f12 50%, #1a0f06 100%);
+    border-bottom: 1px solid var(--ui-border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  }
+
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--gold-light);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .logo span { color: var(--accent-light); }
+
+  .header-divider {
+    width: 1px;
+    height: 30px;
+    background: var(--ui-border);
+  }
+
+  /* TOOLBAR */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .tool-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 8px;
+    border-right: 1px solid var(--ui-border);
+  }
+  .tool-group:last-child { border-right: none; }
+
+  .tool-label {
+    font-size: 9px;
+    color: var(--ui-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-right: 4px;
+    white-space: nowrap;
+  }
+
+  .btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--ui-border);
+    color: var(--ui-text);
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    transition: all 0.15s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .btn:hover {
+    background: rgba(200,146,42,0.15);
+    border-color: var(--gold);
+    color: var(--gold-light);
+  }
+  .btn.active {
+    background: var(--accent);
+    border-color: var(--accent-light);
+    color: #fff;
+  }
+  .btn.primary {
+    background: var(--gold);
+    border-color: var(--gold-light);
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .btn.primary:hover {
+    background: var(--gold-light);
+  }
+  .btn.danger {
+    background: rgba(139,37,0,0.2);
+    border-color: var(--accent);
+  }
+  .btn.danger:hover {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  select {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--ui-border);
+    color: var(--ui-text);
+    padding: 5px 8px;
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    outline: none;
+  }
+  select:hover { border-color: var(--gold); }
+  select option { background: #2a1f12; }
+
+  /* MAIN LAYOUT */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 200px;
+    background: #1a0f06;
+    border-right: 1px solid var(--ui-border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+
+  .sidebar-section {
+    border-bottom: 1px solid var(--ui-border);
+    padding: 12px;
+  }
+
+  .sidebar-title {
+    font-size: 9px;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+
+  .note-palette {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+
+  .note-btn {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--ui-border);
+    color: var(--ui-text);
+    padding: 8px 4px;
+    border-radius: 3px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .note-btn:hover {
+    background: rgba(200,146,42,0.1);
+    border-color: var(--gold);
+    color: var(--gold-light);
+  }
+  .note-btn.active {
+    background: var(--accent);
+    border-color: var(--accent-light);
+    color: white;
+  }
+  .note-symbol { font-size: 20px; line-height: 1; }
+  .note-name { font-size: 9px; color: inherit; opacity: 0.8; }
+
+  .pitch-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 6px;
+  }
+  .pitch-btn {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--ui-border);
+    color: var(--ui-text);
+    padding: 5px 2px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 9px;
+    text-align: center;
+    transition: all 0.12s;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .pitch-btn:hover { background: rgba(200,146,42,0.15); border-color: var(--gold); }
+  .pitch-btn.active { background: var(--accent); border-color: var(--accent-light); color: white; }
+
+  .octave-btns { display: flex; gap: 4px; }
+  .octave-label { font-size: 9px; color: var(--ui-muted); margin-bottom: 4px; }
+
+  .accidental-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3px;
+  }
+
+  /* CANVAS AREA */
+  .canvas-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--ui-bg);
+  }
+
+  .score-container {
+    flex: 1;
+    overflow: auto;
+    padding: 30px;
+    background: #1e1409;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .score-page {
+    background: var(--paper);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4);
+    border-radius: 2px;
+    padding: 50px 50px 60px;
+    width: 900px;
+    min-height: 600px;
+    position: relative;
+  }
+
+  .score-title {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  .score-title-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    color: var(--ink);
+    letter-spacing: 1px;
+  }
+  .score-composer {
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  #notation-canvas {
+    width: 100%;
+    cursor: crosshair;
+  }
+
+  .measure-row {
+    display: flex;
+    align-items: stretch;
+    margin-bottom: 60px;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .staff-wrapper {
+    position: relative;
+    flex: 1;
+    min-height: 120px;
+  }
+
+  .measure-number {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    position: absolute;
+    top: -16px;
+    left: 0;
+  }
+
+  /* Status bar */
+  .status-bar {
+    background: #120b04;
+    border-top: 1px solid var(--ui-border);
+    padding: 5px 16px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-size: 10px;
+    color: var(--ui-muted);
+    flex-shrink: 0;
+  }
+  .status-item { display: flex; align-items: center; gap: 6px; }
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+  }
+  .status-item.active .status-dot { background: #4caf50; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    display: none;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #1a0f06;
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    padding: 28px;
+    width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+  }
+  .modal-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    color: var(--gold-light);
+    margin-bottom: 20px;
+  }
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 10px;
+    color: var(--ui-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+  }
+  .field input {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--ui-border);
+    color: var(--ui-text);
+    padding: 8px 10px;
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    outline: none;
+  }
+  .field input:focus { border-color: var(--gold); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+  /* Tooltip */
+  [data-tip] { position: relative; }
+  [data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #120b04;
+    border: 1px solid var(--ui-border);
+    color: var(--ui-text);
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    white-space: nowrap;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #120b04; }
+  ::-webkit-scrollbar-thumb { background: var(--ui-border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
+  /* Highlight selected measure */
+  .measure-highlight {
+    position: absolute;
+    inset: -4px -4px -4px -4px;
+    border: 2px solid var(--accent);
+    border-radius: 2px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  .measure-highlight.visible { opacity: 1; }
+
+  .instruction-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .instruction-text {
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    color: var(--muted);
+    font-size: 14px;
+    opacity: 0.5;
+  }
+
+  @media (max-width: 900px) {
+    .sidebar { width: 160px; }
+    .score-page { width: 780px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">Maestro <span>Studio</span></div>
+  <div class="header-divider"></div>
+
+  <div class="toolbar">
+    <div class="tool-group">
+      <span class="tool-label">File</span>
+      <button class="btn" onclick="showTitleModal()" data-tip="Set title & composer">📄 Title</button>
+      <button class="btn primary" onclick="exportToPDF()" data-tip="Export to PDF">⬇ PDF</button>
+      <button class="btn" onclick="clearScore()" data-tip="Clear all">🗑 Clear</button>
+    </div>
+
+    <div class="tool-group">
+      <span class="tool-label">Edit</span>
+      <button class="btn" onclick="undoAction()" data-tip="Undo">↩ Undo</button>
+      <button class="btn" onclick="deleteSelected()" data-tip="Delete selected note">✕ Delete</button>
+    </div>
+
+    <div class="tool-group">
+      <span class="tool-label">Measures</span>
+      <button class="btn" onclick="addMeasure()" data-tip="Add measure">＋ Add Bar</button>
+      <button class="btn danger" onclick="removeMeasure()" data-tip="Remove last bar">− Remove</button>
+    </div>
+
+    <div class="tool-group">
+      <span class="tool-label">Time</span>
+      <select id="time-sig" onchange="setTimeSig()" data-tip="Time signature">
+        <option value="4/4">4/4</option>
+        <option value="3/4">3/4</option>
+        <option value="2/4">2/4</option>
+        <option value="6/8">6/8</option>
+        <option value="2/2">2/2</option>
+      </select>
+    </div>
+
+    <div class="tool-group">
+      <span class="tool-label">Key</span>
+      <select id="key-sig" onchange="setKeySig()" data-tip="Key signature">
+        <option value="C">C major</option>
+        <option value="G">G major</option>
+        <option value="D">D major</option>
+        <option value="A">A major</option>
+        <option value="E">E major</option>
+        <option value="B">B major</option>
+        <option value="F">F major</option>
+        <option value="Bb">Bb major</option>
+        <option value="Eb">Eb major</option>
+        <option value="Ab">Ab major</option>
+        <option value="Am">A minor</option>
+        <option value="Em">E minor</option>
+        <option value="Dm">D minor</option>
+      </select>
+    </div>
+
+    <div class="tool-group">
+      <span class="tool-label">View</span>
+      <button class="btn" id="mode-toggle" onclick="toggleStaffMode()">Piano + Perc</button>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<div class="main">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <!-- Note Duration -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Duration</div>
+      <div class="note-palette">
+        <button class="note-btn active" data-dur="w" onclick="selectDuration('w', this)">
+          <div class="note-symbol">𝅝</div>
+          <div class="note-name">Whole</div>
+        </button>
+        <button class="note-btn" data-dur="h" onclick="selectDuration('h', this)">
+          <div class="note-symbol">𝅗𝅥</div>
+          <div class="note-name">Half</div>
+        </button>
+        <button class="note-btn" data-dur="q" onclick="selectDuration('q', this)">
+          <div class="note-symbol">♩</div>
+          <div class="note-name">Quarter</div>
+        </button>
+        <button class="note-btn" data-dur="8" onclick="selectDuration('8', this)">
+          <div class="note-symbol">♪</div>
+          <div class="note-name">Eighth</div>
+        </button>
+        <button class="note-btn" data-dur="16" onclick="selectDuration('16', this)">
+          <div class="note-symbol">𝅘𝅥𝅯</div>
+          <div class="note-name">16th</div>
+        </button>
+        <button class="note-btn" data-dur="r" onclick="selectDuration('r', this)">
+          <div class="note-symbol">𝄽</div>
+          <div class="note-name">Rest</div>
+        </button>
+      </div>
+      <div style="margin-top:8px;">
+        <button class="btn" style="width:100%; justify-content:center;" id="dot-btn" onclick="toggleDot()" data-tip="Dotted note">· Dotted</button>
+      </div>
+    </div>
+
+    <!-- Pitch -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Pitch</div>
+      <div class="pitch-grid">
+        <button class="pitch-btn active" data-pitch="c" onclick="selectPitch('c', this)">C</button>
+        <button class="pitch-btn" data-pitch="d" onclick="selectPitch('d', this)">D</button>
+        <button class="pitch-btn" data-pitch="e" onclick="selectPitch('e', this)">E</button>
+        <button class="pitch-btn" data-pitch="f" onclick="selectPitch('f', this)">F</button>
+        <button class="pitch-btn" data-pitch="g" onclick="selectPitch('g', this)">G</button>
+        <button class="pitch-btn" data-pitch="a" onclick="selectPitch('a', this)">A</button>
+        <button class="pitch-btn" data-pitch="b" onclick="selectPitch('b', this)">B</button>
+      </div>
+      <div class="octave-label">Octave</div>
+      <div class="octave-btns">
+        <button class="btn" onclick="changeOctave(-1)" style="flex:1; justify-content:center;">▼</button>
+        <span id="octave-display" style="padding:5px 8px; font-size:14px; color:var(--gold-light); font-family:'Playfair Display',serif;">4</span>
+        <button class="btn" onclick="changeOctave(1)" style="flex:1; justify-content:center;">▲</button>
+      </div>
+    </div>
+
+    <!-- Accidentals -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Accidental</div>
+      <div class="accidental-grid">
+        <button class="note-btn" data-acc="bb" onclick="selectAccidental('bb', this)" data-tip="Double flat">
+          <div class="note-symbol" style="font-size:14px;">𝄫</div>
+          <div class="note-name">♭♭</div>
+        </button>
+        <button class="note-btn" data-acc="b" onclick="selectAccidental('b', this)">
+          <div class="note-symbol" style="font-size:16px;">♭</div>
+          <div class="note-name">Flat</div>
+        </button>
+        <button class="note-btn active" data-acc="n" onclick="selectAccidental('n', this)">
+          <div class="note-symbol" style="font-size:16px;">♮</div>
+          <div class="note-name">Nat.</div>
+        </button>
+        <button class="note-btn" data-acc="#" onclick="selectAccidental('#', this)">
+          <div class="note-symbol" style="font-size:16px;">♯</div>
+          <div class="note-name">Sharp</div>
+        </button>
+        <button class="note-btn" data-acc="##" onclick="selectAccidental('##', this)" data-tip="Double sharp">
+          <div class="note-symbol" style="font-size:14px;">𝄪</div>
+          <div class="note-name">♯♯</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Percussion sounds -->
+    <div class="sidebar-section" id="perc-section">
+      <div class="sidebar-title">Percussion</div>
+      <div class="note-palette">
+        <button class="note-btn active" data-perc="bd" onclick="selectPerc('bd', this)">
+          <div class="note-symbol" style="font-size:14px;">🥁</div>
+          <div class="note-name">Kick</div>
+        </button>
+        <button class="note-btn" data-perc="sn" onclick="selectPerc('sn', this)">
+          <div class="note-symbol" style="font-size:14px;">🔵</div>
+          <div class="note-name">Snare</div>
+        </button>
+        <button class="note-btn" data-perc="hh" onclick="selectPerc('hh', this)">
+          <div class="note-symbol" style="font-size:14px;">🎩</div>
+          <div class="note-name">Hi-Hat</div>
+        </button>
+        <button class="note-btn" data-perc="crash" onclick="selectPerc('crash', this)">
+          <div class="note-symbol" style="font-size:14px;">💫</div>
+          <div class="note-name">Crash</div>
+        </button>
+        <button class="note-btn" data-perc="ride" onclick="selectPerc('ride', this)">
+          <div class="note-symbol" style="font-size:14px;">⭕</div>
+          <div class="note-name">Ride</div>
+        </button>
+        <button class="note-btn" data-perc="tom" onclick="selectPerc('tom', this)">
+          <div class="note-symbol" style="font-size:14px;">🟤</div>
+          <div class="note-name">Tom</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Dynamics -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Dynamics</div>
+      <div class="note-palette">
+        <button class="note-btn" data-dyn="pp" onclick="selectDynamic('pp', this)">
+          <div class="note-name" style="font-size:13px;font-style:italic;">pp</div>
+        </button>
+        <button class="note-btn" data-dyn="p" onclick="selectDynamic('p', this)">
+          <div class="note-name" style="font-size:13px;font-style:italic;">p</div>
+        </button>
+        <button class="note-btn" data-dyn="mp" onclick="selectDynamic('mp', this)">
+          <div class="note-name" style="font-size:13px;font-style:italic;">mp</div>
+        </button>
+        <button class="note-btn" data-dyn="mf" onclick="selectDynamic('mf', this)">
+          <div class="note-name" style="font-size:13px;font-style:italic;">mf</div>
+        </button>
+        <button class="note-btn" data-dyn="f" onclick="selectDynamic('f', this)">
+          <div class="note-name" style="font-size:13px;font-style:italic;">f</div>
+        </button>
+        <button class="note-btn" data-dyn="ff" onclick="selectDynamic('ff', this)">
+          <div class="note-name" style="font-size:13px;font-style:italic;">ff</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Add Note Button -->
+    <div class="sidebar-section">
+      <button class="btn primary" style="width:100%; justify-content:center; padding:10px;" onclick="addNote()">
+        ♩ Add Note
+      </button>
+    </div>
+  </div>
+
+  <!-- CANVAS AREA -->
+  <div class="canvas-area">
+    <div class="score-container" id="score-container">
+      <div class="score-page" id="score-page">
+        <div class="score-title">
+          <div class="score-title-text" id="display-title">Untitled Score</div>
+          <div class="score-composer" id="display-composer">Composer</div>
+        </div>
+        <div id="notation-area"></div>
+      </div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="status-bar">
+      <div class="status-item active">
+        <div class="status-dot"></div>
+        <span id="status-mode">Piano + Percussion</span>
+      </div>
+      <div class="status-item">
+        <span id="status-time">Time: 4/4</span>
+      </div>
+      <div class="status-item">
+        <span id="status-key">Key: C major</span>
+      </div>
+      <div class="status-item">
+        <span id="status-measures">Measures: 4</span>
+      </div>
+      <div class="status-item">
+        <span id="status-selected">Selected: —</span>
+      </div>
+      <div class="status-item" style="margin-left:auto;">
+        <span style="color:var(--ui-muted);">Click a measure to add note at cursor position</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TITLE MODAL -->
+<div class="modal-overlay" id="title-modal">
+  <div class="modal">
+    <div class="modal-title">Score Details</div>
+    <div class="field">
+      <label>Title</label>
+      <input type="text" id="input-title" placeholder="Untitled Score" value="Untitled Score">
+    </div>
+    <div class="field">
+      <label>Composer</label>
+      <input type="text" id="input-composer" placeholder="Composer" value="Composer">
+    </div>
+    <div class="field">
+      <label>Tempo (BPM)</label>
+      <input type="number" id="input-tempo" value="120" min="40" max="280">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeTitleModal()">Cancel</button>
+      <button class="btn primary" onclick="applyTitle()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// =====================================================
+// STATE
+// =====================================================
+const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental, Dot, StaveConnector, Clef, TimeSignature } = Vex.Flow;
+
+let state = {
+  title: 'Untitled Score',
+  composer: 'Composer',
+  tempo: 120,
+  timeSig: '4/4',
+  keySig: 'C',
+  staffMode: 'both', // 'both', 'piano', 'percussion'
+  selectedDuration: 'q',
+  selectedPitch: 'c',
+  selectedOctave: 4,
+  selectedAccidental: 'n',
+  selectedPerc: 'bd',
+  selectedDynamic: null,
+  isDotted: false,
+  measures: [],
+  selectedNote: null,
+  history: [],
+  currentStaff: 'treble', // 'treble', 'bass', 'percussion'
+};
+
+// Duration map VexFlow
+const DUR_BEATS = { 'w': 4, 'h': 2, 'q': 1, '8': 0.5, '16': 0.25 };
+const PERC_POSITIONS = {
+  'bd': { key: 'f/4', head: 'x2' },
+  'sn': { key: 'c/5', head: 'x' },
+  'hh': { key: 'g/5', head: 'x' },
+  'crash': { key: 'a/5', head: 'x' },
+  'ride': { key: 'f/5', head: 'x' },
+  'tom': { key: 'd/5', head: 'x2' },
+};
+
+// =====================================================
+// INIT
+// =====================================================
+function init() {
+  // Create default 4 measures
+  state.measures = [];
+  for (let i = 0; i < 4; i++) addMeasureData();
+  renderScore();
+}
+
+function addMeasureData() {
+  state.measures.push({
+    trebleNotes: [],
+    bassNotes: [],
+    percNotes: [],
+  });
+}
+
+// =====================================================
+// UI CONTROLS
+// =====================================================
+function selectDuration(dur, el) {
+  state.selectedDuration = dur;
+  document.querySelectorAll('[data-dur]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  // If rest, no need for pitch
+}
+
+function selectPitch(pitch, el) {
+  state.selectedPitch = pitch;
+  document.querySelectorAll('[data-pitch]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function selectAccidental(acc, el) {
+  state.selectedAccidental = acc;
+  document.querySelectorAll('[data-acc]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function selectPerc(perc, el) {
+  state.selectedPerc = perc;
+  document.querySelectorAll('[data-perc]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function selectDynamic(dyn, el) {
+  if (state.selectedDynamic === dyn) {
+    state.selectedDynamic = null;
+    document.querySelectorAll('[data-dyn]').forEach(b => b.classList.remove('active'));
+  } else {
+    state.selectedDynamic = dyn;
+    document.querySelectorAll('[data-dyn]').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+  }
+}
+
+function changeOctave(delta) {
+  state.selectedOctave = Math.max(2, Math.min(7, state.selectedOctave + delta));
+  document.getElementById('octave-display').textContent = state.selectedOctave;
+}
+
+function toggleDot() {
+  state.isDotted = !state.isDotted;
+  const btn = document.getElementById('dot-btn');
+  btn.classList.toggle('active', state.isDotted);
+}
+
+function setTimeSig() {
+  state.timeSig = document.getElementById('time-sig').value;
+  document.getElementById('status-time').textContent = `Time: ${state.timeSig}`;
+  renderScore();
+}
+
+function setKeySig() {
+  state.keySig = document.getElementById('key-sig').value;
+  const sel = document.getElementById('key-sig');
+  document.getElementById('status-key').textContent = `Key: ${sel.options[sel.selectedIndex].text}`;
+  renderScore();
+}
+
+function toggleStaffMode() {
+  const modes = ['both', 'piano', 'percussion'];
+  const idx = modes.indexOf(state.staffMode);
+  state.staffMode = modes[(idx + 1) % modes.length];
+  const labels = { both: 'Piano + Perc', piano: 'Piano Only', percussion: 'Perc Only' };
+  document.getElementById('mode-toggle').textContent = labels[state.staffMode];
+  document.getElementById('status-mode').textContent = { both: 'Piano + Percussion', piano: 'Piano Only', percussion: 'Percussion Only' }[state.staffMode];
+  document.getElementById('perc-section').style.display = state.staffMode === 'piano' ? 'none' : '';
+  renderScore();
+}
+
+function addMeasure() {
+  saveHistory();
+  addMeasureData();
+  document.getElementById('status-measures').textContent = `Measures: ${state.measures.length}`;
+  renderScore();
+}
+
+function removeMeasure() {
+  if (state.measures.length <= 1) return;
+  saveHistory();
+  state.measures.pop();
+  document.getElementById('status-measures').textContent = `Measures: ${state.measures.length}`;
+  renderScore();
+}
+
+function clearScore() {
+  if (!confirm('Clear all notation?')) return;
+  saveHistory();
+  state.measures = [];
+  for (let i = 0; i < 4; i++) addMeasureData();
+  state.selectedNote = null;
+  document.getElementById('status-selected').textContent = 'Selected: —';
+  renderScore();
+}
+
+function deleteSelected() {
+  if (!state.selectedNote) return;
+  saveHistory();
+  const { mIdx, staff, nIdx } = state.selectedNote;
+  if (staff === 'treble') state.measures[mIdx].trebleNotes.splice(nIdx, 1);
+  else if (staff === 'bass') state.measures[mIdx].bassNotes.splice(nIdx, 1);
+  else state.measures[mIdx].percNotes.splice(nIdx, 1);
+  state.selectedNote = null;
+  document.getElementById('status-selected').textContent = 'Selected: —';
+  renderScore();
+}
+
+function saveHistory() {
+  state.history.push(JSON.stringify(state.measures));
+  if (state.history.length > 30) state.history.shift();
+}
+
+function undoAction() {
+  if (state.history.length === 0) return;
+  state.measures = JSON.parse(state.history.pop());
+  state.selectedNote = null;
+  document.getElementById('status-measures').textContent = `Measures: ${state.measures.length}`;
+  document.getElementById('status-selected').textContent = 'Selected: —';
+  renderScore();
+}
+
+// =====================================================
+// ADD NOTE
+// =====================================================
+function addNote(mIdx, staffType) {
+  // If called from sidebar button, add to first available measure / selected
+  if (mIdx === undefined) {
+    mIdx = 0;
+    staffType = state.currentStaff === 'percussion' ? 'perc' : state.currentStaff;
+  }
+  saveHistory();
+
+  const dur = state.selectedDuration;
+  const dotted = state.isDotted;
+
+  let noteObj;
+  if (dur === 'r') {
+    noteObj = { type: 'rest', duration: 'q', dotted, dynamic: state.selectedDynamic };
+  } else if (staffType === 'perc') {
+    const percInfo = PERC_POSITIONS[state.selectedPerc];
+    noteObj = {
+      type: 'perc',
+      duration: dur,
+      dotted,
+      percType: state.selectedPerc,
+      key: percInfo.key,
+      head: percInfo.head,
+      dynamic: state.selectedDynamic,
+    };
+  } else {
+    const acc = state.selectedAccidental;
+    const pitch = state.selectedPitch;
+    const oct = state.selectedOctave;
+    let keyStr = pitch + (acc !== 'n' ? acc : '') + '/' + oct;
+    noteObj = {
+      type: 'note',
+      duration: dur,
+      dotted,
+      pitch,
+      octave: oct,
+      accidental: acc,
+      key: keyStr,
+      dynamic: state.selectedDynamic,
+    };
+  }
+
+  const measure = state.measures[mIdx];
+  if (staffType === 'treble') measure.trebleNotes.push(noteObj);
+  else if (staffType === 'bass') measure.bassNotes.push(noteObj);
+  else measure.percNotes.push(noteObj);
+
+  renderScore();
+}
+
+// =====================================================
+// RENDER SCORE with VexFlow
+// =====================================================
+function renderScore() {
+  const area = document.getElementById('notation-area');
+  area.innerHTML = '';
+
+  const pageWidth = 800;
+  const mPerRow = 4;
+  const rows = Math.ceil(state.measures.length / mPerRow);
+
+  for (let row = 0; row < rows; row++) {
+    const rowDiv = document.createElement('div');
+    rowDiv.style.marginBottom = '20px';
+    area.appendChild(rowDiv);
+
+    const startM = row * mPerRow;
+    const endM = Math.min(startM + mPerRow, state.measures.length);
+    const measuresInRow = endM - startM;
+
+    const measureWidth = Math.floor((pageWidth - 60) / mPerRow);
+    const totalWidth = measuresInRow * measureWidth + 60;
+
+    // Calculate heights needed
+    let totalHeight = 0;
+    const staffConfigs = [];
+    if (state.staffMode === 'both' || state.staffMode === 'piano') {
+      staffConfigs.push({ type: 'treble', y: totalHeight, height: 90 });
+      totalHeight += 100;
+      staffConfigs.push({ type: 'bass', y: totalHeight, height: 90 });
+      totalHeight += 110;
+    }
+    if (state.staffMode === 'both' || state.staffMode === 'percussion') {
+      staffConfigs.push({ type: 'perc', y: totalHeight, height: 90 });
+      totalHeight += 90;
+    }
+
+    const div = document.createElement('div');
+    div.style.position = 'relative';
+    rowDiv.appendChild(div);
+
+    const renderer = new Renderer(div, Renderer.Backends.SVG);
+    renderer.resize(totalWidth, totalHeight);
+    const context = renderer.getContext();
+    context.setFont('Arial', 10);
+
+    // Render each staff for each measure in the row
+    for (let sc of staffConfigs) {
+      let x = 0;
+      for (let mi = startM; mi < endM; mi++) {
+        const isFirst = mi === startM;
+        const staveX = isFirst ? x : x;
+        const staveWidth = isFirst ? measureWidth + 50 : measureWidth;
+        const stave = new Stave(x, sc.y, staveWidth);
+
+        if (isFirst) {
+          if (sc.type === 'perc') {
+            stave.addClef('percussion');
+          } else {
+            stave.addClef(sc.type === 'treble' ? 'treble' : 'bass');
+          }
+          if (sc.type === 'treble') {
+            stave.addTimeSignature(state.timeSig);
+            if (state.keySig !== 'C' && state.keySig !== 'Am') {
+              try { stave.addKeySignature(state.keySig); } catch(e) {}
+            }
+          } else if (sc.type === 'bass') {
+            if (state.keySig !== 'C' && state.keySig !== 'Am') {
+              try { stave.addKeySignature(state.keySig); } catch(e) {}
+            }
+          }
+        }
+
+        stave.setContext(context).draw();
+
+        // Draw measure number
+        if (sc.type === 'treble' || (state.staffMode === 'percussion' && sc.type === 'perc')) {
+          context.fillStyle = '#7a6a52';
+          context.font = '10px IBM Plex Mono';
+          context.fillText(`${mi + 1}`, x + 2, sc.y - 4);
+        }
+
+        // Build notes for this stave
+        let notes = [];
+        const m = state.measures[mi];
+        const rawNotes = sc.type === 'treble' ? m.trebleNotes : sc.type === 'bass' ? m.bassNotes : m.percNotes;
+
+        if (rawNotes.length > 0) {
+          for (let ni = 0; ni < rawNotes.length; ni++) {
+            const n = rawNotes[ni];
+            try {
+              let vNote;
+              if (n.type === 'rest') {
+                vNote = new StaveNote({ keys: ['b/4'], duration: (n.duration || 'q') + 'r' });
+              } else if (n.type === 'perc') {
+                vNote = new StaveNote({
+                  keys: [n.key],
+                  duration: n.duration,
+                  stem_direction: 1,
+                });
+                vNote.setStyle({ fillStyle: '#1a1208', strokeStyle: '#1a1208' });
+              } else {
+                const keyStr = n.pitch + '/' + n.octave;
+                vNote = new StaveNote({ keys: [keyStr], duration: n.duration, clef: sc.type });
+                if (n.accidental && n.accidental !== 'n') {
+                  vNote.addModifier(new Accidental(n.accidental === 'bb' ? 'bb' : n.accidental === '##' ? '##' : n.accidental));
+                }
+              }
+              if (n.dotted) Dot.buildAndAttach([vNote]);
+              notes.push(vNote);
+            } catch(e) {
+              console.warn('Note render error:', e.message, n);
+            }
+          }
+        }
+
+        // Fill remainder with rests if needed
+        const beatsPerMeasure = getBeatsPerMeasure();
+        let usedBeats = notes.reduce((sum, n) => {
+          const durStr = n.duration.replace('r', '');
+          const beats = DUR_BEATS[durStr] || 1;
+          return sum + beats;
+        }, 0);
+
+        while (usedBeats < beatsPerMeasure && usedBeats < beatsPerMeasure) {
+          const remaining = beatsPerMeasure - usedBeats;
+          let restDur = 'q';
+          if (remaining >= 4) restDur = 'w';
+          else if (remaining >= 2) restDur = 'h';
+          else if (remaining >= 1) restDur = 'q';
+          else if (remaining >= 0.5) restDur = '8';
+          else restDur = '16';
+          try {
+            notes.push(new StaveNote({ keys: ['b/4'], duration: restDur + 'r' }));
+            usedBeats += DUR_BEATS[restDur] || 1;
+          } catch(e) { break; }
+          if (usedBeats >= beatsPerMeasure) break;
+        }
+
+        if (notes.length > 0) {
+          try {
+            const [numStr, denStr] = state.timeSig.split('/');
+            const voice = new Voice({ num_beats: parseInt(numStr), beat_value: parseInt(denStr) });
+            voice.setMode(Voice.Mode.SOFT);
+            voice.addTickables(notes);
+            new Formatter().joinVoices([voice]).format([voice], staveWidth - (isFirst ? 70 : 20));
+            voice.draw(context, stave);
+          } catch(e) {
+            console.warn('Voice render error:', e.message);
+          }
+        }
+
+        // Draw brace for piano
+        if (isFirst && (state.staffMode === 'both' || state.staffMode === 'piano') && sc.type === 'treble') {
+          // Will be drawn after
+        }
+
+        x += staveWidth;
+      }
+    }
+
+    // Draw piano brace and barlines connecting
+    if (state.staffMode === 'both' || state.staffMode === 'piano') {
+      const trebleConfig = staffConfigs.find(s => s.type === 'treble');
+      const bassConfig = staffConfigs.find(s => s.type === 'bass');
+      if (trebleConfig && bassConfig) {
+        // Left brace
+        context.save();
+        context.strokeStyle = '#2c1f0e';
+        context.lineWidth = 2;
+        context.beginPath();
+        context.moveTo(0, trebleConfig.y + 5);
+        context.lineTo(0, bassConfig.y + 80);
+        context.stroke();
+        context.restore();
+      }
+    }
+
+    // Click handler overlay for each measure
+    const svgEl = div.querySelector('svg');
+    if (svgEl) {
+      svgEl.style.cursor = 'pointer';
+      svgEl.addEventListener('click', (e) => {
+        const rect = svgEl.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+        const totalW = rect.width;
+        const mCount = endM - startM;
+        const mW = (totalW - 60) / mCount;
+
+        // Determine measure index
+        let mLocal = Math.floor((clickX - 60) / mW);
+        mLocal = Math.max(0, Math.min(mCount - 1, mLocal));
+        const mGlobal = startM + mLocal;
+
+        // Determine staff type from Y position
+        let staffType = 'treble';
+        for (const sc of staffConfigs) {
+          if (clickY >= sc.y && clickY <= sc.y + sc.height) {
+            staffType = sc.type === 'treble' ? 'treble' : sc.type === 'bass' ? 'bass' : 'perc';
+            break;
+          }
+        }
+
+        state.currentStaff = staffType;
+        addNote(mGlobal, staffType);
+      });
+    }
+  }
+}
+
+function getBeatsPerMeasure() {
+  const [num, den] = state.timeSig.split('/').map(Number);
+  if (den === 8) return num / 2;
+  return num;
+}
+
+// =====================================================
+// TITLE MODAL
+// =====================================================
+function showTitleModal() {
+  document.getElementById('title-modal').classList.add('open');
+  document.getElementById('input-title').value = state.title;
+  document.getElementById('input-composer').value = state.composer;
+  document.getElementById('input-tempo').value = state.tempo;
+}
+
+function closeTitleModal() {
+  document.getElementById('title-modal').classList.remove('open');
+}
+
+function applyTitle() {
+  state.title = document.getElementById('input-title').value || 'Untitled Score';
+  state.composer = document.getElementById('input-composer').value || 'Composer';
+  state.tempo = parseInt(document.getElementById('input-tempo').value) || 120;
+  document.getElementById('display-title').textContent = state.title;
+  document.getElementById('display-composer').textContent = `♩= ${state.tempo}  ·  ${state.composer}`;
+  closeTitleModal();
+}
+
+// =====================================================
+// PDF EXPORT
+// =====================================================
+async function exportToPDF() {
+  const btn = document.querySelector('.btn.primary');
+  const originalText = btn.textContent;
+  btn.textContent = '⏳ Generating...';
+  btn.disabled = true;
+
+  try {
+    const page = document.getElementById('score-page');
+
+    // Temporarily make score page more print-friendly
+    const origBg = page.style.background;
+    page.style.background = '#faf6ee';
+
+    const canvas = await html2canvas(page, {
+      scale: 2,
+      backgroundColor: '#faf6ee',
+      useCORS: true,
+      logging: false,
+    });
+
+    page.style.background = origBg;
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({
+      orientation: 'landscape',
+      unit: 'px',
+      format: [canvas.width / 2, canvas.height / 2],
+    });
+
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
+    pdf.save(`${state.title.replace(/\s+/g, '_')}.pdf`);
+  } catch (e) {
+    alert('PDF export failed: ' + e.message);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
+
+// =====================================================
+// KEYBOARD SHORTCUTS
+// =====================================================
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  const key = e.key.toLowerCase();
+
+  // Duration shortcuts
+  if (key === '1') document.querySelector('[data-dur="w"]').click();
+  if (key === '2') document.querySelector('[data-dur="h"]').click();
+  if (key === '3') document.querySelector('[data-dur="q"]').click();
+  if (key === '4') document.querySelector('[data-dur="8"]').click();
+  if (key === '5') document.querySelector('[data-dur="16"]').click();
+  if (key === '0') document.querySelector('[data-dur="r"]').click();
+
+  // Pitch shortcuts
+  if (['a','b','c','d','e','f','g'].includes(key)) {
+    document.querySelector(`[data-pitch="${key}"]`).click();
+  }
+
+  // Accidentals
+  if (key === '#') document.querySelector('[data-acc="#"]').click();
+  if (key === 'n') document.querySelector('[data-acc="n"]').click();
+
+  // Octave
+  if (key === 'arrowup') changeOctave(1);
+  if (key === 'arrowdown') changeOctave(-1);
+
+  // Undo
+  if ((e.ctrlKey || e.metaKey) && key === 'z') { e.preventDefault(); undoAction(); }
+
+  // Delete
+  if (key === 'delete' || key === 'backspace') { if (state.selectedNote) { e.preventDefault(); deleteSelected(); } }
+
+  // Dot
+  if (key === '.') toggleDot();
+
+  // Add note
+  if (key === 'enter') addNote();
+});
+
+// =====================================================
+// START
+// =====================================================
+init();
+
+// Show keyboard shortcuts hint after 2s
+setTimeout(() => {
+  console.log('Maestro Studio: Keyboard shortcuts — 1-5: durations, A-G: pitches, ↑↓: octave, Ctrl+Z: undo, .: dot, Enter: add note');
+}, 2000);
+</script>
+</body>
+</html>
