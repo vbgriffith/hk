@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maestro — Music Notation Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<style>
+/* ══════════════════════════ VARIABLES ══════════════════════════ */
+:root {
+  --paper: #faf6ee; --ink: #1a1208; --muted: #7a6a52;
+  --ui: #1e1208; --ui2: #150d04; --bdr: #3e2a14;
+  --txt: #f0e6d0; --dim: #8a7055;
+  --gold: #c8922a; --gol: #e8b84b;
+  --red: #8b2500; --redl: #c44a1a;
+  --blue: #1e4fa8; --blul: #5599ff;
+  --green: #1a6b2a; --grnl: #44cc66;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { background: var(--ui); font-family: 'IBM Plex Mono', monospace; color: var(--txt); display: flex; flex-direction: column; }
+
+/* ── HEADER ── */
+header {
+  background: linear-gradient(135deg, #110800, #1e1208, #110800);
+  border-bottom: 1px solid var(--bdr); padding: 5px 12px;
+  display: flex; align-items: center; gap: 8px;
+  flex-shrink: 0; flex-wrap: wrap;
+  box-shadow: 0 2px 16px rgba(0,0,0,.7);
+}
+.logo { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; color: var(--gol); letter-spacing: 2px; text-transform: uppercase; flex-shrink: 0; }
+.logo span { color: var(--redl); }
+.hdiv { width: 1px; height: 20px; background: var(--bdr); }
+.tb { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+.tg { display: flex; align-items: center; gap: 2px; padding: 0 5px; border-right: 1px solid var(--bdr); }
+.tg:last-child { border: none; }
+.tl { font-size: 7px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; margin-right: 2px; white-space: nowrap; }
+
+.btn { background: rgba(255,255,255,.05); border: 1px solid var(--bdr); color: var(--txt); padding: 3px 7px; border-radius: 3px; cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 10px; transition: all .1s; white-space: nowrap; display: inline-flex; align-items: center; gap: 2px; }
+.btn:hover { background: rgba(200,146,42,.14); border-color: var(--gold); color: var(--gol); }
+.btn.on { background: var(--red); border-color: var(--redl); color: #fff; }
+.btn.pri { background: var(--gold); border-color: var(--gol); color: var(--ink); font-weight: 700; }
+.btn.pri:hover { background: var(--gol); }
+.btn.chord-on { background: rgba(30,79,168,.5); border-color: var(--blul); color: #bbddff; }
+.btn.tie-on { background: rgba(26,107,42,.5); border-color: var(--grnl); color: #bbffcc; }
+.btn.danger { border-color: var(--red); }
+.btn.danger:hover { background: var(--red); color: #fff; }
+select, input[type=number] { background: rgba(255,255,255,.06); border: 1px solid var(--bdr); color: var(--txt); padding: 3px 5px; border-radius: 3px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; outline: none; cursor: pointer; }
+select:hover, input[type=number]:hover { border-color: var(--gold); }
+select option { background: #1e1208; }
+
+/* ── LAYOUT ── */
+.main { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+/* ── SIDEBAR ── */
+.sidebar { width: 235px; background: var(--ui2); border-right: 1px solid var(--bdr); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; min-height: 0; }
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: #0d0800; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--bdr); border-radius: 2px; }
+.sidebar::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
+.ss { border-bottom: 1px solid var(--bdr); padding: 7px 8px; }
+.stitle { font-size: 7px; color: var(--gold); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; font-weight: 700; }
+
+/* Duration grid */
+.dgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
+.nb { background: rgba(255,255,255,.04); border: 1px solid var(--bdr); color: var(--txt); padding: 4px 2px; border-radius: 2px; cursor: pointer; text-align: center; transition: all .1s; font-family: 'IBM Plex Mono', monospace; display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: 9px; }
+.nb:hover { background: rgba(200,146,42,.12); border-color: var(--gold); }
+.nb.active { background: var(--red); border-color: var(--redl); color: #fff; }
+.nsym { font-size: 14px; line-height: 1.2; }
+
+/* Piano keyboard */
+.kbd { position: relative; height: 46px; margin-bottom: 4px; }
+.wrow { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; height: 100%; }
+.wk { background: rgba(255,255,255,.9); border: 1px solid #999; border-radius: 0 0 3px 3px; cursor: pointer; font-size: 7px; color: #1a1208; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 2px; font-weight: 700; transition: all .08s; user-select: none; }
+.wk:hover { background: #fff; border-color: var(--gold); }
+.wk.sel-pitch { background: var(--gold) !important; border-color: var(--gol) !important; color: var(--ink) !important; }
+.wk.in-chord { background: var(--blue) !important; border-color: var(--blul) !important; color: #fff !important; }
+.brow { position: absolute; top: 0; left: 0; right: 0; height: 58%; display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; pointer-events: none; }
+.bk { background: #2a1a08; border: 1px solid #444; border-radius: 0 0 3px 3px; cursor: pointer; font-size: 6px; color: var(--dim); display: flex; align-items: center; justify-content: center; transition: all .08s; pointer-events: all; user-select: none; }
+.bk:hover { background: #3a2510; border-color: var(--gold); }
+.bk.sel-pitch { background: var(--gold) !important; border-color: var(--gol) !important; color: var(--ink) !important; }
+.bk.in-chord { background: var(--blue) !important; border-color: var(--blul) !important; color: #fff !important; }
+.bk.gap { background: transparent; border: none; pointer-events: none; }
+
+/* Chord queue */
+.cpills { display: flex; flex-wrap: wrap; gap: 2px; min-height: 20px; background: rgba(0,0,0,.25); border-radius: 3px; padding: 3px; margin-bottom: 3px; }
+.cpill { background: rgba(30,79,168,.5); border: 1px solid var(--blul); color: #bbddff; border-radius: 8px; padding: 1px 6px; font-size: 8px; cursor: pointer; }
+.cpill:hover { background: var(--red); border-color: var(--redl); color: #fff; }
+.chord-hint { font-size: 7.5px; color: var(--dim); line-height: 1.5; }
+
+/* Chord name builder */
+.cgrid6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; margin-bottom: 3px; }
+.cgrid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-bottom: 3px; }
+.crbtn { background: rgba(255,255,255,.06); border: 1px solid var(--bdr); color: var(--txt); border-radius: 2px; padding: 3px 1px; font-size: 8px; text-align: center; cursor: pointer; transition: all .08s; }
+.crbtn:hover { border-color: var(--gold); color: var(--gol); }
+.crbtn.active { background: var(--blue); border-color: var(--blul); color: #fff; }
+.ctbtn { background: rgba(255,255,255,.04); border: 1px solid var(--bdr); color: var(--dim); border-radius: 2px; padding: 3px 2px; font-size: 8px; text-align: center; cursor: pointer; transition: all .08s; line-height: 1.3; }
+.ctbtn:hover { border-color: var(--gold); color: var(--gol); }
+.ctbtn.active { background: rgba(30,79,168,.4); border-color: var(--blul); color: #bbddff; }
+.ivbtn { flex: 1; background: rgba(255,255,255,.04); border: 1px solid var(--bdr); color: var(--dim); border-radius: 2px; padding: 3px; font-size: 7.5px; text-align: center; cursor: pointer; transition: all .08s; }
+.ivbtn:hover { border-color: var(--gold); }
+.ivbtn.active { background: rgba(26,107,42,.4); border-color: var(--grnl); color: #bbffcc; }
+#chord-preview { font-size: 8px; color: #bbddff; background: rgba(30,79,168,.1); border: 1px solid rgba(30,79,168,.3); border-radius: 3px; padding: 5px; margin-bottom: 4px; min-height: 28px; line-height: 1.6; }
+
+/* Selection box */
+.selbox { background: rgba(200,146,42,.08); border: 1px solid rgba(200,146,42,.3); border-radius: 3px; padding: 6px; display: none; }
+.selbox.open { display: block; }
+.sel-label { font-size: 8px; color: var(--gol); line-height: 1.6; word-break: break-word; }
+
+/* Perc list */
+.plist { display: flex; flex-direction: column; gap: 2px; }
+.pi { display: flex; align-items: center; gap: 4px; padding: 3px 5px; border: 1px solid var(--bdr); border-radius: 2px; cursor: pointer; transition: all .1s; font-size: 9px; }
+.pi:hover { background: rgba(200,146,42,.1); border-color: var(--gold); }
+.pi.active { background: var(--red); border-color: var(--redl); color: #fff; }
+
+/* ── SCORE AREA ── */
+.canvas-area { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
+/*
+ * FIX: score-wrap scrolls, score-page grows with content.
+ * Use block layout (not flex) so score-page height = its content.
+ * The outer div is just a scroll container with padding.
+ */
+.score-wrap { flex: 1; overflow: auto; padding: 28px; background: #160e04; min-height: 0; }
+.score-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
+.score-wrap::-webkit-scrollbar-track { background: #0d0800; }
+.score-wrap::-webkit-scrollbar-thumb { background: var(--bdr); border-radius: 4px; }
+.score-wrap::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
+/*
+ * KEY: display:table makes the div shrink-wrap its content height.
+ * background will always cover all rows regardless of how many bars are added.
+ */
+.score-page {
+  display: table;           /* shrink-wraps height to actual content */
+  background: var(--paper);
+  box-shadow: 0 8px 48px rgba(0,0,0,.7), 0 2px 8px rgba(0,0,0,.4);
+  border-radius: 2px;
+  padding: 40px 36px 64px;
+  min-width: 820px;
+}
+.score-title { text-align: center; margin-bottom: 16px; }
+.score-title h1 { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--ink); }
+.score-title p { font-family: 'Crimson Pro', serif; font-style: italic; font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* Status bar */
+.statusbar { background: #0d0800; border-top: 1px solid var(--bdr); padding: 3px 10px; display: flex; align-items: center; gap: 10px; font-size: 8px; color: var(--dim); flex-shrink: 0; flex-wrap: wrap; }
+.sdot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); display: inline-block; margin-right: 3px; }
+.badge { display: inline-block; padding: 1px 5px; border-radius: 6px; font-size: 7px; font-weight: 700; }
+.badge.norm { background: rgba(200,146,42,.2); color: var(--gol); border: 1px solid rgba(200,146,42,.3); }
+.badge.chord { background: rgba(30,79,168,.3); color: #bbddff; border: 1px solid rgba(30,79,168,.5); }
+.badge.tie { background: rgba(26,107,42,.3); color: #bbffcc; border: 1px solid rgba(26,107,42,.5); }
+
+/* Modals */
+.mbg { position: fixed; inset: 0; background: rgba(0,0,0,.8); display: none; align-items: center; justify-content: center; z-index: 9999; }
+.mbg.open { display: flex; }
+.modal { background: #150d04; border: 1px solid var(--bdr); border-radius: 6px; padding: 20px; box-shadow: 0 24px 64px rgba(0,0,0,.9); max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+.modal h2 { font-family: 'Playfair Display', serif; font-size: 15px; color: var(--gol); margin-bottom: 12px; }
+.field { margin-bottom: 8px; }
+.field label { display: block; font-size: 7.5px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+.field input, .field select { width: 100%; background: rgba(255,255,255,.05); border: 1px solid var(--bdr); color: var(--txt); padding: 5px 7px; border-radius: 3px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; outline: none; }
+.field input:focus, .field select:focus { border-color: var(--gold); }
+.mact { display: flex; gap: 4px; justify-content: flex-end; margin-top: 12px; }
+
+/* Edit keys list */
+.ekeys { display: flex; flex-direction: column; gap: 3px; max-height: 140px; overflow-y: auto; margin-bottom: 8px; }
+.ekrow { display: flex; align-items: center; gap: 5px; padding: 3px 6px; border: 1px solid var(--bdr); border-radius: 2px; font-size: 9px; }
+.eklbl { flex: 1; color: var(--gol); font-weight: 600; }
+.ekrm { cursor: pointer; color: var(--redl); }
+
+/* Features modal */
+.feat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.feat-card { background: rgba(255,255,255,.04); border: 1px solid var(--bdr); border-radius: 4px; padding: 8px; }
+.feat-card h3 { font-size: 9px; color: var(--gol); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+.feat-card ul { font-size: 8px; color: var(--dim); line-height: 1.8; list-style: none; }
+.feat-card ul li::before { content: '○ '; color: var(--gold); }
+.feat-card ul li.done::before { content: '● '; color: var(--grnl); }
+.feat-card ul li.done { color: var(--txt); }
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="logo">Maestro <span>Studio</span></div>
+  <div class="hdiv"></div>
+  <div class="tb">
+    <div class="tg">
+      <span class="tl">File</span>
+      <button class="btn" onclick="showTitleModal()">📄 Title</button>
+      <button class="btn pri" id="pdf-btn" onclick="exportPDF()">⬇ PDF</button>
+      <button class="btn danger" onclick="clearScore()">🗑 Clear</button>
+    </div>
+    <div class="tg">
+      <span class="tl">Edit</span>
+      <button class="btn" id="undo-btn" onclick="doUndo()" title="Ctrl+Z">↩ Undo</button>
+      <button class="btn danger" id="del-btn" onclick="doDelete()" title="Del key">✕ Delete</button>
+    </div>
+    <div class="tg">
+      <span class="tl">Mode</span>
+      <button class="btn" id="chord-btn" onclick="toggleChordMode()" title="C key — queue pitches then Enter/Place">⊕ Chord</button>
+      <button class="btn" id="tie-btn" onclick="toggleTie()" title="T key — tie next note to previous">⌢ Tie</button>
+    </div>
+    <div class="tg">
+      <span class="tl">Bars</span>
+      <button class="btn" onclick="addBar()">＋ Bar</button>
+      <button class="btn" onclick="removeBar()">− Bar</button>
+    </div>
+    <div class="tg">
+      <span class="tl">Time</span>
+      <select id="sel-time" onchange="setTimeSig()">
+        <option>4/4</option><option>3/4</option><option>2/4</option>
+        <option>6/8</option><option>12/8</option><option>2/2</option><option>5/4</option>
+      </select>
+    </div>
+    <div class="tg">
+      <span class="tl">Key</span>
+      <select id="sel-key" onchange="setKeySig()">
+        <option value="C">C</option><option value="G">G</option><option value="D">D</option>
+        <option value="A">A</option><option value="E">E</option><option value="B">B</option>
+        <option value="F#">F#</option><option value="F">F</option>
+        <option value="Bb">Bb</option><option value="Eb">Eb</option><option value="Ab">Ab</option>
+        <option value="Am">Am</option><option value="Em">Em</option>
+        <option value="Dm">Dm</option><option value="Gm">Gm</option>
+      </select>
+    </div>
+    <div class="tg">
+      <span class="tl">View</span>
+      <button class="btn" id="view-btn" onclick="cycleView()">Piano+Perc</button>
+    </div>
+    <div class="tg">
+      <span class="tl">Tempo ♩=</span>
+      <input type="number" id="inp-tempo" value="120" min="20" max="320" style="width:50px;">
+    </div>
+    <div class="tg">
+      <button class="btn" onclick="showFeaturesModal()" title="Roadmap">📋 Features</button>
+    </div>
+  </div>
+</header>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+
+<!-- ─── SIDEBAR ─── -->
+<div class="sidebar">
+
+  <!-- DURATION -->
+  <div class="ss">
+    <div class="stitle">Duration <span style="color:var(--dim);font-size:6px;">[1–7]</span></div>
+    <div class="dgrid">
+      <button class="nb" data-dur="w" onclick="selDur('w',this)"><div class="nsym">𝅝</div>Whole</button>
+      <button class="nb" data-dur="h" onclick="selDur('h',this)"><div class="nsym">𝅗𝅥</div>Half</button>
+      <button class="nb active" data-dur="q" onclick="selDur('q',this)"><div class="nsym">♩</div>Qtr</button>
+      <button class="nb" data-dur="8" onclick="selDur('8',this)"><div class="nsym">♪</div>8th</button>
+      <button class="nb" data-dur="16" onclick="selDur('16',this)"><div class="nsym">𝅘𝅥𝅯</div>16th</button>
+      <button class="nb" data-dur="32" onclick="selDur('32',this)"><div class="nsym">𝅘𝅥𝅰</div>32nd</button>
+      <button class="nb" data-dur="r" onclick="selDur('r',this)"><div class="nsym">𝄽</div>Rest</button>
+      <button class="nb" id="dot-btn" onclick="togDot()"><div class="nsym" style="font-size:18px;">·</div>Dot</button>
+    </div>
+  </div>
+
+  <!-- PITCH + KEYBOARD -->
+  <div class="ss">
+    <div class="stitle">
+      Pitch <span style="color:var(--dim);font-size:6px;">[A–G]</span>
+      &nbsp; Oct: <span id="oct-disp" style="color:var(--gol);">4</span>
+      <span style="float:right;">
+        <button class="btn" style="padding:1px 4px;" onclick="chgOct(-1)">▼</button>
+        <button class="btn" style="padding:1px 4px;" onclick="chgOct(1)">▲</button>
+      </span>
+    </div>
+
+    <!-- Visual mini-keyboard -->
+    <div class="kbd" id="kbd">
+      <div class="wrow" id="wrow">
+        <div class="wk" data-p="c" onclick="whiteKeyClick('c',this)">C</div>
+        <div class="wk" data-p="d" onclick="whiteKeyClick('d',this)">D</div>
+        <div class="wk" data-p="e" onclick="whiteKeyClick('e',this)">E</div>
+        <div class="wk" data-p="f" onclick="whiteKeyClick('f',this)">F</div>
+        <div class="wk" data-p="g" onclick="whiteKeyClick('g',this)">G</div>
+        <div class="wk" data-p="a" onclick="whiteKeyClick('a',this)">A</div>
+        <div class="wk" data-p="b" onclick="whiteKeyClick('b',this)">B</div>
+      </div>
+      <div class="brow" id="brow">
+        <div class="bk" data-p="c" data-a="#" onclick="blackKeyClick('c','#',this)">C♯</div>
+        <div class="bk" data-p="d" data-a="#" onclick="blackKeyClick('d','#',this)">D♯</div>
+        <div class="bk gap"></div>
+        <div class="bk" data-p="f" data-a="#" onclick="blackKeyClick('f','#',this)">F♯</div>
+        <div class="bk" data-p="g" data-a="#" onclick="blackKeyClick('g','#',this)">G♯</div>
+        <div class="bk" data-p="a" data-a="#" onclick="blackKeyClick('a','#',this)">A♯</div>
+        <div class="bk gap"></div>
+      </div>
+    </div>
+
+    <!-- Accidental override -->
+    <div style="display:flex;gap:2px;margin-bottom:4px;">
+      <button class="btn" id="acc-b-btn" style="flex:1;justify-content:center;font-size:9px;" onclick="setAccNext('b')">♭ Flat</button>
+      <button class="btn" id="acc-n-btn" style="flex:1;justify-content:center;font-size:9px;" onclick="setAccNext('n')">♮ Nat</button>
+      <button class="btn" id="acc-bb-btn" style="flex:1;justify-content:center;font-size:9px;" onclick="setAccNext('bb')">𝄫 D♭</button>
+    </div>
+
+    <!-- Chord queue display -->
+    <div class="cpills" id="cpills"></div>
+    <div id="chord-actions" style="display:none;">
+      <button class="btn pri" style="width:100%;justify-content:center;margin-bottom:2px;" onclick="placeManualChord()">✓ Place Chord (Enter)</button>
+      <button class="btn" style="width:100%;justify-content:center;font-size:8px;" onclick="clearChordQueue()">✕ Clear Queue</button>
+    </div>
+    <div id="chord-hint" class="chord-hint">
+      Normal: click a key to select pitch, then Enter or click staff.<br>
+      Chord: enable ⊕ Chord mode, click keys to queue, then Enter.
+    </div>
+  </div>
+
+  <!-- CHORD BY NAME -->
+  <div class="ss">
+    <div class="stitle">Chord by Name</div>
+    <div style="font-size:7px;color:var(--dim);margin-bottom:3px;text-transform:uppercase;letter-spacing:1px;">Root</div>
+    <div class="cgrid6" id="chord-roots"></div>
+    <div style="font-size:7px;color:var(--dim);margin-bottom:3px;margin-top:1px;text-transform:uppercase;letter-spacing:1px;">Type</div>
+    <div class="cgrid3" id="chord-types"></div>
+    <div style="font-size:7px;color:var(--dim);margin-bottom:3px;margin-top:1px;text-transform:uppercase;letter-spacing:1px;">Inversion</div>
+    <div style="display:flex;gap:2px;margin-bottom:3px;" id="chord-invs"></div>
+    <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+      <span style="font-size:8px;color:var(--dim);">Oct:</span>
+      <button class="btn" style="padding:1px 4px;" onclick="chgChordOct(-1)">▼</button>
+      <span id="chord-oct" style="color:var(--gol);font-size:12px;padding:0 4px;">4</span>
+      <button class="btn" style="padding:1px 4px;" onclick="chgChordOct(1)">▲</button>
+    </div>
+    <div id="chord-preview"></div>
+    <button class="btn pri" style="width:100%;justify-content:center;" onclick="placeNamedChord()">⊕ Insert Named Chord</button>
+  </div>
+
+  <!-- SELECTED NOTE EDITOR -->
+  <div class="ss">
+    <div class="stitle">Selected Note</div>
+    <div class="selbox" id="selbox">
+      <div class="sel-label" id="sel-label">—</div>
+      <div style="display:flex;gap:2px;margin-top:5px;">
+        <button class="btn" style="flex:1;justify-content:center;font-size:8px;" onclick="applyDurToSel()">↺ Dur</button>
+        <button class="btn" style="flex:1;justify-content:center;font-size:8px;" onclick="openEditModal()">✏ Pitches</button>
+        <button class="btn danger" style="flex:1;justify-content:center;font-size:8px;" onclick="doDelete()">🗑 Del</button>
+      </div>
+    </div>
+    <div id="no-sel-txt" style="font-size:8px;color:var(--dim);margin-top:3px;">Click any note in the score to select it.</div>
+  </div>
+
+  <!-- PERCUSSION -->
+  <div class="ss" id="perc-section">
+    <div class="stitle">Percussion Instrument</div>
+    <div class="plist" id="perc-list"></div>
+  </div>
+
+  <!-- DYNAMICS -->
+  <div class="ss">
+    <div class="stitle">Dynamics</div>
+    <div class="dgrid">
+      <button class="nb" data-dyn="pp" onclick="selDyn('pp',this)"><div style="font-style:italic;font-size:11px;">pp</div></button>
+      <button class="nb" data-dyn="p" onclick="selDyn('p',this)"><div style="font-style:italic;font-size:11px;">p</div></button>
+      <button class="nb" data-dyn="mp" onclick="selDyn('mp',this)"><div style="font-style:italic;font-size:11px;">mp</div></button>
+      <button class="nb" data-dyn="mf" onclick="selDyn('mf',this)"><div style="font-style:italic;font-size:11px;">mf</div></button>
+      <button class="nb" data-dyn="f" onclick="selDyn('f',this)"><div style="font-style:italic;font-size:11px;">f</div></button>
+      <button class="nb" data-dyn="ff" onclick="selDyn('ff',this)"><div style="font-style:italic;font-size:11px;">ff</div></button>
+    </div>
+  </div>
+
+  <!-- ADD NOTE BUTTON -->
+  <div class="ss">
+    <button class="btn pri" style="width:100%;justify-content:center;padding:8px;font-size:11px;" onclick="addNoteAction()">♩ Add Note [Enter]</button>
+    <div style="font-size:7.5px;color:var(--dim);margin-top:4px;line-height:1.6;">
+      Shift+click on staff = always add.<br>Click existing note = select it.
+    </div>
+  </div>
+
+</div><!-- /sidebar -->
+
+<!-- ─── SCORE AREA ─── -->
+<div class="canvas-area">
+  <div class="score-wrap" id="score-wrap">
+    <div class="score-page" id="score-page">
+      <div class="score-title">
+        <h1 id="disp-title">Untitled Score</h1>
+        <p id="disp-composer">Composer</p>
+      </div>
+      <div id="notation-area"></div>
+    </div>
+  </div>
+  <div class="statusbar">
+    <span><span class="sdot"></span><span id="st-mode">Piano+Perc</span></span>
+    <span id="st-time">4/4</span>
+    <span id="st-key">C</span>
+    <span id="st-bars">4 bars</span>
+    <span>Mode: <span id="st-badge" class="badge norm">Normal</span></span>
+    <span id="st-sel" style="color:var(--gol);">—</span>
+    <span style="margin-left:auto;font-size:7px;">1-7=dur • A-G=pitch • ↑↓=oct • C=chord • T=tie • .=dot • Enter=add • Del=delete</span>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- ══ TITLE MODAL ══ -->
+<div class="mbg" id="title-modal">
+  <div class="modal" style="width:320px;">
+    <h2>Score Details</h2>
+    <div class="field"><label>Title</label><input id="inp-title" value="Untitled Score"></div>
+    <div class="field"><label>Composer</label><input id="inp-comp" value="Composer"></div>
+    <div class="mact">
+      <button class="btn" onclick="closeModal('title-modal')">Cancel</button>
+      <button class="btn pri" onclick="applyTitle()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EDIT PITCHES MODAL ══ -->
+<div class="mbg" id="edit-modal">
+  <div class="modal" style="width:360px;">
+    <h2>Edit Note Pitches</h2>
+    <div class="ekeys" id="edit-keys"></div>
+    <div style="border-top:1px solid var(--bdr);padding-top:8px;">
+      <div style="font-size:7.5px;color:var(--dim);margin-bottom:5px;text-transform:uppercase;">Add pitch</div>
+      <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px;" id="edit-pitch-row">
+        <!-- built dynamically -->
+      </div>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <span style="font-size:8px;color:var(--dim);">Oct:</span>
+        <button class="btn" onclick="editOctDelta(-1)">▼</button>
+        <span id="edit-oct" style="color:var(--gol);padding:0 5px;font-size:12px;">4</span>
+        <button class="btn" onclick="editOctDelta(1)">▲</button>
+        <span style="font-size:8px;color:var(--dim);margin-left:5px;">Acc:</span>
+        <select id="edit-acc">
+          <option value="n">♮ nat</option>
+          <option value="#">♯ sharp</option>
+          <option value="b">♭ flat</option>
+          <option value="##">♯♯ dbl♯</option>
+          <option value="bb">♭♭ dbl♭</option>
+        </select>
+      </div>
+    </div>
+    <div class="mact">
+      <button class="btn" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="btn pri" onclick="applyEditNote()">✓ Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FEATURES MODAL ══ -->
+<div class="mbg" id="features-modal">
+  <div class="modal" style="width:640px;">
+    <h2>Maestro Studio — Feature Roadmap</h2>
+    <p style="font-size:8px;color:var(--dim);margin-bottom:10px;">● = implemented &nbsp; ○ = planned / suggested next step</p>
+    <div class="feat-grid">
+      <div class="feat-card">
+        <h3>Core Notation</h3>
+        <ul>
+          <li class="done">Piano grand staff (treble + bass)</li>
+          <li class="done">Percussion staff w/ correct noteheads</li>
+          <li class="done">Note durations: whole → 32nd, rests, dotted</li>
+          <li class="done">Accidentals: ♯ ♭ ♮ ♯♯ ♭♭</li>
+          <li class="done">Ties (piano), Beaming (auto)</li>
+          <li class="done">Key & time signatures</li>
+          <li class="done">Multiple bars, undo/delete</li>
+          <li>Tuplets (triplets, quintuplets)</li>
+          <li>Slurs (curved phrase lines)</li>
+          <li>Articulations: staccato, accent, tenuto</li>
+          <li>Fermatas & breath marks</li>
+          <li>Grace notes / acciaccatura</li>
+          <li>Trills & ornaments</li>
+        </ul>
+      </div>
+      <div class="feat-card">
+        <h3>Chords & Harmony</h3>
+        <ul>
+          <li class="done">Manual chord builder (keyboard queue)</li>
+          <li class="done">Named chord library (18 types)</li>
+          <li class="done">Chord inversions (root, 1st, 2nd, 3rd)</li>
+          <li>Chord symbols above staff (e.g. Cmaj7)</li>
+          <li>Roman numeral analysis layer</li>
+          <li>Nashville number system</li>
+          <li>Auto-voice-leading suggestions</li>
+        </ul>
+      </div>
+      <div class="feat-card">
+        <h3>Structure & Form</h3>
+        <ul>
+          <li>Repeat barlines (start/end repeat)</li>
+          <li>1st & 2nd endings (voltas)</li>
+          <li>D.C. / D.S. / Fine / Coda symbols</li>
+          <li>Rehearsal marks (boxed letters A, B…)</li>
+          <li>Section labels / tempo markings text</li>
+          <li>Multi-page layout with auto-flow</li>
+          <li>System breaks & page breaks</li>
+        </ul>
+      </div>
+      <div class="feat-card">
+        <h3>Text & Expression</h3>
+        <ul>
+          <li>Lyrics under treble staff</li>
+          <li>Tempo markings (Allegro, Adagio…)</li>
+          <li>Expression text (cresc., dim., rall.)</li>
+          <li>Hairpin crescendo / decrescendo</li>
+          <li>Pedal marks for piano</li>
+          <li>Text boxes / composer annotations</li>
+        </ul>
+      </div>
+      <div class="feat-card">
+        <h3>Multiple Parts</h3>
+        <ul>
+          <li class="done">Piano + Percussion layout</li>
+          <li>Add/remove instrument staves</li>
+          <li>Guitar tab staff</li>
+          <li>Chord chart view</li>
+          <li>Part extraction (hide other parts)</li>
+          <li>Transposing instruments (Bb clarinet…)</li>
+        </ul>
+      </div>
+      <div class="feat-card">
+        <h3>Playback & Audio</h3>
+        <ul>
+          <li>MIDI playback via Web Audio / Tone.js</li>
+          <li>Metronome click track</li>
+          <li>Instrument sound fonts (piano, drums)</li>
+          <li>Playhead cursor during playback</li>
+          <li>Loop selection</li>
+          <li>Tempo tap / BPM detection</li>
+        </ul>
+      </div>
+      <div class="feat-card">
+        <h3>Import / Export</h3>
+        <ul>
+          <li class="done">PDF export</li>
+          <li>MusicXML import (Finale/Sibelius)</li>
+          <li>MusicXML export</li>
+          <li>MIDI file export</li>
+          <li>ABC notation import</li>
+          <li>PNG / SVG image export per page</li>
+        </ul>
+      </div>
+      <div class="feat-card">
+        <h3>UX / Workflow</h3>
+        <ul>
+          <li class="done">Click-to-add notes on staff</li>
+          <li class="done">Click-to-select &amp; edit</li>
+          <li class="done">Undo history (60 steps)</li>
+          <li>Copy / paste measures</li>
+          <li>Drag notes to reposition</li>
+          <li>MIDI keyboard input (WebMIDI)</li>
+          <li>Auto-save to localStorage</li>
+          <li>Score templates (lead sheet, drum chart)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="mact">
+      <button class="btn pri" onclick="closeModal('features-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  VexFlow
+// ══════════════════════════════════════════════════════
+const { Renderer, Stave, StaveNote, Voice, Formatter,
+        Accidental, Dot, Beam, Tie } = Vex.Flow;
+
+// ══════════════════════════════════════════════════════
+//  PERCUSSION DB
+// ══════════════════════════════════════════════════════
+const PERC_DB = [
+  { id:'hh_c',  name:'Hi-Hat ×',      pos:'a/5', glyph:'noteheadXBlack',          stem: 1 },
+  { id:'hh_o',  name:'Hi-Hat ○',      pos:'a/5', glyph:'noteheadCircleX',          stem: 1 },
+  { id:'hh_f',  name:'Hi-Hat Foot',   pos:'e/3', glyph:'noteheadXBlack',          stem:-1 },
+  { id:'ride',  name:'Ride ×',        pos:'f/5', glyph:'noteheadXBlack',          stem: 1 },
+  { id:'ride_b',name:'Ride Bell ◆',   pos:'f/5', glyph:'noteheadDiamondBlack',    stem: 1 },
+  { id:'crash', name:'Crash ×',       pos:'b/5', glyph:'noteheadXBlack',          stem: 1 },
+  { id:'crash2',name:'Crash 2 ×',     pos:'g/5', glyph:'noteheadXBlack',          stem: 1 },
+  { id:'sn',    name:'Snare ●',       pos:'c/5', glyph:null,                      stem: 1 },
+  { id:'rim',   name:'Rim Shot ×',    pos:'c/5', glyph:'noteheadXBlack',          stem: 1 },
+  { id:'tom1',  name:'Hi Tom ●',      pos:'e/5', glyph:null,                      stem: 1 },
+  { id:'tom2',  name:'Mid Tom ●',     pos:'d/5', glyph:null,                      stem: 1 },
+  { id:'flr',   name:'Floor Tom ●',   pos:'a/4', glyph:null,                      stem:-1 },
+  { id:'bd',    name:'Bass Drum ○',   pos:'f/4', glyph:'noteheadCircleX',         stem:-1 },
+  { id:'cowb',  name:'Cowbell △',     pos:'g/5', glyph:'noteheadTriangleUpBlack', stem: 1 },
+  { id:'tamb',  name:'Tambourine ×',  pos:'b/4', glyph:'noteheadXBlack',          stem: 1 },
+  { id:'clap',  name:'Clap ×',        pos:'c/5', glyph:'noteheadXBlack',          stem: 1 },
+];
+
+// ══════════════════════════════════════════════════════
+//  CHORD TYPE DB (semitone intervals from root, excl. root)
+// ══════════════════════════════════════════════════════
+const CHORD_TYPES_DB = [
+  { id:'maj',   lbl:'maj',   name:'Major',        iv:[4,7]        },
+  { id:'min',   lbl:'min',   name:'Minor',        iv:[3,7]        },
+  { id:'dim',   lbl:'dim',   name:'Diminished',   iv:[3,6]        },
+  { id:'aug',   lbl:'aug',   name:'Augmented',    iv:[4,8]        },
+  { id:'sus2',  lbl:'sus2',  name:'Sus2',         iv:[2,7]        },
+  { id:'sus4',  lbl:'sus4',  name:'Sus4',         iv:[5,7]        },
+  { id:'maj7',  lbl:'Δ7',    name:'Major 7',      iv:[4,7,11]     },
+  { id:'min7',  lbl:'m7',    name:'Minor 7',      iv:[3,7,10]     },
+  { id:'dom7',  lbl:'7',     name:'Dominant 7',   iv:[4,7,10]     },
+  { id:'dim7',  lbl:'°7',    name:'Dim 7',        iv:[3,6,9]      },
+  { id:'hdim7', lbl:'ø7',    name:'Half-Dim',     iv:[3,6,10]     },
+  { id:'aug7',  lbl:'+7',    name:'Augmented 7',  iv:[4,8,10]     },
+  { id:'maj9',  lbl:'Δ9',    name:'Major 9',      iv:[4,7,11,14]  },
+  { id:'min9',  lbl:'m9',    name:'Minor 9',      iv:[3,7,10,14]  },
+  { id:'dom9',  lbl:'9',     name:'Dom 9',        iv:[4,7,10,14]  },
+  { id:'add9',  lbl:'add9',  name:'Add 9',        iv:[4,7,14]     },
+  { id:'6',     lbl:'6',     name:'Major 6',      iv:[4,7,9]      },
+  { id:'m6',    lbl:'m6',    name:'Minor 6',      iv:[3,7,9]      },
+];
+
+const ROOT_IDS   = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+const SEMI_NAMES = [
+  {p:'c',a:'n'},{p:'c',a:'#'},{p:'d',a:'n'},{p:'d',a:'#'},{p:'e',a:'n'},
+  {p:'f',a:'n'},{p:'f',a:'#'},{p:'g',a:'n'},{p:'g',a:'#'},{p:'a',a:'n'},
+  {p:'a',a:'#'},{p:'b',a:'n'}
+];
+
+const BEAT_VAL = { w:4, h:2, q:1, '8':0.5, '16':0.25, '32':0.125 };
+const KEY_VEX  = { C:'C',G:'G',D:'D',A:'A',E:'E',B:'B','F#':'F#',F:'F',Bb:'Bb',Eb:'Eb',Ab:'Ab',Am:'Am',Em:'Em',Dm:'Dm',Gm:'Gm' };
+
+// ══════════════════════════════════════════════════════
+//  STATE  —  single source of truth
+// ══════════════════════════════════════════════════════
+const S = {
+  title: 'Untitled Score',
+  composer: 'Composer',
+  tempo: 120,
+  timeSig: '4/4',
+  keySig: 'C',
+  view: 'both',         // 'both' | 'piano' | 'percussion'
+
+  // Current input settings
+  dur: 'q',
+  oct: 4,
+  accNext: 'n',         // accidental to apply on next key click
+  dotted: false,
+  percId: 'hh_c',
+  dyn: null,
+
+  // Input mode flags
+  chordMode: false,     // true = key clicks queue, false = key clicks select active pitch
+  tieMode: false,
+
+  // Active single pitch (used in normal mode)
+  activePitch: 'c',
+  activeAcc: 'n',
+
+  // Chord queue for manual chord building
+  chordQueue: [],       // [{p, o, a}]
+
+  // Named chord builder state
+  chordRoot: 0,         // index into ROOT_IDS (0=C)
+  chordType: 'maj',
+  chordInv: 0,
+  chordOct: 4,
+
+  // Score data
+  measures: [],         // [{treble:[], bass:[], perc:[]}]
+  lastM: 0,
+  lastStaff: 'treble',
+
+  // Selection
+  sel: null,            // {mi, staff, ni}  or null
+
+  // History for undo
+  history: [],
+
+  // Edit modal working copy
+  editOct: 4,
+  editKeys: [],
+  editAccs: {},
+};
+
+// ══════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════
+function init() {
+  buildPercList();
+  buildChordRootBtns();
+  buildChordTypeBtns();
+  buildChordInvBtns();
+  buildEditPitchRow();
+  S.measures = Array.from({ length: 4 }, () => ({ treble: [], bass: [], perc: [] }));
+  updateChordPreview();
+  render();
+  updateStatus();
+  highlightActivePitch();
+}
+
+function buildPercList() {
+  const el = gid('perc-list');
+  el.innerHTML = '';
+  PERC_DB.forEach(p => {
+    const d = document.createElement('div');
+    d.className = 'pi' + (p.id === S.percId ? ' active' : '');
+    d.innerHTML = `<div><div style="font-size:9px;">${p.name}</div><div style="font-size:7px;opacity:.55;">${p.pos}</div></div>`;
+    d.onclick = () => {
+      S.percId = p.id;
+      qsa('.pi').forEach(x => x.classList.remove('active'));
+      d.classList.add('active');
+    };
+    el.appendChild(d);
+  });
+}
+
+function buildChordRootBtns() {
+  const el = gid('chord-roots');
+  el.innerHTML = '';
+  ROOT_IDS.forEach((r, i) => {
+    const b = ce('button', 'crbtn' + (i === S.chordRoot ? ' active' : ''));
+    b.textContent = r;
+    b.onclick = () => { S.chordRoot = i; qsa('.crbtn').forEach(x => x.classList.remove('active')); b.classList.add('active'); updateChordPreview(); };
+    el.appendChild(b);
+  });
+}
+
+function buildChordTypeBtns() {
+  const el = gid('chord-types');
+  el.innerHTML = '';
+  CHORD_TYPES_DB.forEach(ct => {
+    const b = ce('button', 'ctbtn' + (ct.id === S.chordType ? ' active' : ''));
+    b.title = ct.name;
+    b.innerHTML = `<div style="font-size:8.5px;font-weight:700;">${ct.lbl}</div><div style="font-size:6.5px;opacity:.65;">${ct.name}</div>`;
+    b.onclick = () => { S.chordType = ct.id; qsa('.ctbtn').forEach(x => x.classList.remove('active')); b.classList.add('active'); updateChordPreview(); };
+    el.appendChild(b);
+  });
+}
+
+function buildChordInvBtns() {
+  const el = gid('chord-invs');
+  el.innerHTML = '';
+  ['Root', '1st', '2nd', '3rd'].forEach((lbl, i) => {
+    const b = ce('button', 'ivbtn' + (i === S.chordInv ? ' active' : ''));
+    b.textContent = lbl;
+    b.onclick = () => { S.chordInv = i; qsa('.ivbtn').forEach(x => x.classList.remove('active')); b.classList.add('active'); updateChordPreview(); };
+    el.appendChild(b);
+  });
+}
+
+function buildEditPitchRow() {
+  const el = gid('edit-pitch-row');
+  el.innerHTML = '';
+  ['c','d','e','f','g','a','b'].forEach(p => {
+    const b = ce('button', 'btn');
+    b.style.cssText = 'font-size:9px;padding:2px 5px;';
+    b.textContent = p.toUpperCase();
+    b.onclick = () => addEditPitch(p);
+    el.appendChild(b);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  KEYBOARD HANDLERS
+//  White key:  sets active pitch (normal) OR queues (chord mode)
+//  Black key:  same but with # accidental
+// ══════════════════════════════════════════════════════
+function whiteKeyClick(pitch, el) {
+  const acc = S.accNext;   // may be 'b' / 'bb' / 'n'
+  S.accNext = 'n';         // consume the pending accidental
+  refreshAccBtns();
+  _handlePitchInput(pitch, acc);
+}
+
+function blackKeyClick(pitch, acc, el) {
+  // Black keys always mean sharp (acc param = '#')
+  const useAcc = S.accNext !== 'n' ? S.accNext : acc;
+  S.accNext = 'n';
+  refreshAccBtns();
+  _handlePitchInput(pitch, useAcc);
+}
+
+function _handlePitchInput(pitch, acc) {
+  if (S.chordMode) {
+    // Toggle in chord queue
+    const idx = S.chordQueue.findIndex(n => n.p === pitch && n.o === S.oct && n.a === acc);
+    if (idx >= 0) {
+      S.chordQueue.splice(idx, 1);
+    } else {
+      S.chordQueue.push({ p: pitch, o: S.oct, a: acc });
+    }
+    refreshChordQueue();
+  } else {
+    // Normal mode: just set the active pitch
+    S.activePitch = pitch;
+    S.activeAcc   = acc;
+    highlightActivePitch();
+  }
+}
+
+function setAccNext(a) {
+  S.accNext = a;
+  refreshAccBtns();
+}
+
+function refreshAccBtns() {
+  const a = S.accNext;
+  gid('acc-b-btn').classList.toggle('on', a === 'b');
+  gid('acc-n-btn').classList.toggle('on', a === 'n' ? false : false); // natural is default, no highlight
+  gid('acc-bb-btn').classList.toggle('on', a === 'bb');
+}
+
+function highlightActivePitch() {
+  qsa('.wk,.bk:not(.gap)').forEach(k => {
+    k.classList.remove('sel-pitch', 'in-chord');
+  });
+  if (S.chordMode) {
+    // Highlight queued keys
+    S.chordQueue.forEach(n => {
+      const el = document.querySelector(`.wk[data-p="${n.p}"]`);
+      if (el && n.a === 'n') el.classList.add('in-chord');
+      const bl = document.querySelector(`.bk[data-p="${n.p}"][data-a="${n.a}"]`);
+      if (bl) bl.classList.add('in-chord');
+    });
+  } else {
+    // Highlight active single pitch
+    const wEl = document.querySelector(`.wk[data-p="${S.activePitch}"]`);
+    if (wEl && S.activeAcc === 'n') wEl.classList.add('sel-pitch');
+    const bEl = document.querySelector(`.bk[data-p="${S.activePitch}"][data-a="${S.activeAcc}"]`);
+    if (bEl) bEl.classList.add('sel-pitch');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  CHORD MODE
+// ══════════════════════════════════════════════════════
+function toggleChordMode() {
+  S.chordMode = !S.chordMode;
+  if (!S.chordMode) { S.chordQueue = []; refreshChordQueue(); }
+  if (S.chordMode) { S.tieMode = false; gid('tie-btn').className = 'btn'; }
+  gid('chord-btn').className = 'btn' + (S.chordMode ? ' chord-on' : '');
+  highlightActivePitch();
+  updateStatus();
+}
+
+function refreshChordQueue() {
+  const pills = gid('cpills');
+  pills.innerHTML = '';
+  S.chordQueue.forEach((n, i) => {
+    const acc = n.a === '#' ? '♯' : n.a === 'b' ? '♭' : n.a === '##' ? '♯♯' : n.a === 'bb' ? '♭♭' : '';
+    const d = ce('div', 'cpill');
+    d.textContent = n.p.toUpperCase() + acc + n.o;
+    d.title = 'Click to remove';
+    d.onclick = () => { S.chordQueue.splice(i, 1); refreshChordQueue(); highlightActivePitch(); };
+    pills.appendChild(d);
+  });
+  const acts = gid('chord-actions');
+  acts.style.display = S.chordQueue.length > 0 ? '' : 'none';
+  highlightActivePitch();
+}
+
+function clearChordQueue() { S.chordQueue = []; refreshChordQueue(); }
+
+function placeManualChord() {
+  if (S.chordQueue.length === 0) { addNoteAction(); return; }
+  pushHist();
+  const entry = buildChordEntry(S.chordQueue, S.dur, S.dotted, S.dyn);
+  getArr(S.lastM, S.lastStaff).push(entry);
+  S.chordQueue = [];
+  refreshChordQueue();
+  render();
+}
+
+function buildChordEntry(q, dur, dotted, dyn) {
+  const keys = q.map(n => n.p + '/' + n.o);
+  const accs = {};
+  q.forEach((n, i) => { if (n.a !== 'n') accs[i] = n.a; });
+  const type = q.length === 1 ? 'note' : 'chord';
+  return { type, dur, dotted, keys, accs, dyn };
+}
+
+// ══════════════════════════════════════════════════════
+//  ADD NOTE (single pitch, Enter key, sidebar button)
+// ══════════════════════════════════════════════════════
+function addNoteAction() {
+  // If chord queue has items, place the chord
+  if (S.chordQueue.length > 0) { placeManualChord(); return; }
+  // Otherwise add single note at last known measure/staff
+  addNoteAt(S.lastM, S.lastStaff);
+}
+
+function addNoteAt(mi, staff) {
+  S.lastM    = mi;
+  S.lastStaff = staff;
+
+  // If chord queue has items, place chord here
+  if (S.chordQueue.length > 0 && staff !== 'perc') {
+    pushHist();
+    const entry = buildChordEntry(S.chordQueue, S.dur, S.dotted, S.dyn);
+    getArr(mi, staff).push(entry);
+    S.chordQueue = [];
+    refreshChordQueue();
+    render();
+    return;
+  }
+
+  pushHist();
+  const arr = getArr(mi, staff);
+  let entry;
+
+  if (S.dur === 'r') {
+    entry = { type:'rest', dur:'q', dotted:S.dotted, keys:['b/4'], dyn:S.dyn };
+  } else if (staff === 'perc') {
+    const inst = PERC_DB.find(p => p.id === S.percId) || PERC_DB[0];
+    entry = { type:'perc', dur:S.dur, dotted:S.dotted, keys:[inst.pos], percId:S.percId, dyn:S.dyn };
+  } else {
+    const pitch = S.activePitch;
+    const acc   = S.activeAcc;
+    if (S.tieMode && arr.length > 0 && !arr[arr.length - 1].tiedTo) {
+      arr[arr.length - 1].tiedTo = true;
+    }
+    entry = { type:'note', dur:S.dur, dotted:S.dotted,
+              keys:[pitch + '/' + S.oct],
+              accs: acc !== 'n' ? {0: acc} : {},
+              dyn: S.dyn,
+              tiedFrom: S.tieMode && arr.length > 0 };
+  }
+
+  arr.push(entry);
+  render();
+}
+
+// ══════════════════════════════════════════════════════
+//  NAMED CHORD ENGINE
+// ══════════════════════════════════════════════════════
+function chordFromName(rootIdx, typeId, inv, baseOct) {
+  const ct = CHORD_TYPES_DB.find(c => c.id === typeId);
+  if (!ct) return [];
+  const semis = [0, ...ct.iv];
+  const cnt = Math.min(inv, semis.length - 1);
+  for (let i = 0; i < cnt; i++) semis[i] += 12;
+  const mn = Math.min(...semis);
+  return semis.map(s => s - mn).map(offset => {
+    const total = rootIdx + offset;
+    const n = SEMI_NAMES[((total % 12) + 12) % 12];
+    return { p: n.p, a: n.a, o: baseOct + Math.floor(total / 12) };
+  });
+}
+
+function updateChordPreview() {
+  const notes = chordFromName(S.chordRoot, S.chordType, S.chordInv, S.chordOct);
+  const ct = CHORD_TYPES_DB.find(c => c.id === S.chordType);
+  const invLbl = ['Root','1st inv','2nd inv','3rd inv'][Math.min(S.chordInv, 3)];
+  const noteStr = notes.map(n => {
+    const as = n.a === 'n' ? '' : n.a === '#' ? '♯' : n.a === 'b' ? '♭' : n.a === '##' ? '♯♯' : '♭♭';
+    return n.p.toUpperCase() + as + n.o;
+  }).join(' ');
+  gid('chord-preview').innerHTML =
+    `<b style="color:var(--gol);">${ROOT_IDS[S.chordRoot]}${ct ? ct.lbl : ''}</b> ` +
+    `<span style="color:var(--dim);">${invLbl}</span><br>` +
+    `<span>${noteStr}</span>`;
+}
+
+function chgChordOct(d) { S.chordOct = clamp(S.chordOct + d, 1, 7); gid('chord-oct').textContent = S.chordOct; updateChordPreview(); }
+
+function placeNamedChord() {
+  const notes = chordFromName(S.chordRoot, S.chordType, S.chordInv, S.chordOct);
+  if (!notes.length) return;
+  pushHist();
+  const keys = notes.map(n => n.p + '/' + n.o);
+  const accs = {};
+  notes.forEach((n, i) => { if (n.a !== 'n') accs[i] = n.a; });
+  const entry = { type:'chord', dur:S.dur, dotted:S.dotted, keys, accs, dyn:S.dyn };
+  getArr(S.lastM, S.lastStaff).push(entry);
+  render();
+}
+
+// ══════════════════════════════════════════════════════
+//  UI CONTROLS
+// ══════════════════════════════════════════════════════
+function selDur(v, el) { S.dur = v; qsa('[data-dur]').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+function selDyn(v, el) {
+  if (S.dyn === v) { S.dyn = null; qsa('[data-dyn]').forEach(b => b.classList.remove('active')); }
+  else             { S.dyn = v;    qsa('[data-dyn]').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+}
+function chgOct(d)  { S.oct = clamp(S.oct + d, 2, 7); gid('oct-disp').textContent = S.oct; refreshChordQueue(); }
+function togDot()   { S.dotted = !S.dotted; gid('dot-btn').classList.toggle('active', S.dotted); }
+function toggleTie() {
+  S.tieMode = !S.tieMode;
+  if (S.tieMode) { S.chordMode = false; gid('chord-btn').className = 'btn'; S.chordQueue = []; refreshChordQueue(); }
+  gid('tie-btn').className = 'btn' + (S.tieMode ? ' tie-on' : '');
+  updateStatus();
+}
+function cycleView() {
+  const vs = ['both','piano','percussion'];
+  S.view = vs[(vs.indexOf(S.view) + 1) % vs.length];
+  gid('view-btn').textContent = { both:'Piano+Perc', piano:'Piano Only', percussion:'Perc Only' }[S.view];
+  gid('perc-section').style.display = S.view === 'piano' ? 'none' : '';
+  clearSel(); updateStatus(); render();
+}
+function setTimeSig() { S.timeSig = gid('sel-time').value; updateStatus(); render(); }
+function setKeySig()  { S.keySig  = gid('sel-key').value;  updateStatus(); render(); }
+
+function addBar()    { pushHist(); S.measures.push({ treble:[], bass:[], perc:[] }); updateStatus(); render(); }
+function removeBar() {
+  if (S.measures.length <= 1) return;
+  pushHist(); S.measures.pop();
+  S.lastM = Math.min(S.lastM, S.measures.length - 1);
+  clearSel(); updateStatus(); render();
+}
+function clearScore() {
+  if (!confirm('Clear all notation?')) return;
+  pushHist();
+  S.measures = Array.from({ length: 4 }, () => ({ treble:[], bass:[], perc:[] }));
+  S.lastM = 0;
+  clearSel(); updateStatus(); render();
+}
+
+// UNDO — pops the last saved state
+function doUndo() {
+  if (!S.history.length) return;
+  S.measures = JSON.parse(S.history.pop());
+  clearSel(); updateStatus(); render();
+}
+
+// DELETE — removes the currently selected note
+function doDelete() {
+  if (!S.sel) return;
+  pushHist();
+  const arr = getArr(S.sel.mi, S.sel.staff);
+  arr.splice(S.sel.ni, 1);
+  clearSel(); render();
+}
+
+function applyDurToSel() {
+  if (!S.sel) return;
+  pushHist();
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  e.dur = S.dur; e.dotted = S.dotted;
+  render(); refreshSelPanel();
+}
+
+function pushHist() {
+  S.history.push(JSON.stringify(S.measures));
+  if (S.history.length > 60) S.history.shift();
+}
+
+function getArr(mi, st) {
+  const m = S.measures[mi];
+  return st === 'treble' ? m.treble : st === 'bass' ? m.bass : m.perc;
+}
+
+// ══════════════════════════════════════════════════════
+//  SELECTION
+// ══════════════════════════════════════════════════════
+function setSel(mi, staff, ni) {
+  S.sel = { mi, staff, ni };
+  refreshSelPanel();
+}
+
+function refreshSelPanel() {
+  if (!S.sel) return;
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  if (!e) { clearSel(); return; }
+  let desc = '';
+  if (e.type === 'rest') {
+    desc = 'Rest — ' + e.dur;
+  } else if (e.type === 'perc') {
+    const p = PERC_DB.find(x => x.id === e.percId);
+    desc = 'Perc: ' + (p ? p.name : '?') + ' — ' + e.dur;
+  } else {
+    const names = e.keys.map((k, i) => {
+      const [p, o] = k.split('/');
+      const ac = (e.accs && e.accs[i]) ? e.accs[i] : '';
+      return p.toUpperCase() + ac + o;
+    }).join(', ');
+    desc = (e.type === 'chord' ? 'Chord' : 'Note') + ': ' + names + ' — ' + e.dur + (e.dotted ? '.' : '');
+  }
+  gid('sel-label').textContent = desc;
+  gid('selbox').classList.add('open');
+  gid('no-sel-txt').style.display = 'none';
+  gid('st-sel').textContent = desc;
+}
+
+function clearSel() {
+  S.sel = null;
+  gid('selbox').classList.remove('open');
+  gid('no-sel-txt').style.display = '';
+  gid('st-sel').textContent = '—';
+}
+
+// ══════════════════════════════════════════════════════
+//  EDIT PITCHES MODAL
+// ══════════════════════════════════════════════════════
+function openEditModal() {
+  if (!S.sel) return;
+  const e = getArr(S.sel.mi, S.sel.staff)[S.sel.ni];
+  if (e.type === 'rest' || e.type === 'perc') { alert('Rests and percussion notes use the sidebar controls.'); return; }
+  S.editKeys = [...e.keys];
+  S.editAccs = { ...e.accs };
+  S.editOct  = 4;
+  gid('edit-oct').textContent = S.editOct;
+  refreshEditModal();
+  openModal('edit-modal');
+}
+
+function refreshEditModal() {
+  const list = gid('edit-keys');
+  list.innerHTML = '';
+  S.editKeys.forEach((k, i) => {
+    const [p, o] = k.split('/');
+    const ac = S.editAccs[i] || 'n';
+    const as = ac === 'n' ? '' : ac === '#' ? '♯' : ac === 'b' ? '♭' : ac === '##' ? '♯♯' : '♭♭';
+    const row = ce('div', 'ekrow');
+    row.innerHTML = `<span class="eklbl">${p.toUpperCase()}${as}/${o}</span><span class="ekrm" onclick="removeEditKey(${i})">✕</span>`;
+    list.appendChild(row);
+  });
+}
+
+function removeEditKey(i) {
+  S.editKeys.splice(i, 1);
+  const na = {};
+  Object.entries(S.editAccs).forEach(([k, v]) => { const ki = +k; if (ki < i) na[ki] = v; else if (ki > i) na[ki - 1] = v; });
+  S.editAccs = na;
+  refreshEditModal();
+}
+
+function addEditPitch(p) {
+  const acc = gid('edit-acc').value;
+  S.editKeys.push(p + '/' + S.editOct);
+  if (acc !== 'n') S.editAccs[S.editKeys.length - 1] = acc;
+  refreshEditModal();
+}
+
+function editOctDelta(d) { S.editOct = clamp(S.editOct + d, 2, 7); gid('edit-oct').textContent = S.editOct; }
+
+function applyEditNote() {
+  if (!S.sel || !S.editKeys.length) { alert('Need at least one pitch.'); return; }
+  pushHist();
+  const arr = getArr(S.sel.mi, S.sel.staff);
+  const e = arr[S.sel.ni];
+  e.keys = [...S.editKeys];
+  e.accs = { ...S.editAccs };
+  e.type = e.keys.length > 1 ? 'chord' : 'note';
+  closeModal('edit-modal');
+  render(); refreshSelPanel();
+}
+
+// ══════════════════════════════════════════════════════
+//  BUILD VEXFLOW NOTE
+// ══════════════════════════════════════════════════════
+function buildVN(e, clef) {
+  try {
+    let vn;
+    if (e.type === 'rest') {
+      vn = new StaveNote({ keys: ['b/4'], duration: e.dur + 'r', align_center: true });
+    } else if (e.type === 'perc') {
+      const inst = PERC_DB.find(p => p.id === e.percId) || PERC_DB[0];
+      vn = new StaveNote({ keys: [inst.pos], duration: e.dur, stem_direction: inst.stem });
+      if (inst.glyph && vn.note_heads && vn.note_heads[0]) {
+        try {
+          vn.note_heads[0].glyph_props = Object.assign({}, vn.note_heads[0].glyph_props, {
+            code_head: inst.glyph, code: inst.glyph
+          });
+        } catch (_) {}
+      }
+    } else {
+      // note or chord — sorted low to high for VexFlow
+      const sortedKeys = [...e.keys].sort((a, b) => {
+        const pitchVal = p => { const [n, o] = p.split('/'); return parseInt(o) * 12 + 'cdefgab'.indexOf(n[0]); };
+        return pitchVal(a) - pitchVal(b);
+      });
+      vn = new StaveNote({ keys: sortedKeys, duration: e.dur, clef });
+      // Apply accidentals — must match sorted key order
+      if (e.accs) {
+        const origToSorted = e.keys.map((k, i) => ({ k, i, sorted: sortedKeys.indexOf(k) }));
+        origToSorted.forEach(({ i, sorted }) => {
+          if (e.accs[i]) {
+            try { vn.addModifier(new Accidental(e.accs[i]), sorted); } catch (_) {}
+          }
+        });
+      }
+    }
+    if (e.dotted) try { Dot.buildAndAttach([vn]); } catch (_) {}
+    return vn;
+  } catch (err) {
+    console.warn('buildVN:', err.message, e);
+    return null;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  BEAMING
+// ══════════════════════════════════════════════════════
+function makeBeams(vns, entries) {
+  const ok  = new Set(['8', '16', '32']);
+  const res = [];
+  let grp = [], pos = 0;
+  for (let i = 0; i < vns.length; i++) {
+    const e = entries[i], vn = vns[i];
+    if (!vn) { grp = []; continue; }
+    const b = entryBeats(e);
+    if (e.type === 'rest') {
+      if (grp.length >= 2) res.push(tryBeam(grp));
+      grp = [];
+    } else if (ok.has(e.dur)) {
+      grp.push(vn); pos += b;
+      if (Math.round(pos * 1000) % 1000 === 0 || i === vns.length - 1) {
+        if (grp.length >= 2) res.push(tryBeam(grp));
+        grp = [];
+      }
+    } else {
+      if (grp.length >= 2) res.push(tryBeam(grp));
+      grp = []; pos += b;
+    }
+  }
+  if (grp.length >= 2) res.push(tryBeam(grp));
+  return res.filter(Boolean);
+}
+function tryBeam(ns) { try { return new Beam(ns); } catch (e) { return null; } }
+
+// ══════════════════════════════════════════════════════
+//  TIES
+// ══════════════════════════════════════════════════════
+function makeTies(vns, entries, isPerc) {
+  if (isPerc) return [];
+  const res = [];
+  for (let i = 0; i < entries.length - 1; i++) {
+    if (entries[i].tiedTo && vns[i] && vns[i + 1]) {
+      try { res.push(new Tie({ first_note: vns[i], last_note: vns[i + 1], first_indices: [0], last_indices: [0] })); } catch (_) {}
+    }
+  }
+  return res;
+}
+
+// ══════════════════════════════════════════════════════
+//  REST FILL
+// ══════════════════════════════════════════════════════
+function restFill(entries) {
+  const bpm = beatsPerM();
+  let used  = entries.reduce((s, e) => s + entryBeats(e), 0);
+  const fe = [], fvn = [];
+  const durs = ['w', 'h', 'q', '8', '16', '32'];
+  let wd = 0;
+  while (used < bpm - 0.0001 && wd++ < 64) {
+    const rem = bpm - used;
+    let ch = '32';
+    for (const d of durs) if (BEAT_VAL[d] <= rem + 0.0001) { ch = d; break; }
+    fe.push({ type:'rest', dur:ch, dotted:false });
+    fvn.push(new StaveNote({ keys: ['b/4'], duration: ch + 'r', align_center: true }));
+    used += BEAT_VAL[ch];
+    if (used >= bpm) break;
+  }
+  return { fe, fvn };
+}
+
+function entryBeats(e) {
+  const d = (e.dur === 'r') ? 'q' : e.dur;
+  let b = BEAT_VAL[d] || 1;
+  if (e.dotted) b *= 1.5;
+  return b;
+}
+function beatsPerM() {
+  const [n, d] = S.timeSig.split('/').map(Number);
+  return d === 8 ? n / 2 : n;
+}
+
+// ══════════════════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════════════════
+function render() {
+  const area = gid('notation-area');
+  area.innerHTML = '';
+
+  const PW  = 788;  // total SVG width per row
+  const MPR = 4;    // measures per row
+  const FE  = 68;   // extra px for first measure (clef/key/time)
+  const SW  = Math.floor((PW - FE) / MPR);
+
+  const rows = Math.ceil(S.measures.length / MPR);
+
+  for (let row = 0; row < rows; row++) {
+    const s0     = row * MPR;
+    const s1     = Math.min(s0 + MPR, S.measures.length);
+    const mInRow = s1 - s0;
+
+    // Compute staff layout vertically
+    const scs = [];
+    let yy = 24;
+    const GH = 88, GAP = 16, PGAP = 4;
+    if (S.view === 'both' || S.view === 'piano') {
+      scs.push({ type:'treble', y:yy, h:GH }); yy += GH + PGAP;
+      scs.push({ type:'bass',   y:yy, h:GH }); yy += GH + GAP;
+    }
+    if (S.view === 'both' || S.view === 'percussion') {
+      scs.push({ type:'perc',   y:yy, h:GH }); yy += GH + GAP;
+    }
+    const TH = yy + 10;
+
+    const rowDiv = document.createElement('div');
+    rowDiv.style.cssText = 'position:relative;display:block;';
+    area.appendChild(rowDiv);
+
+    const ren = new Renderer(rowDiv, Renderer.Backends.SVG);
+    ren.resize(PW, TH);
+    const ctx = ren.getContext();
+
+    // Draw each staff type across all measures in this row
+    for (const sc of scs) {
+      let x = 0;
+      for (let mi = s0; mi < s1; mi++) {
+        const isF = (mi === s0);
+        const sw  = isF ? SW + FE : SW;
+        const stave = new Stave(x, sc.y, sw);
+
+        if (isF) {
+          const cn = sc.type === 'bass' ? 'bass' : sc.type === 'perc' ? 'percussion' : 'treble';
+          stave.addClef(cn);
+          if (sc.type === 'treble' || sc.type === 'perc') stave.addTimeSignature(S.timeSig);
+          if (sc.type !== 'perc') {
+            const k = KEY_VEX[S.keySig] || 'C';
+            if (k && k !== 'C' && k !== 'Am' && k !== 'Em' && k !== 'Dm' && k !== 'Gm') {
+              try { stave.addKeySignature(k); } catch (_) {}
+            }
+          }
+        }
+        stave.setContext(ctx).draw();
+
+        // Measure number
+        if (sc === scs[0]) {
+          ctx.fillStyle = '#9a8570'; ctx.font = '8px IBM Plex Mono';
+          ctx.fillText(String(mi + 1), x + (isF ? FE : 3), sc.y - 5);
+        }
+
+        const m     = S.measures[mi];
+        const rawE  = sc.type === 'treble' ? m.treble : sc.type === 'bass' ? m.bass : m.perc;
+        const isP   = sc.type === 'perc';
+        const clef  = sc.type === 'bass' ? 'bass' : 'treble';
+
+        // Build real note VexFlow objects
+        const vns = [], entries = [];
+        rawE.forEach((e, ni) => {
+          const vn = buildVN(e, clef);
+          if (vn) { vns.push(vn); entries.push(e); }
+        });
+
+        // Fill remaining beats
+        const { fe, fvn } = restFill(entries);
+        const allVns = [...vns, ...fvn];
+        const allE   = [...entries, ...fe];
+
+        if (allVns.length > 0) {
+          try {
+            const [nb, bv] = S.timeSig.split('/').map(Number);
+            const voice = new Voice({ num_beats: nb, beat_value: bv });
+            voice.setMode(Vex.Flow.Voice.Mode.SOFT);
+            voice.addTickables(allVns);
+            new Formatter().joinVoices([voice]).format([voice], sw - (isF ? FE + 4 : 10));
+            voice.draw(ctx, stave);
+
+            makeBeams(vns, entries).forEach(b => { try { b.setContext(ctx).draw(); } catch (_) {} });
+            makeTies(vns, entries, isP).forEach(t => { try { t.setContext(ctx).draw(); } catch (_) {} });
+
+            // Selection highlight
+            if (S.sel && S.sel.mi === mi && S.sel.staff === sc.type && vns[S.sel.ni]) {
+              try {
+                const bb = vns[S.sel.ni].getBoundingBox();
+                ctx.save();
+                ctx.fillStyle   = 'rgba(196,74,26,.12)';
+                ctx.strokeStyle = '#c44a1a';
+                ctx.lineWidth   = 1.5;
+                ctx.fillRect(bb.x - 4, bb.y - 4, bb.w + 8, bb.h + 8);
+                ctx.strokeRect(bb.x - 4, bb.y - 4, bb.w + 8, bb.h + 8);
+                ctx.restore();
+              } catch (_) {}
+            }
+          } catch (err) { console.warn('Voice:', err.message); }
+        }
+        x += sw;
+      }
+    }
+
+    // Piano brace
+    if ((S.view === 'both' || S.view === 'piano') && scs.length >= 2) {
+      const t = scs[0], b = scs[1];
+      ctx.save(); ctx.strokeStyle = '#2c1f0e';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(1, t.y + 2); ctx.lineTo(1, b.y + b.h - 2); ctx.stroke();
+      const by1 = t.y, by2 = b.y + b.h, mid = (by1 + by2) / 2;
+      ctx.lineWidth = 2; ctx.beginPath();
+      ctx.moveTo(1, by1);
+      ctx.bezierCurveTo(-10, by1 + 14, -10, mid - 10, 1, mid);
+      ctx.bezierCurveTo(-10, mid + 10, -10, by2 - 14, 1, by2);
+      ctx.stroke(); ctx.restore();
+    }
+
+    // ── CLICK HANDLER ──
+    // Click on score = either select an existing note or add a new one.
+    // Shift+click always adds; plain click near an existing note selects it.
+    const svg = rowDiv.querySelector('svg');
+    if (!svg) continue;
+    svg.style.cursor = 'pointer';
+
+    svg.addEventListener('click', ev => {
+      const rect  = svg.getBoundingClientRect();
+      const scaleX = PW / rect.width;
+      const scaleY = TH / rect.height;
+      const cx = (ev.clientX - rect.left) * scaleX;
+      const cy = (ev.clientY - rect.top)  * scaleY;
+
+      // Which measure column was clicked?
+      let mLocal = cx < FE ? 0 : Math.floor((cx - FE) / SW);
+      mLocal = clamp(mLocal, 0, mInRow - 1);
+      const mGlobal = s0 + mLocal;
+
+      // Which staff row was clicked?
+      let staffType = scs.length > 0 ? scs[0].type : 'treble';
+      for (const sc of scs) {
+        if (cy >= sc.y && cy <= sc.y + sc.h) {
+          staffType = sc.type === 'perc' ? 'perc' : sc.type;
+          break;
+        }
+      }
+
+      // Try to select an existing note (unless Shift held)
+      const m    = S.measures[mGlobal];
+      const rawE = staffType === 'treble' ? m.treble : staffType === 'bass' ? m.bass : m.perc;
+
+      if (rawE.length > 0 && !ev.shiftKey) {
+        // Estimate note x-positions linearly within the stave
+        const staveLeft  = mGlobal === s0 ? 0 : FE + (mGlobal - s0) * SW;
+        const staveRight = staveLeft + (mGlobal === s0 ? SW + FE : SW);
+        const noteZoneL  = staveLeft + (mGlobal === s0 ? FE : 8);
+        const noteZoneW  = staveRight - noteZoneL - 8;
+        const step       = noteZoneW / (rawE.length + 1);
+
+        for (let ni = 0; ni < rawE.length; ni++) {
+          const noteX = noteZoneL + (ni + 1) * step;
+          if (Math.abs(cx - noteX) < step * 0.6) {
+            setSel(mGlobal, staffType, ni);
+            render();
+            return;
+          }
+        }
+      }
+
+      // No note hit — add a new note
+      clearSel();
+      addNoteAt(mGlobal, staffType);
+    });
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  STATUS BAR
+// ══════════════════════════════════════════════════════
+function updateStatus() {
+  gid('st-mode').textContent  = { both:'Piano+Perc', piano:'Piano Only', percussion:'Perc Only' }[S.view];
+  gid('st-time').textContent  = S.timeSig;
+  gid('st-key').textContent   = S.keySig;
+  gid('st-bars').textContent  = S.measures.length + (S.measures.length === 1 ? ' bar' : ' bars');
+  const b = gid('st-badge');
+  if      (S.chordMode) { b.className = 'badge chord'; b.textContent = 'Chord'; }
+  else if (S.tieMode)   { b.className = 'badge tie';   b.textContent = 'Tie';   }
+  else                  { b.className = 'badge norm';  b.textContent = 'Normal';}
+}
+
+// ══════════════════════════════════════════════════════
+//  MODALS
+// ══════════════════════════════════════════════════════
+function showTitleModal()    { openModal('title-modal'); }
+function showFeaturesModal() { openModal('features-modal'); }
+function openModal(id)       { gid(id).classList.add('open'); }
+function closeModal(id)      { gid(id).classList.remove('open'); }
+
+function applyTitle() {
+  S.title    = gid('inp-title').value || 'Untitled Score';
+  S.composer = gid('inp-comp').value  || 'Composer';
+  S.tempo    = parseInt(gid('inp-tempo').value) || 120;
+  gid('disp-title').textContent    = S.title;
+  gid('disp-composer').textContent = `♩= ${S.tempo}  ·  ${S.composer}`;
+  closeModal('title-modal');
+}
+
+// ══════════════════════════════════════════════════════
+//  PDF EXPORT
+// ══════════════════════════════════════════════════════
+async function exportPDF() {
+  const b = gid('pdf-btn');
+  const orig = b.textContent; b.textContent = '⏳…'; b.disabled = true;
+  try {
+    const page   = gid('score-page');
+    const canvas = await html2canvas(page, { scale:2, backgroundColor:'#faf6ee', useCORS:true, logging:false });
+    const { jsPDF } = window.jspdf;
+    const W = canvas.width / 2, H = canvas.height / 2;
+    const pdf = new jsPDF({ orientation: W > H ? 'landscape' : 'portrait', unit:'px', format:[W, H] });
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, W, H);
+    pdf.save(S.title.replace(/\s+/g, '_') + '.pdf');
+  } catch (e) { alert('PDF error: ' + e.message); }
+  finally { b.textContent = orig; b.disabled = false; }
+}
+
+// ══════════════════════════════════════════════════════
+//  KEYBOARD SHORTCUTS
+// ══════════════════════════════════════════════════════
+document.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT') return;
+  const k = ev.key;
+  const durMap = { '1':'w','2':'h','3':'q','4':'8','5':'16','6':'32','7':'r' };
+  if (durMap[k]) { const el = document.querySelector(`[data-dur="${durMap[k]}"]`); if (el) el.click(); return; }
+  if ('abcdefg'.includes(k.toLowerCase())) {
+    const el = document.querySelector(`.wk[data-p="${k.toLowerCase()}"]`);
+    if (el) el.click(); return;
+  }
+  if (k === 'ArrowUp')   { ev.preventDefault(); chgOct(1); }
+  if (k === 'ArrowDown') { ev.preventDefault(); chgOct(-1); }
+  if (k === '.')         { togDot(); }
+  if (k.toLowerCase() === 'c' && !ev.ctrlKey && !ev.metaKey) toggleChordMode();
+  if (k.toLowerCase() === 't' && !ev.ctrlKey) toggleTie();
+  if (k === 'Enter')   { ev.preventDefault(); addNoteAction(); }
+  if (k === 'Delete' || k === 'Backspace') { if (S.sel) { ev.preventDefault(); doDelete(); } }
+  if (k === 'Escape')  { clearSel(); render(); }
+  if ((ev.ctrlKey || ev.metaKey) && k.toLowerCase() === 'z') { ev.preventDefault(); doUndo(); }
+});
+
+// ══════════════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════════════
+function gid(id)         { return document.getElementById(id); }
+function qsa(sel)        { return Array.from(document.querySelectorAll(sel)); }
+function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+function ce(tag, cls)    { const el = document.createElement(tag); if (cls) el.className = cls; return el; }
+
+// ══════════════════════════════════════════════════════
+//  BOOT
+// ══════════════════════════════════════════════════════
+S.activePitch = 'c';
+S.activeAcc   = 'n';
+init();
+</script>
+</body>
+</html>
